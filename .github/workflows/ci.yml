@@ -159,7 +159,7 @@ jobs:
             --benchmark-compare-fail=median:15%
 
       - name: Upload benchmark results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: benchmark-results-${{ matrix.python-version }}
           path: .benchmarks/${{ matrix.python-version }}.json
@@ -167,7 +167,7 @@ jobs:
       # Update baseline on main branch pushes
       - name: Upload baseline
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: benchmark-baseline-${{ matrix.python-version }}
           path: .benchmarks/${{ matrix.python-version }}.json
