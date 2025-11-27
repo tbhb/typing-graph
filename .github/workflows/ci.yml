@@ -110,6 +110,8 @@ jobs:
 
   benchmark:
     name: "Benchmark (Python ${{ matrix.python-version }})"
+    # Only run benchmarks on push to main - too slow for PR feedback
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: lint
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -135,39 +137,8 @@ jobs:
       - name: Install dependencies
         run: just install-python
 
-      # Find latest successful CI run on main branch
-      - name: Find baseline run
-        if: github.event_name == 'pull_request'
-        id: find-baseline
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          RUN_ID=$(gh api repos/${{ github.repository }}/actions/workflows/ci.yml/runs \
-            --jq '[.workflow_runs[] | select(.head_branch == "main" and .conclusion == "success")][0].id // empty')
-          echo "run-id=$RUN_ID" >> "$GITHUB_OUTPUT"
-
-      # Download baseline from main branch (if exists)
-      - name: Download baseline
-        if: github.event_name == 'pull_request' && steps.find-baseline.outputs.run-id != ''
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
-        with:
-          name: benchmark-baseline-${{ matrix.python-version }}
-          path: .benchmarks
-          run-id: ${{ steps.find-baseline.outputs.run-id }}
-          github-token: ${{ github.token }}
-        continue-on-error: true
-
       - name: Run benchmarks
         run: just benchmark-ci ${{ matrix.python-version }}
-
-      # Compare against baseline (PRs only, soft fail initially)
-      - name: Compare against baseline
-        if: github.event_name == 'pull_request' && hashFiles('.benchmarks/baseline-*.json') != ''
-        continue-on-error: true
-        run: |
-          uv run pytest tests/benchmarks/ --benchmark-only \
-            --benchmark-compare=.benchmarks/baseline-${{ matrix.python-version }}.json \
-            --benchmark-compare-fail=median:15%
 
       - name: Upload benchmark results
         uses: actions/upload-artifact@v5
@@ -175,9 +146,7 @@ jobs:
           name: benchmark-results-${{ matrix.python-version }}
           path: .benchmarks/${{ matrix.python-version }}.json
 
-      # Update baseline on main branch pushes
       - name: Upload baseline
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: actions/upload-artifact@v5
         with:
           name: benchmark-baseline-${{ matrix.python-version }}
