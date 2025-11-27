@@ -19,7 +19,7 @@ Inspired by the machinery behind Pydantic's model field metadata extraction, typ
 
 ## Why I built this
 
-After studying how projects like Pydantic, SQLAlchemy, and Typer derive behavior from type annotations, I became fascinated with the pattern and started experimenting with it in my own projects. After writing similar introspection code across several of them, I decided to extract the common plumbing into a reusable library.
+After studying how projects like Pydantic, SQLAlchemy, and Typer derive behavior from type annotations, I became fascinated with the pattern and started experimenting with it in my own projects, and after writing similar introspection code across several of them, I decided to extract the common plumbing into a reusable library.
 
 typing-graph provides a consistent graph representation that handles the edge cases of Python's typing system, so projects can focus on their domain logic instead of reinventing type introspection and metadata extraction.
 
