@@ -111,7 +111,7 @@ benchmark-save name="results": install
     --benchmark-json=.benchmarks/{{name}}.json
 
 # Run benchmarks for CI (variance-resistant settings)
-benchmark-ci name: install
+benchmark-ci name: install-python
   {{uv}} pytest tests/benchmarks/ --benchmark-only \
     --benchmark-warmup=on \
     --benchmark-warmup-iterations=1000 \
