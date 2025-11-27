@@ -201,7 +201,7 @@ sbom output="sbom.cdx.json":
 
 # Publish to TestPyPI (requires OIDC token in CI or UV_PUBLISH_TOKEN)
 release-publish-testpypi:
-  uv publish --index-url https://test.pypi.org/legacy/
+  uv publish --publish-url https://test.pypi.org/legacy/
 
 # Publish to PyPI (requires OIDC token in CI or UV_PUBLISH_TOKEN)
 release-publish-pypi:
