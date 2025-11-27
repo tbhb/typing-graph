@@ -109,7 +109,7 @@ jobs:
           subject-path: "dist/*.tar.gz,dist/*.whl"
 
       - name: Generate SBOM attestation
-        uses: actions/attest-sbom@115c3be05ff3974bcbd596578934b3f9ce39bf68 # v2.2.0
+        uses: actions/attest-sbom@4651f806c01d8637787e274ac3bdf724ef169f34 # v3.0.0
         with:
           subject-path: "dist/*.tar.gz,dist/*.whl"
           sbom-path: dist/sbom.cdx.json
@@ -204,7 +204,7 @@ jobs:
           subject-path: "dist/*.tar.gz,dist/*.whl"
 
       - name: Generate SBOM attestation
-        uses: actions/attest-sbom@115c3be05ff3974bcbd596578934b3f9ce39bf68 # v2.2.0
+        uses: actions/attest-sbom@4651f806c01d8637787e274ac3bdf724ef169f34 # v3.0.0
         with:
           subject-path: "dist/*.tar.gz,dist/*.whl"
           sbom-path: dist/sbom.cdx.json
@@ -249,7 +249,7 @@ jobs:
           subject-path: "dist/*.tar.gz,dist/*.whl"
 
       - name: Generate SBOM attestation
-        uses: actions/attest-sbom@115c3be05ff3974bcbd596578934b3f9ce39bf68 # v2.2.0
+        uses: actions/attest-sbom@4651f806c01d8637787e274ac3bdf724ef169f34 # v3.0.0
         with:
           subject-path: "dist/*.tar.gz,dist/*.whl"
           sbom-path: dist/sbom.cdx.json
