@@ -755,17 +755,21 @@ def _inspect_forward_ref(ref: TypingForwardRef, ctx: InspectContext) -> TypeNode
         try:
             # Try to evaluate the ForwardRef
             # The API changed across Python versions:
-            # - Python 3.14+: _evaluate deprecated, use evaluate_forward_ref
-            # - Python 3.12-3.13: _evaluate requires recursive_guard as keyword-only,
-            #   and type_params is required to avoid deprecation warning in 3.13
-            # - Python 3.10-3.11: _evaluate takes recursive_guard as positional
+            # - 3.14+: _evaluate deprecated, use evaluate_forward_ref
+            # - 3.13: _evaluate requires type_params + recursive_guard kwargs
+            # - 3.12: _evaluate requires recursive_guard kwarg (no type_params)
+            # - 3.10-3.11: _evaluate takes recursive_guard as positional
             if sys.version_info >= (3, 14):
                 from typing import evaluate_forward_ref  # noqa: PLC0415, I001  # pyright: ignore[reportUnreachable]
 
                 resolved = evaluate_forward_ref(ref, globals=globalns, locals=localns)
-            elif sys.version_info >= (3, 12):
+            elif sys.version_info >= (3, 13):
                 resolved = ref._evaluate(  # noqa: SLF001  # pyright: ignore[reportUnreachable]
                     globalns, localns, type_params=(), recursive_guard=frozenset()
+                )
+            elif sys.version_info >= (3, 12):
+                resolved = ref._evaluate(  # noqa: SLF001  # pyright: ignore[reportUnreachable]
+                    globalns, localns, recursive_guard=frozenset()
                 )
             elif hasattr(ref, "_evaluate"):
                 resolved = ref._evaluate(globalns, localns, frozenset())  # noqa: SLF001
