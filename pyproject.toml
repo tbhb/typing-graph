@@ -1,0 +1,211 @@
+[build-system]
+requires = ["uv_build>=0.9.6,<0.10.0"]
+build-backend = "uv_build"
+
+[project]
+name = "typing-graph"
+version = "0.1.0"
+description = "A Python library for inspecting type annotations and building graph representations of type metadata"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+keywords = ["typing", "annotations", "introspection", "metadata", "type-hints"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Typing :: Typed",
+]
+dependencies = ["typing-extensions>=4.15.0", "typing-inspection>=0.4.2"]
+
+[project.urls]
+Homepage = "https://github.com/tbhb/typing-graph"
+Documentation = "https://github.com/tbhb/typing-graph#readme"
+Repository = "https://github.com/tbhb/typing-graph"
+Issues = "https://github.com/tbhb/typing-graph/issues"
+Changelog = "https://github.com/tbhb/typing-graph/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+annotated-types = ["annotated-types>=0.7.0"]
+
+[dependency-groups]
+dev = [
+  "annotated-types>=0.7.0",
+  "basedpyright>=1.34.0",
+  "codespell>=2.4.1",
+  "cosmic-ray>=8.4.3",
+  "hypothesis>=6.148.1",
+  "prek>=0.2.19",
+  "py-spy>=0.4.1",
+  "pytest>=9.0.1",
+  "pytest-benchmark>=5.2.3",
+  "pytest-cov>=7.0.0",
+  "pytest-mock>=3.15.1",
+  "ruff>=0.14.6",
+  "yamllint>=1.37.1",
+]
+release = [
+    "cyclonedx-bom>=7.2.1",
+]
+
+[tool.basedpyright]
+exclude = ["**/node_modules", "**/tmp", "examples/**"]
+include = ["src", "tests"]
+pythonVersion = "3.10"
+reportImportCycles = "error"
+allowedUntypedLibraries = ["unittest.mock"]
+
+[[tool.basedpyright.executionEnvironments]]
+# More specific path must come first - basedpyright matches in order
+root = "tests/benchmarks"
+extraPaths = ["."]
+reportUnusedParameter = "none"
+reportPrivateUsage = "none"
+# pytest-benchmark's BenchmarkFixture.__call__() returns Any, causing unknown type warnings
+reportUnknownVariableType = "none"
+reportUnknownArgumentType = "none"
+reportUnknownMemberType = "none"
+reportUnusedCallResult = "none"
+
+[[tool.basedpyright.executionEnvironments]]
+root = "tests"
+extraPaths = ["."]
+reportUnusedParameter = "none"
+reportPrivateUsage = "none"
+
+[tool.codespell]
+skip = "uv.lock,htmlcov,tmp,pnpm-lock.yaml,docs"
+ignore-words-list = "typing_graph"
+
+[tool.pytest.ini_options]
+addopts = [
+  "--import-mode=importlib",
+  "--tb",
+  "short",
+  "--ignore=tests/benchmarks",
+]
+pythonpath = ["src", "."]
+filterwarnings = ["error"]
+testpaths = ["tests"]
+xfail_strict = true
+markers = [
+  "benchmark: mark a test as a benchmark test.",
+  "integration: mark a test as an integration test.",
+  "property: mark a test as a property test.",
+  "unit: mark a test as a unit test.",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["src/typing_graph"]
+relative_files = true
+omit = ["tests/*", "**/__pycache__/*", "**/site-packages/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "pragma: no cover",
+  "def __repr__",
+  "raise AssertionError",
+  "raise NotImplementedError",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+  "@abstractmethod",
+  "@abc.abstractmethod",
+]
+precision = 2
+show_missing = true
+skip_covered = false
+
+[tool.coverage.xml]
+output = "coverage.xml"
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+[tool.ruff]
+extend-exclude = ["**/node_modules/**", "**/tmp/**", "examples/**"]
+force-exclude = true
+target-version = "py310"
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.ruff.lint]
+select = [
+  "A",     # flake8-builtins
+  "ARG",   # flake8-unused-arguments
+  "ASYNC", # flake8-async
+  "B",     # bugbear
+  "BLE",   # flake8-blind-except
+  "C4",    # flake8-comprehensions
+  "D",     # pydocstyle
+  "DTZ",   # flake8-datetimez
+  "E",     # pycodestyle (error)
+  "EM",    # flake8-errmsg
+  "EXE",   # flake8-executable
+  "F",     # pyflakes
+  "FBT",   # flake8-boolean-trap
+  "FURB",  # refurb
+  "G",     # flake8-logging-format
+  "I",     # isort
+  "ICN",   # flake8-import-conventions
+  "ISC",   # flake8-implicit-str-concat
+  "LOG",   # flake8-logging
+  "N",     # pep8-naming
+  "PERF",  # Perflint
+  "PGH",   # pygrep-hooks
+  "PIE",   # flake8-pie
+  "PL",    # pylint
+  "PT",    # flake8-pytest-style
+  "PTH",   # flake8-use-pathlib
+  "PYI",   # flake8-pyi
+  "RET",   # flake8-return
+  "RUF",   # Ruff-specific rules
+  "S",     # flake8-bandit
+  "SIM",   # flake8-simplify
+  "SLF",   # flake8-self
+  "SLOT",  # flake8-slots
+  "TC",    # flake8-type-checking
+  "TD",    # flake8-todos
+  "TID",   # flake8-tidy-imports
+  "T10",   # flake8-debugger
+  "T20",   # flake8-print
+  "TRY",   # tryceratops
+  "UP",    # pyupgrade
+]
+ignore = ["TD003"]
+pydocstyle = { convention = "google" }
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+extra-standard-library = ["typing_extensions"]
+forced-separate = ["tests"]
+
+[tool.ruff.lint.flake8-type-checking]
+quote-annotations = true
+
+[tool.ruff.lint.flake8-unused-arguments]
+ignore-variadic-names = true
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = [
+  "D",       # no docstrings in tests
+  "FBT001",  # boolean positional args in function defs
+  "FBT003",  # boolean positional args in function calls
+  "S101",    # assert statements in tests
+  "PLR0913", # too many arguments in tests
+  "PLR2004", # magic values in assertions in tests
+  "ARG002",  # unused arguments in tests
+  "PLC0415", # import at function level allowed in tests
+  "N811",    # import alias naming in tests
+]
+"examples/**" = ["T201"] # Allow print in examples
+"scripts/**" = ["T201"] # Allow print in scripts

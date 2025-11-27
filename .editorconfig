@@ -1,0 +1,72 @@
+# https://editorconfig.org
+
+# Top-most EditorConfig file
+root = true
+
+# Default settings for all files
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Python files
+[*.py]
+indent_style = space
+indent_size = 4
+max_line_length = 88
+
+# HTML and Jinja2 templates
+[*.{html,j2}]
+indent_style = space
+indent_size = 2
+
+# CSS and preprocessor files
+[*.css]
+indent_style = space
+indent_size = 2
+
+# JavaScript and TypeScript
+[*.{js,ts}]
+indent_style = space
+indent_size = 2
+
+# JSON files
+[*.{json,jsonc}]
+indent_style = space
+indent_size = 2
+
+# YAML files
+[*.{yml,yaml}]
+indent_style = space
+indent_size = 2
+
+# Markdown files
+[*.md]
+trim_trailing_whitespace = false
+max_line_length = off
+
+# TOML files (for pyproject.toml, etc.)
+[*.toml]
+indent_style = space
+indent_size = 2
+
+# Justfiles
+[Justfile]
+indent_style = space
+indent_size = 2
+
+# Shell scripts
+[*.sh]
+indent_style = space
+indent_size = 2
+
+# Configuration files
+[*.{ini,cfg,conf}]
+indent_style = space
+indent_size = 2
+
+# XML and SVG files
+[*.{xml,svg}]
+indent_style = space
+indent_size = 2

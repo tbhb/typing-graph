@@ -1,0 +1,48 @@
+---
+default_stages: [pre-commit, pre-push]
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c # v6.0.0
+    hooks:
+      - id: check-merge-conflict
+        name: Check that merge conflicts are not being committed
+      - id: end-of-file-fixer
+        name: Make sure that there is an empty line at the end
+      - id: mixed-line-ending
+        name: Detect if mixed line ending is used (\r vs. \r\n)
+      - id: trailing-whitespace
+        name: Remove trailing whitespace at end of line
+
+  - repo: https://github.com/adrienverge/yamllint
+    rev: 79a6b2b1392eaf49cdd32ac4f14be1a809bbd8f7 # v1.37.1
+    hooks:
+      - id: yamllint
+        name: Check YAML files with yamllint
+        entry: yamllint -c .yamllint.yaml --strict
+        types: [yaml]
+        exclude: >
+          (?x) ^.*pnpm-lock\.yaml$
+
+  - repo: https://github.com/codespell-project/codespell
+    rev: 63c8f8312b7559622c0d82815639671ae42132ac # v2.4.1
+    hooks:
+      - id: codespell
+        exclude: (^\.)
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: aad66557af3b56ba6d4d69cd1b6cba87cef50cbb # v0.14.3
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/DetachHead/basedpyright-prek-mirror
+    rev: 7eb3855a1790d8fc457b95773e11cf045ef82d65 # 1.32.1
+    hooks:
+      - id: basedpyright
+
+  - repo: https://github.com/rhysd/actionlint
+    rev: e7d448ef7507c20fc4c88a95d0c448b848cd6127 # v1.7.8
+    hooks:
+      - id: actionlint

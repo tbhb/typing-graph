@@ -1,0 +1,17 @@
+# Cosmic Ray mutation testing configuration
+
+[cosmic-ray]
+# Target module for mutation testing
+module-path = "src/typing_graph/_inspect_type.py"
+
+# Timeout per test run (seconds) - handles infinite loops
+timeout = 60.0
+
+# Exclude test files from mutation
+excluded-modules = []
+
+# Test command - pytest with fail-fast for efficiency
+test-command = "uv run pytest tests/ -x -q"
+
+[cosmic-ray.distributor]
+name = "local"
