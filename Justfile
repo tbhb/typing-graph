@@ -102,6 +102,7 @@ benchmark *args: install
 
 # Run benchmarks and save results to JSON (local development)
 benchmark-save name="results": install
+  mkdir -p .benchmarks
   {{uv}} pytest tests/benchmarks/ --benchmark-only \
     --benchmark-warmup=on \
     --benchmark-warmup-iterations=1000 \
@@ -112,6 +113,7 @@ benchmark-save name="results": install
 
 # Run benchmarks for CI (variance-resistant settings)
 benchmark-ci name: install-python
+  mkdir -p .benchmarks
   {{uv}} pytest tests/benchmarks/ --benchmark-only \
     --benchmark-warmup=on \
     --benchmark-warmup-iterations=1000 \
