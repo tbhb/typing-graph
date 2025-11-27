@@ -135,16 +135,27 @@ jobs:
       - name: Install dependencies
         run: just install-python
 
+      # Find latest successful CI run on main branch
+      - name: Find baseline run
+        if: github.event_name == 'pull_request'
+        id: find-baseline
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RUN_ID=$(gh api repos/${{ github.repository }}/actions/workflows/ci.yml/runs \
+            --jq '[.workflow_runs[] | select(.head_branch == "main" and .conclusion == "success")][0].id // empty')
+          echo "run-id=$RUN_ID" >> "$GITHUB_OUTPUT"
+
       # Download baseline from main branch (if exists)
       - name: Download baseline
-        if: github.event_name == 'pull_request'
-        uses: dawidd6/action-download-artifact@20319c5641d495c8a52e688b7dc5f8f144f8a15a # v8
+        if: github.event_name == 'pull_request' && steps.find-baseline.outputs.run-id != ''
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
         with:
           name: benchmark-baseline-${{ matrix.python-version }}
           path: .benchmarks
-          if_no_artifact_found: ignore
-          workflow_conclusion: success
-          branch: main
+          run-id: ${{ steps.find-baseline.outputs.run-id }}
+          github-token: ${{ github.token }}
+        continue-on-error: true
 
       - name: Run benchmarks
         run: just benchmark-ci ${{ matrix.python-version }}
