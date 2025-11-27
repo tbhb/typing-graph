@@ -364,12 +364,14 @@ vite.config.ts.timestamp-*
 
 # Local documentation
 plans
+reports
 research
 reviews
 specs
 TODO.md
 
 # Local agent configuration
+.claude
 .claude/settings.local.json
 
 # Benchmark baselines (local only)

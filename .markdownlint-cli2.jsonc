@@ -12,7 +12,6 @@
   },
   "customRules": [],
   "gitignore": true,
-  "ignores": [".claude/commands/**", "tmp/**"],
   "noBanner": true,
   "noInlineConfig": true,
   "noProgress": true,
