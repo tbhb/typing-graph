@@ -1,6 +1,7 @@
 # pyright: reportAny=false, reportExplicitAny=false, reportUnknownVariableType=false
 # pyright: reportUnknownMemberType=false, reportGeneralTypeIssues=false, reportInvalidTypeForm=false
 
+import operator
 from collections.abc import Callable
 from typing import (
     TYPE_CHECKING,
@@ -21,6 +22,16 @@ from typing_graph import EvalMode, InspectConfig
 
 if TYPE_CHECKING:
     from hypothesis.strategies import DrawFn
+
+
+def _make_annotated(base_type: Any, *metadata: object) -> Any:
+    """Construct an Annotated type in a version-agnostic way.
+
+    Python 3.14 removed direct access to Annotated.__class_getitem__, so we
+    use operator.getitem which works across all Python versions.
+    """
+    # Annotated supports subscripting at runtime but pyright doesn't see it
+    return operator.getitem(Annotated, (base_type, *metadata))  # pyright: ignore[reportCallIssue,reportArgumentType]
 
 
 @composite
@@ -249,10 +260,7 @@ def annotated_types(draw: "DrawFn", inner_strategy: st.SearchStrategy[Any]) -> A
     inner = draw(inner_strategy)
     metadata_count = draw(st.integers(min_value=1, max_value=3))
     metadata = tuple(draw(metadata_items()) for _ in range(metadata_count))
-    # Use __class_getitem__ for dynamic Annotated construction
-    # (exists at runtime but not in type stubs)
-    annotated_getitem = Annotated.__class_getitem__  # pyright: ignore[reportAttributeAccessIssue]
-    return annotated_getitem((inner, *metadata))
+    return _make_annotated(inner, *metadata)
 
 
 @composite
@@ -260,14 +268,11 @@ def nested_annotated_types(
     draw: "DrawFn", inner_strategy: st.SearchStrategy[Any]
 ) -> Any:
     """Generate nested Annotated[Annotated[T, x], y] types."""
-    # Use __class_getitem__ for dynamic Annotated construction
-    # (exists at runtime but not in type stubs)
-    annotated_getitem = Annotated.__class_getitem__  # pyright: ignore[reportAttributeAccessIssue]
     base = draw(inner_strategy)
     meta1 = tuple(draw(st.lists(st.text(max_size=10), min_size=1, max_size=2)))
-    intermediate = annotated_getitem((base, *meta1))
+    intermediate = _make_annotated(base, *meta1)
     meta2 = tuple(draw(st.lists(st.integers(-50, 50), min_size=1, max_size=2)))
-    return annotated_getitem((intermediate, *meta2))
+    return _make_annotated(intermediate, *meta2)
 
 
 # =============================================================================

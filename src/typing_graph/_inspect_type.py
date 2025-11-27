@@ -102,6 +102,40 @@ else:  # pragma: no cover
 _CALLABLE_ARGS_COUNT = 2  # Callable[[params], return_type]
 _TUPLE_HOMOGENEOUS_ARGS_COUNT = 2  # tuple[T, ...]
 
+
+def _make_annotated(base_type: Any, *metadata: object) -> Any:
+    """Construct an Annotated type in a version-agnostic way.
+
+    Python 3.14 removed direct access to Annotated.__class_getitem__, so we
+    use operator.getitem which works across all Python versions.
+    """
+    # Annotated supports subscripting at runtime but pyright doesn't see it
+    return operator.getitem(Annotated, (base_type, *metadata))  # pyright: ignore[reportCallIssue,reportArgumentType,reportUnknownVariableType]
+
+
+def _get_type_params(obj: Any) -> tuple[Any, ...]:
+    """Safely get type parameters from an object.
+
+    Returns __type_params__ or __parameters__ as a tuple, handling cases where
+    these attributes are descriptors (e.g., getset_descriptor in Python 3.14)
+    that are not directly iterable. Prefers non-empty results from either attribute.
+    """
+    for attr in ("__type_params__", "__parameters__"):
+        raw = getattr(obj, attr, None)
+        if raw is None:
+            continue
+        # Check if it's actually iterable (not a descriptor)
+        try:
+            result = tuple(raw)
+            # Skip empty tuples and try next attribute
+            if result:
+                return result
+        except TypeError:
+            # raw is a descriptor or otherwise not iterable
+            continue
+    return ()
+
+
 # Module-level cache for type inspection results.
 # Note: WeakValueDictionary cannot be used because TypeNode subclasses use
 # slots=True which prevents weak references. Users should call clear_cache()
@@ -720,7 +754,20 @@ def _inspect_forward_ref(ref: TypingForwardRef, ctx: InspectContext) -> TypeNode
 
         try:
             # Try to evaluate the ForwardRef
-            if hasattr(ref, "_evaluate"):
+            # The API changed across Python versions:
+            # - Python 3.14+: _evaluate deprecated, use evaluate_forward_ref
+            # - Python 3.12-3.13: _evaluate requires recursive_guard as keyword-only,
+            #   and type_params is required to avoid deprecation warning in 3.13
+            # - Python 3.10-3.11: _evaluate takes recursive_guard as positional
+            if sys.version_info >= (3, 14):
+                from typing import evaluate_forward_ref  # noqa: PLC0415, I001  # pyright: ignore[reportUnreachable]
+
+                resolved = evaluate_forward_ref(ref, globals=globalns, locals=localns)
+            elif sys.version_info >= (3, 12):
+                resolved = ref._evaluate(  # noqa: SLF001  # pyright: ignore[reportUnreachable]
+                    globalns, localns, type_params=(), recursive_guard=frozenset()
+                )
+            elif hasattr(ref, "_evaluate"):
                 resolved = ref._evaluate(globalns, localns, frozenset())  # noqa: SLF001
             else:  # pragma: no cover - all supported Python versions have _evaluate
                 resolved = eval(ref_str, globalns, localns)  # noqa: S307
@@ -917,10 +964,7 @@ def _inspect_subscripted_generic(
     """Handle subscripted generic types like List[int], Dict[str, int]."""
     # Get type parameters of the origin if it's a generic
     type_params: list[TypeParamNode] = []
-    raw_params = getattr(origin, "__type_params__", None) or getattr(
-        origin, "__parameters__", ()
-    )
-    for tp in raw_params:
+    for tp in _get_type_params(origin):
         tp_node = _inspect_type(tp, ctx.child())
         if is_type_param_node(tp_node):
             type_params.append(tp_node)
@@ -945,12 +989,7 @@ def _inspect_plain_type(cls: type, ctx: InspectContext) -> TypeNode:
     # Check if it's a generic type
     if hasattr(cls, "__class_getitem__"):
         type_params: list[TypeParamNode] = []
-        raw_params = (
-            getattr(cls, "__type_params__", None)
-            or getattr(cls, "__parameters__", None)
-            or ()
-        )
-        for tp in raw_params:
+        for tp in _get_type_params(cls):
             tp_node = _inspect_type(tp, ctx.child())
             if is_type_param_node(tp_node):
                 type_params.append(tp_node)
@@ -1171,9 +1210,6 @@ def get_type_hints_for_node(  # noqa: PLR0912, PLR0915 - Inherently complex type
         result = Any
 
     if include_extras and node.metadata:
-        # Use __class_getitem__ for Python 3.10 compatibility
-        # (variadic unpacking in subscripts requires Python 3.11+)
-        annotated_getitem = getattr(Annotated, "__class_getitem__")  # noqa: B009
-        result = annotated_getitem((result, *node.metadata))
+        result = _make_annotated(result, *node.metadata)
 
     return result

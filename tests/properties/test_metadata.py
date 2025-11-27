@@ -1,6 +1,7 @@
 # pyright: reportAny=false, reportExplicitAny=false, reportUnknownVariableType=false, reportUnknownMemberType=false
 
-from typing import Annotated, ClassVar, Final
+import operator
+from typing import Annotated, Any, ClassVar, Final
 
 from hypothesis import HealthCheck, example, given, settings, strategies as st
 
@@ -12,6 +13,16 @@ from typing_graph._node import (
 )
 
 from .strategies import annotated_types, nested_annotated_types, primitive_types
+
+
+def _make_annotated(base_type: Any, *metadata: object) -> Any:
+    """Construct an Annotated type in a version-agnostic way.
+
+    Python 3.14 removed direct access to Annotated.__class_getitem__, so we
+    use operator.getitem which works across all Python versions.
+    """
+    # Annotated supports subscripting at runtime but pyright doesn't see it
+    return operator.getitem(Annotated, (base_type, *metadata))  # pyright: ignore[reportCallIssue,reportArgumentType]
 
 
 @given(
@@ -35,10 +46,7 @@ from .strategies import annotated_types, nested_annotated_types, primitive_types
 def test_annotated_metadata_preserved(
     inner_type: type, metadata: list[str | int]
 ) -> None:
-    # Use __class_getitem__ for dynamic Annotated construction
-    # (exists at runtime but not in type stubs)
-    annotated_getitem = Annotated.__class_getitem__  # pyright: ignore[reportAttributeAccessIssue]
-    ann = annotated_getitem((inner_type, *metadata))
+    ann = _make_annotated(inner_type, *metadata)
     node = inspect_type(ann)
 
     for item in metadata:
@@ -212,9 +220,7 @@ def test_classvar_with_complex_type(inner_type: object) -> None:
 @example(inner_type=dict[str, int], metadata="doc")
 @example(inner_type=tuple[int, ...], metadata="info")
 def test_metadata_with_complex_type(inner_type: object, metadata: str) -> None:
-    # Use __class_getitem__ for dynamic Annotated construction
-    annotated_getitem = Annotated.__class_getitem__  # pyright: ignore[reportAttributeAccessIssue]
-    ann = annotated_getitem((inner_type, metadata))
+    ann = _make_annotated(inner_type, metadata)
     node = inspect_type(ann)
 
     assert metadata in node.metadata, (
@@ -244,8 +250,7 @@ def test_classvar_annotated_preserves_qualifier() -> None:
     from typing_graph import clear_cache
 
     clear_cache()
-    annotated_getitem = Annotated.__class_getitem__  # pyright: ignore[reportAttributeAccessIssue]
-    ann = ClassVar[annotated_getitem((int, "meta"))]
+    ann = ClassVar[_make_annotated(int, "meta")]
     node = inspect_type(ann)
 
     # ClassVar qualifier must be present (would fail with XOR if both have it)
@@ -262,8 +267,7 @@ def test_final_annotated_preserves_qualifier() -> None:
     from typing_graph import clear_cache
 
     clear_cache()
-    annotated_getitem = Annotated.__class_getitem__  # pyright: ignore[reportAttributeAccessIssue]
-    ann = Final[annotated_getitem((str, "description"))]
+    ann = Final[_make_annotated(str, "description")]
     node = inspect_type(ann)
 
     # Final qualifier must be present
@@ -280,8 +284,7 @@ def test_annotated_classvar_preserves_qualifier() -> None:
     from typing_graph import clear_cache
 
     clear_cache()
-    annotated_getitem = Annotated.__class_getitem__  # pyright: ignore[reportAttributeAccessIssue]
-    ann = annotated_getitem((ClassVar[int], "meta"))
+    ann = _make_annotated(ClassVar[int], "meta")
     node = inspect_type(ann)
 
     # ClassVar qualifier must be present

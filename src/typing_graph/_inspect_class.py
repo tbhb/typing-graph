@@ -4,7 +4,7 @@
 
 import dataclasses
 import inspect
-import sys
+import warnings
 from enum import Enum
 from typing import Any
 from typing_extensions import (
@@ -12,6 +12,10 @@ from typing_extensions import (
     get_annotations,
     get_protocol_members,
     is_protocol,
+    # Always use typing_extensions.is_typeddict because it recognizes TypedDicts
+    # from both typing and typing_extensions, while typing.is_typeddict may not
+    # recognize typing_extensions.TypedDict on some Python versions.
+    is_typeddict as _is_typeddict,
 )
 
 from typing_inspection.typing_objects import is_namedtuple
@@ -21,6 +25,13 @@ from ._context import (
     InspectContext,
     extract_field_metadata,
     get_source_location,
+)
+from ._inspect_function import (
+    _inspect_signature,  # pyright: ignore[reportPrivateUsage]
+)
+from ._inspect_type import (
+    _get_type_params,  # pyright: ignore[reportPrivateUsage]
+    _inspect_type,  # pyright: ignore[reportPrivateUsage]
 )
 from ._node import (
     ClassNode,
@@ -37,17 +48,6 @@ from ._node import (
     UnionType,
     is_type_param_node,
 )
-
-if sys.version_info >= (3, 11):  # pragma: no cover
-    from typing import (
-        is_typeddict as _is_typeddict,  # pyright: ignore[reportUnreachable]
-    )
-else:  # pragma: no cover
-    from typing_extensions import is_typeddict as _is_typeddict
-
-# Import from sibling modules (internal package access)
-from ._inspect_function import _inspect_signature  # pyright: ignore[reportPrivateUsage]
-from ._inspect_type import _inspect_type  # pyright: ignore[reportPrivateUsage]
 
 # Wrapper functions for type detection.
 # These wrap stdlib/typing_extensions functions for consistent naming.
@@ -530,10 +530,7 @@ def _inspect_class(  # noqa: PLR0912 - Inherently complex class introspection
 
     # Get type parameters
     type_params: list[TypeParamNode] = []
-    raw_params = getattr(cls, "__type_params__", None) or getattr(
-        cls, "__parameters__", ()
-    )
-    for tp in raw_params:
+    for tp in _get_type_params(cls):
         tp_node = _inspect_type(tp, ctx.child())
         # TypeVar/ParamSpec/TypeVarTuple always produce TypeParamNode
         if is_type_param_node(tp_node):
@@ -593,7 +590,11 @@ def _inspect_class(  # noqa: PLR0912 - Inherently complex class introspection
                 continue
 
             try:
-                member = getattr(cls, name)
+                # Suppress deprecation warnings that may be triggered when accessing
+                # certain attributes (e.g., typing.io in Python 3.11)
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", DeprecationWarning)
+                    member = getattr(cls, name)
             except AttributeError:
                 continue
 

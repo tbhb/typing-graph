@@ -245,15 +245,20 @@ class TestUnionMemberConstraints:
 
     def test_constraint_on_individual_union_member(self) -> None:
         # Union where one member has constraints
-        # Note: Annotated[int, Gt(0)] | str produces a SubscriptedGeneric(Union)
-        # rather than a UnionType, so we need to access .args
+        # Note: The representation varies by Python version:
+        # - Python < 3.14: SubscriptedGeneric(Union) with .args
+        # - Python 3.14+: UnionType with .members
         result = inspect_type(Annotated[int, Gt(0)] | str)
 
-        assert is_subscripted_generic_node(result)
+        # Accept either representation
+        assert is_subscripted_generic_node(result) or is_union_type_node(result)
 
-        # Find the int member in the args
+        # Get union members - handle both node types
+        members = result.args if is_subscripted_generic_node(result) else result.members
+
+        # Find the int member
         int_member = None
-        for member in result.args:
+        for member in members:
             if is_concrete_type(member) and member.cls is int:
                 int_member = member
                 break
