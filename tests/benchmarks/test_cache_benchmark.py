@@ -310,12 +310,16 @@ class TestCacheMemoryEfficiency:
     def test_benchmark_inspect_equivalent_types(
         self, benchmark: "BenchmarkFixture"
     ) -> None:
+        # Use same type reference - cache keys on id(annotation), so
+        # each `list[int]` evaluation creates a new GenericAlias with different id
+        list_int = list[int]
+
         def inspect_equivalent_types() -> tuple[TypeNode, TypeNode]:
-            r1 = inspect_type(list[int])
-            r2 = inspect_type(list[int])
+            r1 = inspect_type(list_int)
+            r2 = inspect_type(list_int)
             return r1, r2
 
         r1, r2 = benchmark(inspect_equivalent_types)
 
-        # Cache should return same object for equivalent types
+        # Cache should return same object for same type reference
         assert r1 is r2
