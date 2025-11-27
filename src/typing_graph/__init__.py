@@ -1,5 +1,7 @@
 """A library for extracting type annotations as a graph."""
 
+from importlib.metadata import version
+
 from typing_inspection.introspection import Qualifier
 
 from ._config import EvalMode, InspectConfig
@@ -114,6 +116,7 @@ __all__ = [
     "UnionType",
     "UnpackNode",
     "Variance",
+    "__version__",
     "clear_cache",
     "get_type_hints_for_node",
     "inspect_class",
@@ -125,3 +128,5 @@ __all__ = [
     "inspect_type",
     "inspect_type_alias",
 ]
+
+__version__ = version("typing-graph")
