@@ -13,7 +13,7 @@ This document describes the process for releasing new versions of typing-graph t
 typing-graph uses [PEP 440](https://peps.python.org/pep-0440/) versioning:
 
 | Type | Format | Example |
-|------|--------|---------|
+| ---- | ------ | ------- |
 | Release | X.Y.Z | 0.1.0, 1.0.0 |
 | Alpha | X.Y.ZaN | 0.2.0a1 |
 | Beta | X.Y.ZbN | 0.2.0b1 |
@@ -217,7 +217,7 @@ git push origin hotfix/v0.1.1 --tags
 ## Just recipes
 
 | Recipe | Description |
-|--------|-------------|
+| ------ | ----------- |
 | `just version` | Show current version |
 | `just version-bump <type>` | Bump version (major, minor, patch, dev, alpha, beta, rc, post) |
 | `just version-bump-major` | Bump major version |

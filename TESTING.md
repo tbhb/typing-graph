@@ -250,7 +250,7 @@ uv run pytest tests/benchmarks/ --benchmark-compare=.benchmarks/baseline.json
 GitHub Actions runners are shared infrastructure with significant variance (10-30%) due to noisy neighbors, CPU throttling, and variable hardware. The benchmark configuration accounts for this:
 
 | Setting | Value | Why |
-|---------|-------|-----|
+| ------- | ----- | --- |
 | `--benchmark-warmup=on` | Enabled | Primes CPU caches; reduces cold-start variance |
 | `--benchmark-warmup-iterations=1000` | 1000 | Sufficient iterations to stabilize |
 | `--benchmark-min-rounds=20` | 20 | More samples improve statistical significance |
