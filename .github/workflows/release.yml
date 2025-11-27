@@ -71,7 +71,9 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install from wheel
-        run: uv pip install dist/*.whl
+        run: |
+          uv venv
+          uv pip install dist/*.whl
 
       - name: Smoke test
         run: |
