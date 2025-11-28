@@ -89,7 +89,7 @@ uv run ruff check .     # Check for issues
 uv run ruff format .    # Format code
 ```
 
-Additional linters:
+More linters:
 
 - [codespell](https://github.com/codespell-project/codespell) - Spell checking
 - [yamllint](https://github.com/adrienverge/yamllint) - YAML linting
@@ -124,7 +124,7 @@ typing-graph/
 ### Code organization
 
 - Private modules use leading underscores (`_module.py`)
-- Public API is exported through `__init__.py`
+- The `__init__.py` file exports the public API
 - Immutable dataclasses: `@dataclass(slots=True, frozen=True)`
 - Import order: stdlib, third-party, local
 
@@ -200,14 +200,14 @@ See `.github/workflows/ci.yml` for the full configuration.
 - py-spy - Profiling
 - ruff - Linting and formatting
 - basedpyright - Type checking
-- codespell, yamllint - Additional linting
+- codespell, yamllint - More linting
 
 ## Troubleshooting
 
 ### Common issues
 
 **Import errors:**
-Run `just install` to ensure all dependencies are installed.
+Run `just install` to ensure the project has all dependencies.
 
 **Test failures:**
 Run `just test -v` for verbose output to identify the failing test.

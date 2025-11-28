@@ -6,7 +6,7 @@ This document describes the process for releasing new versions of typing-graph t
 
 - Commit access to the repository
 - [PyPI Trusted Publisher](https://docs.pypi.org/trusted-publishers/) configured (see [Setup](#trusted-publisher-setup))
-- [GitHub CLI](https://cli.github.com/) installed (`gh`)
+- [GitHub command-line tool](https://cli.github.com/) installed (`gh`)
 
 ## Version format
 
@@ -136,9 +136,9 @@ Or via the GitHub UI:
 
 Creating the GitHub release triggers the PyPI publish.
 
-**Draft releases:** You can create a draft release to test the full publishing workflow before the final release. Each draft creation or edit automatically:
+**Draft releases:** you can create a draft release to test the full publishing workflow before the final release. Each draft creation or edit automatically:
 
-1. Computes an ephemeral version: `{base_version}.dev{run_id}` (e.g., `0.2.0.dev12345678901`)
+1. Computes an ephemeral version: `{base_version}.dev{run_id}` (for example `0.2.0.dev12345678901`)
 2. Builds the package with SBOM
 3. Generates attestations
 4. Publishes to TestPyPI
@@ -192,7 +192,7 @@ git push origin main --tags
 just release-create-prerelease 0.2.0a1
 ```
 
-Pre-releases are marked as such on GitHub and PyPI, allowing users to opt-in.
+GitHub and PyPI mark pre-releases as such, allowing users to opt-in.
 
 ## Hotfix releases
 
@@ -278,7 +278,7 @@ Each release includes:
 - **Build provenance attestation**: Sigstore-signed attestation linking artifacts to the build workflow
 - **SBOM attestation**: Sigstore-signed attestation binding the SBOM to the distribution files
 
-Verify attestations with the GitHub CLI:
+Verify attestations with the GitHub command-line tool:
 
 ```bash
 gh attestation verify typing_graph-0.2.0-py3-none-any.whl --owner tbhb
@@ -348,7 +348,7 @@ git tag v0.1.0
 git push origin main --tags
 ```
 
-Note: If version was already uploaded to PyPI, you must use a new version number.
+Note: if version was already uploaded to PyPI, you must use a new version number.
 
 ### Package install fails from TestPyPI
 

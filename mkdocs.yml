@@ -1,0 +1,199 @@
+---
+site_name: typing-graph
+site_url: https://typing-graph.tbhb.dev/
+site_author: Tony Burns
+site_description: Comprehensive documentation for the typing-graph Python library, covering concepts, architecture, API reference, and usage examples.
+
+repo_name: tbhb/typing-graph
+repo_url: https://github.com/tbhb/typing-graph
+edit_uri: https://github.com/tbhb/typing-graph/edit/main/docs/content/
+
+copyright: "&copy; 2025 Tony Burns."
+
+watch:
+  - docs
+  - src/typing_graph
+
+theme:
+  name: material
+  custom_dir: docs/.overrides
+  icon:
+    logo: material/graph-outline
+  features:
+    - content.action.edit
+    - content.action.view
+    - content.code.annotate
+    - content.code.copy
+    - content.footnote.tooltips
+    - content.tooltips
+    - navigation.footer
+    - navigation.indexes
+    - navigation.path
+    - navigation.prune
+    - navigation.sections
+    - navigation.top
+    - navigation.tracking
+    - search.highlight
+    - search.share
+    - search.suggest
+    - toc.follow
+  font:
+    text: Inter
+    code: JetBrains Mono
+  palette:
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: deep orange
+      accent: deep orange
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: black
+      accent: deep orange
+      toggle:
+        icon: material/brightness-4
+        name: Switch to system preference
+
+extra_css:
+  - stylesheets/mkdocstrings.css
+
+extra:
+  env: !ENV [MKDOCS_ENV, "dev"]
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/tbhb
+    - icon: fontawesome/brands/bluesky
+      link: https://bsky.app/profile/tonyburns.net
+    - icon: fontawesome/brands/discord
+      link: https://discord.gg/UuXxVhNwMe
+
+plugins:
+  - git-authors:
+      enabled: !ENV [CI, false]
+      exclude:
+        - blog/**/*.md
+        - index.md
+  - git-revision-date-localized:
+      enabled: !ENV [CI, false]
+      enable_creation_date: true
+      fallback_to_build_date: true
+  - glightbox
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          options:
+            docstring_options:
+              ignore_init_summary: true
+            line_length: 88
+            members_order: source
+            separate_signature: true
+            signature_crossrefs: true
+            show_root_heading: false
+            show_root_members_full_path: true
+            show_root_toc_entry: false
+            show_signature_annotations: true
+            inherited_members: true
+            summary: true
+          inventories:
+            - https://docs.python.org/3/objects.inv
+            - https://typing-inspection.pydantic.dev/latest/objects.inv
+  - privacy:
+      enabled: !ENV [CI, false]
+  - search:
+      lang: en
+  - tags
+  - typeset
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.blocks.caption
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+      default_lang: python
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink:
+      normalize_issue_symbols: true
+      repo_url_shorthand: true
+      user: tbhb
+      repo: typing-graph
+  - pymdownx.smartsymbols
+  - pymdownx.snippets:
+      base_path:
+        - docs/.includes
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+      combine_header_slug: true
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+  - tables
+  - toc:
+      permalink: true
+      permalink_title: Anchor link to this section for reference
+      title: On this page
+      toc_depth: 3
+
+nav:
+  - Getting started:
+      - index.md
+      - Installation: install.md
+      - Getting help: support.md
+      - Contributing: contributing.md
+      - Roadmap: roadmap.md
+      - Acknowledgments: acknowledgments.md
+      - License: license.md
+  - Tutorials:
+      - tutorials/index.md
+      - Your first type inspection: tutorials/first-inspection.md
+      - Inspecting structured types: tutorials/structured-types.md
+      - Inspecting functions: tutorials/functions.md
+  - Guides:
+      - guides/index.md
+      - Extracting metadata: guides/extracting-metadata.md
+      - Walking the type graph: guides/walking-type-graph.md
+      - Configuration options: guides/configuration.md
+  - Explanation:
+      - explanation/index.md
+      - Architecture overview: explanation/architecture.md
+      - Forward references: explanation/forward-references.md
+      - Metadata and Annotated: explanation/metadata.md
+      - Qualifiers: explanation/qualifiers.md
+      - Type aliases: explanation/type-aliases.md
+      - Generics and variance: explanation/generics.md
+  - Reference:
+      - reference/index.md
+      - API: reference/api.md
+      - Glossary: reference/glossary.md
+      - Changelog: reference/changelog.md

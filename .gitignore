@@ -384,3 +384,20 @@ mutation-report.html
 # Coverage reports
 coverage.json
 coverage.xml
+
+# Local configuration
+mise.local.toml
+
+# Documentation
+site/
+mkdocs.pr.yml
+requirements.txt
+tmp/
+
+# Vale styles (downloaded packages, but keep our custom vocabularies)
+.vale/*
+!.vale/config/
+.vale/config/*
+!.vale/config/vocabularies/
+.vale/config/vocabularies/*
+!.vale/config/vocabularies/typing-graph/

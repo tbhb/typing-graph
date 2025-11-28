@@ -1,22 +1,8 @@
-# typing-graph roadmap
+# Roadmap
 
-This document outlines planned features and enhancements for typing-graph. Items are organized by theme rather than strict priority order.
+This document outlines planned features and enhancements for typing-graph, organized by theme rather than strict priority order.
 
-## Design principles
-
-These principles guide feature decisions and explain the library's trade-offs.
-
-**Minimal dependencies.** Standard library first. The only runtime dependencies are `typing-inspection`, `typing-extensions`, and optionally `annotated-types`.
-
-**SOLID, DRY, YAGNI, KISS.** Simplicity wins. A solution covering 90% of use cases beats an elaborate one for edge cases.
-
-**Secure by default.** Explicit opt-in for any behavior that could process untrusted input unsafely or trigger unexpected code paths.
-
-**Measure, don't guess.** No speculative optimizations. Performance work requires profiling data.
-
-**Pay for what you use.** Lazy caching, on-demand traversal, and optional integrations that don't import until needed.
-
-## Metadata querying API
+## Metadata querying APIs
 
 One of the core value propositions of typing-graph is making metadata accessible. While the graph structure captures the full type hierarchy, most users need focused queries: "What constraints apply to this field?" or "Does any nested type have validation metadata?" This API provides ergonomic, type-safe access to metadata throughout the graph.
 
@@ -35,7 +21,7 @@ Query metadata using composable predicates that work with Python's type system.
 
 - Finding all `Gt(0)` constraints in a model's fields
 - Filtering metadata to only annotated-types constraints
-- Combining multiple conditions: "Gt constraints on string fields"
+- Combining conditions: "Gt constraints on string fields"
 - Custom predicates for application-specific metadata types
 
 ### Query operations
@@ -65,7 +51,7 @@ Query metadata by type with full type inference support.
 
 - `get[T](type)` - Extract metadata of a specific type with inferred return type
 - `get_all[T](type)` - Collect all metadata instances of a type
-- Support for Union types in queries (e.g., `get[Gt | Ge]`)
+- Support for Union types in queries (for example `get[Gt | Ge]`)
 - Handle inheritance: query for base class, match subclasses
 - Integration with `@runtime_checkable` protocols for structural queries
 
@@ -85,8 +71,8 @@ Control query scope to target specific parts of the type graph.
 - Query node-local metadata only (no traversal)
 - Query immediate children only (one level)
 - Query full subtree with configurable depth limits
-- Query along specific paths (e.g., "all metadata on dict values")
-- Scope to specific node types (e.g., "metadata on FieldDef nodes only")
+- Query along specific paths (for example "all metadata on dict values")
+- Scope to specific node types (for example "metadata on FieldDef nodes only")
 
 **Use cases:**
 
@@ -97,7 +83,7 @@ Control query scope to target specific parts of the type graph.
 
 ### annotated-types integration
 
-First-class support for the annotated-types constraint vocabulary.
+First-class support for the [annotated-types] constraint vocabulary.
 
 **Goals:**
 
@@ -132,15 +118,15 @@ Rich result objects that provide full context for each match.
 
 ## Type inspection controls
 
-### Type allowlists and blocklists
+### Type allow lists and block lists
 
-Real-world applications often need to restrict which types can be inspected. A validation framework might only want to process types from specific modules. A serialization library might need to reject types that cannot be safely converted.
+Real-world applications often need to restrict which types the library can inspect. A validation framework might only want to process types from specific modules. A serialization library might need to reject types that cannot safely convert.
 
 **Goals:**
 
-- Define which types are permitted during inspection
+- Define which types the inspection allows
 - Specify behavior when encountering disallowed types (error, skip, substitute)
-- Support both allowlist ("only these") and blocklist ("not these") patterns
+- Support both allow list ("only these") and block list ("not these") patterns
 - Filter by type identity, module origin, or custom predicates
 
 **Use cases:**
@@ -157,7 +143,7 @@ Type graphs can grow unbounded through recursive types, deeply nested generics, 
 **Goals:**
 
 - Set boundaries based on type categories (stop at Protocol, stop at generic)
-- Define maximum depth per branch or globally
+- Define depth limits per branch or globally
 - Distinguish between "stop and mark as terminal" vs "stop and error"
 - Support custom boundary conditions via callbacks
 
@@ -197,7 +183,7 @@ A generator-based API for iterating through type graphs with control over traver
 - Collecting all metadata annotations in a type hierarchy
 - Finding the first occurrence of a specific type pattern
 - Transforming types bottom-up (post-order) or top-down (pre-order)
-- Early termination when a target is found
+- Early termination when the traversal finds a target
 
 ### Visitor pattern
 
@@ -257,7 +243,7 @@ While typing-graph can inspect any Python type, certain libraries have rich type
 
 ### Pydantic support
 
-[Pydantic](https://docs.pydantic.dev/) is the most widely-used validation library in Python. While typing-graph builds on Pydantic's typing-inspection library, deeper integration would expose Pydantic-specific metadata.
+[Pydantic](https://docs.pydantic.dev/) is the most widely used validation library in Python. While typing-graph builds on Pydantic's typing-inspection library, deeper integration would expose Pydantic-specific metadata.
 
 **Goals:**
 
@@ -271,3 +257,5 @@ While typing-graph can inspect any Python type, certain libraries have rich type
 - Analyzing Pydantic models alongside plain dataclasses in unified tooling
 - Extracting validation rules for schema generation
 - Building adapters between Pydantic and other validation frameworks
+
+[annotated-types]: https://github.com/annotated-types/annotated-types

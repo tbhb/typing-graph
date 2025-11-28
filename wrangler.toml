@@ -1,0 +1,16 @@
+name = "typing-graph-docs"
+compatibility_date = "2025-04-01"
+preview_urls = true
+
+[env.dev]
+name = "typing-graph-docs-dev"
+
+[env.pr]
+name = "typing-graph-docs-pr"
+
+[env.latest]
+name = "typing-graph-docs-latest"
+route = { pattern = "typing-graph.tbhb.dev", custom_domain = true }
+[assets]
+directory = "./site"
+not_found_handling = "404-page"

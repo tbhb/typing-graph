@@ -1,26 +1,26 @@
 # Contributors
 
-Thank you for your interest in contributing to typing-graph!
+Thank you for your interest in contributing to typing-graph.
 
 ## Current status
 
 > [!NOTE]
 > typing-graph is in early development and is not yet accepting pull requests.
 
-The project is currently being developed by the maintainers as we establish the core architecture, API design, and testing infrastructure. We want to ensure a solid foundation before opening up to external contributions.
+The project is currently establishing its core architecture, API design, and testing infrastructure. This approach ensures a solid foundation before opening up to external contributions.
 
 ## How you can help now
 
-While we're not accepting code contributions yet, you can still help:
+While the project does not accept code contributions yet, you can still help:
 
 - **Report bugs** - If you encounter issues while using typing-graph, please open a GitHub issue with a minimal reproducible example
 - **Request features** - Have an idea that would make typing-graph more useful? Open an issue to start a discussion
 - **Improve documentation** - Found a typo or unclear explanation? Documentation improvements are welcome
-- **Share feedback** - Let us know how you're using typing-graph and what could be better
+- **Share feedback** - Open an issue or discussion about how you're using typing-graph and what could be better
 
 ## Future contributions
 
-Once the project reaches a stable state, we plan to open up contributions. At that time, this document will be updated with:
+Once the project reaches a stable state, contributions will open up. At that time, this document will receive updates with:
 
 - Contribution guidelines
 - Development setup instructions
@@ -34,4 +34,4 @@ Once the project reaches a stable state, we plan to open up contributions. At th
 
 ## Stay updated
 
-Watch the repository on GitHub to be notified when we start accepting contributions.
+Watch the repository on GitHub for notifications when the project starts accepting contributions.

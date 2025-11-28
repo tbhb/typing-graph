@@ -6,20 +6,18 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
-A Python library for inspecting type annotations and building graph representations of type metadata.
+typing-graph is a building block for Python libraries and frameworks that derive runtime behavior from type annotations. If you're building validation frameworks, CLI tools, serializers, ORMs, or similar tools that inspect types to generate code or configure behavior, typing-graph provides the structured type introspection layer so you can focus on your domain logic.
 
 > [!WARNING]
 > This project is in early development. APIs may change without notice. Not yet recommended for production use.
 
-typing-graph recursively unwraps `Annotated` types and [PEP 695][pep-695] type aliases, building a lazy, cached graph of metadata nodes. The library separates container-level metadata from element-level metadata and provides type-safe introspection of complex type hierarchies.
+Pass any type (generics, `Annotated`, dataclasses, `TypedDict`, [PEP 695][pep-695] aliases) and get back a graph of nodes representing the type structure and its metadata. The library handles metadata hoisting (extracting annotations from `Annotated` wrappers), qualifier detection (`ClassVar`, `Final`, `Required`), forward reference resolution, and caching. Each node exposes a `children()` method for recursive traversal.
 
-Built on [Pydantic's typing-inspection][typing-inspection] library and designed for compatibility with [annotated-types][annotated-types], typing-graph powers use cases like type conversion, validation, and feature flag extraction frameworks that derive behavior from type hints.
-
-Inspired by the machinery behind Pydantic's model field metadata extraction, typing-graph generalizes this approach for arbitrary type annotations in classes (including dataclasses), `TypedDict`s, `NamedTuple`s, functions, and type aliases.
+Built on [Pydantic's typing-inspection][typing-inspection] library and designed for compatibility with [annotated-types][annotated-types].
 
 ## Why I built this
 
-After studying how projects like Pydantic, SQLAlchemy, and Typer derive behavior from type annotations, I became fascinated with the pattern and started experimenting with it in my own projects, and after writing similar introspection code across several of them, I decided to extract the common plumbing into a reusable library.
+After studying how projects like Pydantic, SQLAlchemy, and Typer derive behavior from type annotations, I became fascinated with the pattern and started experimenting with it in my own projects, and after writing similar introspection code across many of them, I decided to extract the common plumbing into a reusable library.
 
 typing-graph provides a consistent graph representation that handles the edge cases of Python's typing system, so projects can focus on their domain logic instead of reinventing type introspection and metadata extraction.
 
@@ -40,7 +38,7 @@ typing-graph provides a consistent graph representation that handles the edge ca
 - [ ] **[attrs] support**: Field metadata, validators, converters
 - [ ] **[Pydantic][pydantic] support**: Field metadata, validators, serializers
 
-See the [roadmap](ROADMAP.md) for details on planned features.
+See the [roadmap](https://typing-graph.tbhb.dev/roadmap/) for details on planned features.
 
 ## Installation
 
@@ -66,27 +64,47 @@ poetry add typing-graph
 
 ## Quick start
 
-```python
-from typing import Annotated
-from typing_graph import inspect_type, ConcreteType, SubscriptedGeneric
+```pycon
+>>> from typing import Annotated
+>>> from dataclasses import dataclass
+>>> from typing_graph import inspect_type
 
-# Inspect a simple type
-node = inspect_type(int)
-assert isinstance(node, ConcreteType)
-assert node.cls is int
+>>> # Define constraint metadata (like you might in a validation framework)
+>>> @dataclass
+... class Pattern:
+...     regex: str
 
-# Inspect a generic type with arguments
-node = inspect_type(list[str])
-assert isinstance(node, SubscriptedGeneric)
-assert node.origin.cls is list
-assert node.args[0].cls is str
+>>> @dataclass
+... class MinLen:
+...     value: int
 
-# Inspect an Annotated type with metadata
-node = inspect_type(Annotated[int, "positive"])
-assert isinstance(node, ConcreteType)
-assert node.cls is int
-assert node.metadata == ("positive",)  # Metadata is hoisted to the base type
+>>> # Define a reusable annotated type alias
+>>> URL = Annotated[str, Pattern(r"^https?://")]
+
+>>> # Build a complex nested type
+>>> Urls = Annotated[list[URL], MinLen(1)]
+
+>>> # Inspect the type graph
+>>> node = inspect_type(Urls)
+>>> node  # doctest: +SKIP
+SubscriptedGeneric(metadata=(MinLen(value=1),), origin=GenericTypeNode(cls=list), args=(ConcreteType(metadata=(Pattern(regex='^https?://'),), cls=str),))
+
+>>> # The outer node is a SubscriptedGeneric (list) with container-level metadata
+>>> node.origin.cls
+<class 'list'>
+>>> node.metadata
+(MinLen(value=1),)
+
+>>> # Traverse to the element type - it carries its own metadata
+>>> element = node.args[0]
+>>> element.cls
+<class 'str'>
+>>> element.metadata
+(Pattern(regex='^https?://'),)
+
 ```
+
+Each node in the graph carries its own metadata, enabling frameworks to apply different validation or transformation logic at each level of the type structure.
 
 ### Inspecting functions
 
@@ -136,7 +154,7 @@ print(types.type_aliases) # Dict of type alias names to alias nodes
 
 All type representations inherit from `TypeNode`, which provides:
 
-- `source`: Optional source location where the type was defined
+- `source`: Optional source location where the code defines the type
 - `metadata`: Tuple of metadata from `Annotated` wrappers (when hoisted)
 - `qualifiers`: Set of type qualifiers (`ClassVar`, `Final`, etc.)
 - `children()`: Method returning child nodes for graph traversal
@@ -228,13 +246,11 @@ Full documentation is available at [typing-graph.tbhb.dev](https://typing-graph.
 
 ## Acknowledgments
 
-This library is inspired by [Pydantic][pydantic]'s approach to type introspection and metadata extraction. typing-graph builds on Pydantic's [typing-inspection][typing-inspection] library for low-level type introspection.
+[Pydantic][pydantic]'s approach to type introspection and metadata extraction inspired this library. typing-graph builds on Pydantic's [typing-inspection][typing-inspection] library for low-level type introspection.
 
-## AI assistance
+## AI help
 
-This project uses [Claude Code][claude-code] as a development tool. The core architecture, API design, and implementation are authored by the maintainer. All AI-generated contributions are reviewed, tested, and revised to meet project standards before being committed.
-
-Claude Code has been used for:
+This project uses [Claude Code][claude-code] as a development tool for:
 
 - Rubber ducking and exploring design alternatives
 - Drafting documentation and docstrings
@@ -242,7 +258,7 @@ Claude Code has been used for:
 - Code cleanup and refactoring suggestions
 - Researching Python typing edge cases
 
-All contributions, regardless of origin, are reviewed and tested before inclusion.
+All contributions undergo review and testing before inclusion, regardless of origin.
 
 ## License
 

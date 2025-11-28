@@ -48,9 +48,20 @@ dev = [
   "pytest>=9.0.1",
   "pytest-benchmark>=5.2.3",
   "pytest-cov>=7.0.0",
+  "pytest-examples>=0.0.18",
   "pytest-mock>=3.15.1",
   "ruff>=0.14.6",
   "yamllint>=1.37.1",
+]
+docs = [
+    "djlint>=1.36.4",
+    "mkdocs-git-authors-plugin>=0.10.0",
+    "mkdocs-git-revision-date-localized-plugin>=1.5.0",
+    "mkdocs-glightbox>=0.5.2",
+    "mkdocs-material>=9.7.0",
+    "mkdocstrings[python]>=1.0.0",
+    "pytest>=9.0.1",
+    "pytest-examples>=0.0.18",
 ]
 release = [
     "cyclonedx-bom>=7.2.1",
@@ -82,7 +93,7 @@ reportUnusedParameter = "none"
 reportPrivateUsage = "none"
 
 [tool.codespell]
-skip = "uv.lock,htmlcov,tmp,pnpm-lock.yaml,docs"
+skip = "uv.lock,htmlcov,tmp,pnpm-lock.yaml,docs,site"
 ignore-words-list = "typing_graph"
 
 [tool.pytest.ini_options]
@@ -98,6 +109,7 @@ testpaths = ["tests"]
 xfail_strict = true
 markers = [
   "benchmark: mark a test as a benchmark test.",
+  "docexamples: mark a test as a documentation example test.",
   "integration: mark a test as an integration test.",
   "property: mark a test as a property test.",
   "unit: mark a test as a unit test.",

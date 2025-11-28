@@ -75,6 +75,17 @@ lint-python:
 lint-spelling:
   {{uv}} codespell
 
+# Lint documentation
+lint-docs:
+  uv run --frozen yamllint --strict mkdocs.yml
+  pnpm exec markdownlint-cli2 "docs/**/*.md"
+  uv run --frozen --group docs djlint docs/.overrides
+  pnpm exec biome check docs/
+
+# Run Vale linter
+lint-prose:
+  vale docs/ CODE_OF_CONDUCT.md CONTRIBUTING.md DEVELOPMENT.md README.md RELEASING.md SECURITY.md TESTING.md
+
 # Run pre-commit hooks on changed files
 prek:
   {{uv}} prek
@@ -139,6 +150,14 @@ benchmark-check baseline="baseline": install
 test-properties profile="dev" *args:
   {{uv}} pytest tests/properties/ --hypothesis-profile={{profile}} "$@"
 
+# Run documentation example tests
+test-docs *args:
+  {{uv}} pytest tests/docexamples/ -v "$@"
+
+# Update documentation examples (refresh output blocks)
+update-docs *args:
+  {{uv}} pytest tests/docexamples/ --update-examples "$@"
+
 # Initialize mutation testing session
 mutation-init:
   {{uv}} cosmic-ray baseline cosmic-ray.toml
@@ -159,6 +178,40 @@ mutation-html:
 # Clean mutation testing artifacts
 mutation-clean:
   rm -f session.sqlite *-session.sqlite mutation-report.html
+
+# Build the latest documentation
+build-docs: clean
+  MKDOCS_ENV=latest uv run --group docs mkdocs build
+  uv pip freeze > requirements.txt
+
+# Build the documentation for PR preview
+[script]
+build-docs-pr number: clean
+  rm -f mkdocs.pr.yml
+  cat << EOF >> mkdocs.pr.yml
+  INHERIT: ./mkdocs.yml
+  site_name: typing-graph Documentation (PR-{{number}})
+  site_url: https://{{number}}-typing-graph-docs-pr.tbhb.workers.dev/
+  EOF
+  uv run --group docs mkdocs build
+  echo "User-Agent: *\nDisallow: /" > site/robots.txt
+  uv pip freeze > requirements.txt
+
+# Deploy latest documentation
+deploy-docs: build-docs
+  pnpm exec wrangler deploy --env latest
+
+# Deploy documentation preview
+deploy-docs-pr number: (build-docs-pr number)
+  pnpm exec wrangler versions upload --env pr --preview-alias pr-{{number}}
+
+# Develop the documentation site locally
+dev-docs:
+  uv run --group docs mkdocs serve --livereload --dev-addr 127.0.0.1:8000
+
+# Sync Vale styles and dictionaries
+vale-sync:
+  vale sync
 
 # Convert Mermaid diagrams
 mermaid *args:

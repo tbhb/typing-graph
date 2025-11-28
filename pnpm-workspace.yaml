@@ -3,3 +3,4 @@ onlyBuiltDependencies:
   - esbuild
   - puppeteer
   - sharp
+  - workerd

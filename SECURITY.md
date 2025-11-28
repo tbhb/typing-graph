@@ -2,17 +2,21 @@
 
 ## Supported versions
 
-typing-graph is currently in early development. Security updates will be applied to the latest version only.
+typing-graph is currently in early development. Security updates apply to the latest version only.
+
+<!-- vale off -->
 
 | Version | Supported          |
 | ------- | ------------------ |
 | 0.x.x   | :white_check_mark: |
 
+<!-- vale on -->
+
 ## Python version support
 
-typing-graph supports Python versions that have not reached end-of-life (EOL). When a Python version reaches EOL, support for that version will be dropped in the next minor release.
+typing-graph supports Python versions that have not reached end-of-life (EOL). When a Python version reaches EOL, the next minor release drops support for that version.
 
-Current minimum supported version: **Python 3.10**
+Supported versions start at **Python 3.10**
 
 See the [Python Developer's Guide](https://devguide.python.org/versions/) for the official EOL schedule.
 
@@ -41,10 +45,10 @@ When reporting, please include:
 
 ### What to expect
 
-- **Acknowledgment** - We will acknowledge receipt of your report within 48 hours
-- **Assessment** - We will investigate and assess the severity within 7 days
-- **Resolution** - We aim to resolve critical vulnerabilities within 30 days
-- **Disclosure** - We will coordinate disclosure timing with you
+- **Acknowledgment** - Expect acknowledgment of your report within 48 hours
+- **Assessment** - Investigation and severity assessment within 7 days
+- **Resolution** - Critical vulnerabilities receive fixes within 30 days
+- **Disclosure** - Disclosure timing coordinated with you
 
 ### Security considerations
 
@@ -60,15 +64,15 @@ Type aliases and forward references can create cycles. The caching mechanism pre
 
 #### Arbitrary code execution
 
-Inspecting annotations may trigger descriptor protocols or `__class_getitem__`. The library uses lazy evaluation to minimize unexpected code execution.
+Inspecting annotations may trigger descriptor protocols or `__class_getitem__`. The library uses lazy evaluation to reduce unexpected code execution.
 
 #### Memory exhaustion
 
-Large type graphs with many union variants or fields could consume excessive memory. Consider memory limits when processing untrusted type annotations.
+Large type graphs with many union variants or fields could consume excessive memory. Consider memory limits to reduce resource consumption when processing untrusted type annotations.
 
 #### Forward reference resolution
 
-Forward references may reference undefined names. Errors are handled gracefully without information leakage.
+Forward references may reference undefined names. The library handles errors gracefully without information leakage.
 
 ## Security best practices
 
@@ -77,8 +81,8 @@ When using typing-graph:
 1. **Validate input** - Be cautious when inspecting type annotations from untrusted sources
 2. **Set depth limits** - Use the `max_depth` configuration option for untrusted input
 3. **Handle errors** - Catch and handle exceptions when processing potentially malformed type annotations
-4. **Monitor resources** - Be aware of memory usage when processing large type graphs
+4. **Track resources** - Be aware of memory usage when processing large type graphs
 
 ## Acknowledgments
 
-We appreciate the security research community's efforts in identifying and responsibly disclosing vulnerabilities.
+Thank you to the security research community for identifying and responsibly disclosing vulnerabilities.

@@ -4,7 +4,7 @@
 
 ## Why aren't PRs accepted yet?
 
-typing-graph is in active flux as core architecture, APIs, and design patterns are being established. The maintainer needs the freedom to make rapid, breaking changes without coordination overhead or concerns about backwards compatibility that would slow development and prevent the project from reaching its quality goals.
+typing-graph is in active flux as core architecture, APIs, and design patterns are being established. This phase requires the freedom to make rapid, breaking changes without coordination overhead or backwards compatibility concerns that would slow development.
 
 ## How you can contribute right now
 
@@ -35,7 +35,7 @@ If you've identified a bug, improvement, or feature idea:
 2. **Open a new issue** describing the problem or suggestion
 3. **Start a discussion** if you want to explore ideas or get feedback before formal proposals
 
-The maintainer will review issues and discussions, and valuable contributions at this stage will help shape the project's direction before 1.0.
+Issues and discussions are reviewed regularly, and valuable contributions at this stage will help shape the project's direction before 1.0.
 
 ---
 

@@ -9,6 +9,7 @@ typing-graph uses a comprehensive testing approach combining:
 - **Unit tests** - Isolated tests for individual components
 - **Integration tests** - Tests verifying component interactions
 - **Property-based tests** - Hypothesis-driven tests for invariants
+- **Documentation tests** - Verify code examples in docs actually work
 - **Benchmarks** - Performance regression testing with pytest-benchmark
 - **Mutation testing** - Verify test quality with cosmic-ray
 
@@ -23,6 +24,7 @@ just test -k "test_name"     # Run specific tests by name
 just test tests/unit/        # Run only unit tests
 just test tests/properties/  # Run only property tests
 just test-coverage           # Run with coverage report
+just test-docs               # Run documentation example tests
 ```
 
 ### Direct pytest usage
@@ -37,7 +39,7 @@ uv run pytest --cov=typing_graph        # With coverage
 
 ## Test organization
 
-Tests are organized under `tests/`:
+The test suite lives under `tests/`:
 
 ```text
 tests/
@@ -51,6 +53,10 @@ tests/
 ├── properties/              # Property-based tests
 │   ├── test_graph.py        # Graph invariant tests
 │   └── ...
+├── docexamples/             # Documentation example tests
+│   ├── test_tutorials.py    # Tests for docs/tutorials/
+│   ├── test_guides.py       # Tests for docs/guides/
+│   └── test_explanation.py  # Tests for docs/explanation/
 ├── benchmarks/              # Performance benchmarks
 │   ├── test_inspect_perf.py
 │   └── ...
@@ -114,7 +120,7 @@ Integration tests verify that components work together correctly. These tests ex
 ### When to use
 
 - Testing end-to-end inspection workflows
-- Verifying cache behavior across multiple calls
+- Verifying cache behavior across many calls
 - Testing interactions between type nodes
 - Validating complex type hierarchies (nested generics, forward references)
 
@@ -150,6 +156,92 @@ class TestDataclassInspection:
 - Test cache invalidation and reuse scenarios
 - Verify error messages are helpful for common mistakes
 - Test with both simple and complex type hierarchies
+
+## Documentation example tests
+
+Documentation example tests verify that code snippets in the documentation actually work. This prevents examples from becoming stale or incorrect as the API evolves.
+
+### How it works
+
+The tests use [pytest-examples](https://github.com/pydantic/pytest-examples) (from Pydantic) to:
+
+1. Discover all code blocks in markdown files
+2. Execute Python examples with accumulated state
+3. Skip non-executable examples (snippets, error demos)
+
+### Running documentation tests
+
+```bash
+just test-docs               # Run all doc example tests
+just test-docs -v            # Verbose output showing each example
+just update-docs             # Auto-update output blocks (if using #> syntax)
+```
+
+### Test structure
+
+Each documentation directory has a corresponding test file:
+
+| Directory | Test file |
+| --------- | --------- |
+| `docs/tutorials/` | `tests/docexamples/test_tutorials.py` |
+| `docs/guides/` | `tests/docexamples/test_guides.py` |
+| `docs/explanation/` | `tests/docexamples/test_explanation.py` |
+
+### Accumulated globals
+
+Examples within a single markdown file can build on each other. If one example defines a class, later examples in the same file can use it:
+
+```python
+# First code block in the file
+@dataclass
+class User:
+    name: str
+
+# Later code block - can reference User
+node = inspect_dataclass(User)
+```
+
+This works because the test runner maintains accumulated globals per file.
+
+### Skip patterns
+
+Certain code blocks are automatically skipped:
+
+| Pattern | Reason |
+| ------- | ------ |
+| `# snippet` | Illustrative pseudocode, not meant to run |
+| `# Error!` | Examples demonstrating errors |
+| `# Raises` | Examples that intentionally raise exceptions |
+| `pip install`, `uv add` | Installation commands |
+
+Mark conceptual examples with `# snippet` as the first line:
+
+```python
+# snippet - illustrative example
+config = InspectConfig(max_depth=10)
+node = inspect_type(some_undefined_type, config=config)
+```
+
+### Why skipped tests appear
+
+pytest-examples creates a parametrized test for every code block it discovers. Skipped tests appear in the output to provide visibility:
+
+- You can verify skip reasons are correct
+- Removing a `# snippet` marker causes the test to run (and likely fail)
+- The output shows exactly which examples are executable vs. illustrative
+
+### Writing testable examples
+
+When adding documentation examples:
+
+1. **Import everything needed** - Don't assume imports from previous blocks
+2. **Use complete examples** - Each block should be self-contained when possible
+3. **Mark non-executable code** - Add `# snippet` for pseudocode
+4. **Test locally** - Run `just test-docs` before committing
+
+### CI integration
+
+Documentation tests run in CI as a separate job (`test-docs`) that runs in parallel with the main test matrix. This catches documentation drift before it reaches users.
 
 ## Property-based tests
 
@@ -247,12 +339,12 @@ uv run pytest tests/benchmarks/ --benchmark-compare=.benchmarks/baseline.json
 
 ### CI variance handling
 
-GitHub Actions runners are shared infrastructure with significant variance (10-30%) due to noisy neighbors, CPU throttling, and variable hardware. The benchmark configuration accounts for this:
+GitHub Actions runners use shared infrastructure with significant variance (10-30%) due to noisy neighbors, CPU throttling, and variable hardware. The benchmark configuration accounts for this:
 
 | Setting | Value | Why |
 | ------- | ----- | --- |
 | `--benchmark-warmup=on` | Enabled | Primes CPU caches; reduces cold-start variance |
-| `--benchmark-warmup-iterations=1000` | 1000 | Sufficient iterations to stabilize |
+| `--benchmark-warmup-iterations=1000` | 1000 | Enough iterations to stabilize |
 | `--benchmark-min-rounds=20` | 20 | More samples improve statistical significance |
 | `--benchmark-max-time=2.0` | 2 seconds | Allow more time for stable measurements |
 | `--benchmark-disable-gc` | Enabled | Removes garbage collection jitter |
@@ -330,7 +422,7 @@ Use `benchmark-check` to fail if any benchmark regresses more than 15% (median) 
 just benchmark-check baseline
 ```
 
-This is useful in CI to catch performance regressions before merging. The 15% median threshold is chosen to balance detection sensitivity with false positive avoidance on shared CI infrastructure.
+This is useful in CI to catch performance regressions before merging. The 15% median threshold balances detection sensitivity with false positive avoidance on shared CI infrastructure.
 
 ## Mutation testing
 
@@ -397,7 +489,7 @@ open htmlcov/index.html                 # View in browser
 
 ## Fixtures
 
-Common fixtures are defined in `tests/conftest.py`:
+The `tests/conftest.py` file defines common fixtures:
 
 ```python
 import pytest
@@ -457,7 +549,7 @@ Tests run automatically in GitHub Actions on pushes to `main` and pull requests.
 ### Pipeline stages
 
 1. **Lint** - All linters must pass (codespell, yamllint, ruff, basedpyright, markdownlint, actionlint)
-2. **Test** - Runs on multiple Python versions after lint passes
+2. **Test** - Runs on many Python versions after lint passes
 3. **Benchmark** - Runs after tests pass, uploads results as artifacts
 
 ### Python version matrix
@@ -469,7 +561,7 @@ Tests run on all supported Python versions, including free-threaded builds:
 
 ### Benchmark artifacts
 
-Benchmark results are saved per Python version and uploaded as CI artifacts for comparison.
+CI saves benchmark results per Python version and uploads them as artifacts for comparison.
 
 See `.github/workflows/ci.yml` for the full configuration.
 
@@ -491,4 +583,4 @@ See `.github/workflows/ci.yml` for the full configuration.
 
 - Increase `max_examples` if tests pass locally but fail in CI
 - Use `@settings(suppress_health_check=[...])` for expensive strategies
-- Check for unbounded strategies that generate huge examples
+- Check for unbounded strategies that generate large examples
