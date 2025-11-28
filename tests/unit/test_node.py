@@ -29,6 +29,7 @@ from typing_graph import (
     TupleType,
     TypeAliasNode,
     TypedDictType,
+    TypeNode,
     TypeVarNode,
     TypeVarTupleNode,
     UnionType,
@@ -372,6 +373,56 @@ class TestTypeGuards:
         node = ClassNode(cls=object, name="MyClass")
         assert is_class_node(node) is True
         assert is_class_node(ConcreteType(cls=type)) is False
+
+
+class TestNodeHashability:
+    def test_nodes_usable_as_dict_keys(self) -> None:
+        cache: dict[TypeNode, str] = {}
+        node1 = ConcreteType(cls=int)
+        node2 = ConcreteType(cls=str)
+
+        cache[node1] = "integer"
+        cache[node2] = "string"
+
+        assert cache[node1] == "integer"
+        assert cache[node2] == "string"
+        assert len(cache) == 2
+
+    def test_nodes_usable_in_sets(self) -> None:
+        nodes = {
+            ConcreteType(cls=int),
+            ConcreteType(cls=int),  # duplicate
+            ConcreteType(cls=str),
+        }
+        assert len(nodes) == 2
+
+    def test_complex_nodes_usable_as_dict_keys(self) -> None:
+        cache: dict[TypeNode, str] = {}
+        union = UnionType(members=(ConcreteType(cls=int), ConcreteType(cls=str)))
+        callable_node = CallableType(
+            params=(ConcreteType(cls=int),),
+            returns=ConcreteType(cls=str),
+        )
+
+        cache[union] = "union"
+        cache[callable_node] = "callable"
+
+        assert cache[union] == "union"
+        assert len(cache) == 2
+
+    def test_nodes_with_post_init_usable_in_sets(self) -> None:
+        tv = TypeVarNode(name="T", bound=ConcreteType(cls=int))
+        concat = ConcatenateNode(
+            prefix=(ConcreteType(cls=int),),
+            param_spec=ParamSpecNode(name="P"),
+        )
+        sub = SubscriptedGeneric(
+            origin=GenericTypeNode(cls=list),
+            args=(ConcreteType(cls=int),),
+        )
+
+        nodes = {tv, concat, sub}
+        assert len(nodes) == 3
 
 
 class TestNodeChildrenMethods:

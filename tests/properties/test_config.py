@@ -193,11 +193,6 @@ def test_eval_mode_affects_unresolvable_ref_state(
 @example(max_depth=1)
 @given(max_depth=st.integers(min_value=1, max_value=3))
 def test_max_depth_exceeded_returns_failed_state(max_depth: int) -> None:
-    """Verify that exceeding max_depth returns ForwardRef with Failed state.
-
-    This test specifically verifies the state TYPE is Failed (not Unresolved)
-    when depth limit is exceeded, killing mutants that change the state type.
-    """
     cache_clear()
 
     # Create a type deeper than max_depth
@@ -224,11 +219,6 @@ def test_max_depth_exceeded_returns_failed_state(max_depth: int) -> None:
 @example(ref_name="RecursiveRef")
 @given(ref_name=st.text(alphabet="ABCDEFGHIJKLMNOPQRSTUVWXYZ", min_size=3, max_size=15))
 def test_recursive_string_ref_returns_unresolved(ref_name: str) -> None:
-    """Verify that self-referential string refs return Unresolved state.
-
-    This tests the cycle detection code path in _inspect_string_annotation
-    that checks `if ref in ctx.resolving`.
-    """
     cache_clear()
 
     # Create a namespace where the ref refers to itself (self-referential)

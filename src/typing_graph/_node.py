@@ -22,7 +22,7 @@ class SourceLocation:
     file: str | None = None
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class TypeNode(ABC):
     """Base class for all type graph nodes.
 
@@ -60,7 +60,7 @@ class Variance(Enum):
     CONTRAVARIANT = auto()
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class TypeVarNode(TypeNode):
     """A TypeVar - placeholder for a single type.
 
@@ -98,7 +98,7 @@ def is_type_var_node(obj: object) -> TypeIs[TypeVarNode]:
     return isinstance(obj, TypeVarNode)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class ParamSpecNode(TypeNode):
     """A ParamSpec - placeholder for callable parameter lists.
 
@@ -122,7 +122,7 @@ def is_param_spec_node(obj: object) -> TypeIs[ParamSpecNode]:
     return isinstance(obj, ParamSpecNode)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class TypeVarTupleNode(TypeNode):
     """A TypeVarTuple - placeholder for variadic type args (PEP 646).
 
@@ -166,7 +166,7 @@ def is_type_param_node(node: TypeNode) -> TypeIs[TypeParamNode]:
     )
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class ConcatenateNode(TypeNode):
     """Concatenate[X, Y, P] - prepend args to a ParamSpec (PEP 612).
 
@@ -193,7 +193,7 @@ def is_concatenate_node(obj: object) -> TypeIs[ConcatenateNode]:
     return isinstance(obj, ConcatenateNode)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class UnpackNode(TypeNode):
     """Unpack[Ts] or *Ts - unpack a TypeVarTuple (PEP 646).
 
@@ -214,7 +214,7 @@ def is_unpack_node(obj: object) -> TypeIs[UnpackNode]:
     return isinstance(obj, UnpackNode)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class ConcreteType(TypeNode):
     """A non-generic nominal type: int, str, MyClass, etc."""
 
@@ -230,7 +230,7 @@ def is_concrete_type(obj: object) -> TypeIs[ConcreteType]:
     return isinstance(obj, ConcreteType)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class GenericTypeNode(TypeNode):
     """An unsubscripted generic (type constructor): list, Dict, etc."""
 
@@ -251,7 +251,7 @@ class SpecialForm(TypeNode, ABC):
     """Base for special typing constructs that aren't concrete types."""
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class AnyType(TypeNode):
     """typing.Any - compatible with all types (gradual typing escape hatch)."""
 
@@ -265,7 +265,7 @@ def is_any_type_node(obj: object) -> TypeIs[AnyType]:
     return isinstance(obj, AnyType)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class NeverType(TypeNode):
     """typing.Never / typing.NoReturn - the bottom type (uninhabited)."""
 
@@ -279,7 +279,7 @@ def is_never_type_node(obj: object) -> TypeIs[NeverType]:
     return isinstance(obj, NeverType)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class SelfType(TypeNode):
     """typing.Self - reference to the enclosing class."""
 
@@ -293,7 +293,7 @@ def is_self_type_node(obj: object) -> TypeIs[SelfType]:
     return isinstance(obj, SelfType)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class LiteralStringType(TypeNode):
     """typing.LiteralString - any literal string value (PEP 675)."""
 
@@ -307,7 +307,7 @@ def is_literal_string_type_node(obj: object) -> TypeIs[LiteralStringType]:
     return isinstance(obj, LiteralStringType)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class EllipsisType(TypeNode):
     """The ... used in Callable[..., R] and Tuple[T, ...]."""
 
@@ -327,17 +327,17 @@ def is_ellipsis_type_node(obj: object) -> TypeIs[EllipsisType]:
 class RefState:
     """Resolution state for forward references."""
 
-    @dataclass(slots=True)
+    @dataclass(slots=True, frozen=True)
     class Unresolved:
         """Not yet attempted to resolve."""
 
-    @dataclass(slots=True)
+    @dataclass(slots=True, frozen=True)
     class Resolved:
         """Successfully resolved to a type."""
 
         node: TypeNode
 
-    @dataclass(slots=True)
+    @dataclass(slots=True, frozen=True)
     class Failed:
         """Resolution attempted but failed."""
 
@@ -359,7 +359,7 @@ def is_ref_state_unresolved(state: object) -> TypeIs[RefState.Unresolved]:
     return isinstance(state, RefState.Unresolved)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class ForwardRef(TypeNode):
     """A string forward reference like 'MyClass'."""
 
@@ -380,7 +380,7 @@ def is_forward_ref_node(obj: object) -> TypeIs[ForwardRef]:
     return isinstance(obj, ForwardRef)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class LiteralNode(TypeNode):
     """Literal[v1, v2, ...] - specific literal values as types."""
 
@@ -396,7 +396,7 @@ def is_literal_node(obj: object) -> TypeIs[LiteralNode]:
     return isinstance(obj, LiteralNode)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class SubscriptedGeneric(TypeNode):
     """Generic with type args applied: List[int], Dict[str, T], etc."""
 
@@ -419,7 +419,7 @@ def is_subscripted_generic_node(obj: object) -> TypeIs[SubscriptedGeneric]:
     return isinstance(obj, SubscriptedGeneric)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class GenericAlias(TypeNode):
     """Parameterized type alias: type Vector[T] = list[T] (PEP 695)."""
 
@@ -443,7 +443,7 @@ def is_generic_alias_node(obj: object) -> TypeIs[GenericAlias]:
     return isinstance(obj, GenericAlias)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class TypeAliasNode(TypeNode):
     """typing.TypeAlias or PEP 695 type statement runtime object."""
 
@@ -460,7 +460,7 @@ def is_type_alias_node(obj: object) -> TypeIs[TypeAliasNode]:
     return isinstance(obj, TypeAliasNode)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class UnionType(TypeNode):
     """Union[A, B] or A | B (non-discriminated)."""
 
@@ -476,7 +476,7 @@ def is_union_type_node(obj: object) -> TypeIs[UnionType]:
     return isinstance(obj, UnionType)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class DiscriminatedUnion(TypeNode):
     """A union discriminated by a literal field value.
 
@@ -505,7 +505,7 @@ def is_discriminated_union_node(obj: object) -> TypeIs[DiscriminatedUnion]:
     return isinstance(obj, DiscriminatedUnion)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class IntersectionType(TypeNode):
     """Intersection of types (not yet in typing, but used by type checkers)."""
 
@@ -521,7 +521,7 @@ def is_intersection_type_node(obj: object) -> TypeIs[IntersectionType]:
     return isinstance(obj, IntersectionType)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class CallableType(TypeNode):
     """Callable[[P1, P2], R] or Callable[P, R] or Callable[..., R]."""
 
@@ -548,7 +548,7 @@ def is_callable_type_node(obj: object) -> TypeIs[CallableType]:
     return isinstance(obj, CallableType)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class TupleType(TypeNode):
     """Tuple types in various forms.
 
@@ -572,7 +572,7 @@ def is_tuple_type_node(obj: object) -> TypeIs[TupleType]:
     return isinstance(obj, TupleType)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class AnnotatedType(TypeNode):
     """Annotated[T, metadata, ...].
 
@@ -596,7 +596,7 @@ def is_annotated_type_node(obj: object) -> TypeIs[AnnotatedType]:
     return isinstance(obj, AnnotatedType)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class MetaType(TypeNode):
     """Type[T] or type[T] - the class object itself, not an instance."""
 
@@ -612,7 +612,7 @@ def is_meta_type_node(obj: object) -> TypeIs[MetaType]:
     return isinstance(obj, MetaType)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class TypeGuardType(TypeNode):
     """typing.TypeGuard[T] - narrows type in true branch (PEP 647)."""
 
@@ -628,7 +628,7 @@ def is_type_guard_type_node(obj: object) -> TypeIs[TypeGuardType]:
     return isinstance(obj, TypeGuardType)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class TypeIsType(TypeNode):
     """typing.TypeIs[T] - narrows type bidirectionally (PEP 742)."""
 
@@ -668,7 +668,7 @@ def is_structured_type_node(obj: object) -> TypeIs[StructuredType]:
     return isinstance(obj, StructuredType)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class TypedDictType(StructuredType):
     """TypedDict with named fields."""
 
@@ -697,7 +697,7 @@ def is_typed_dict_type_node(obj: object) -> TypeIs[TypedDictType]:
     return isinstance(obj, TypedDictType)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class NamedTupleType(StructuredType):
     """NamedTuple with named fields."""
 
@@ -740,7 +740,7 @@ class DataclassFieldDef(FieldDef):
     hash: bool | None = None
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class DataclassType(StructuredType):
     """A dataclass with typed fields and configuration."""
 
@@ -772,7 +772,7 @@ def is_dataclass_type_node(obj: object) -> TypeIs[DataclassType]:
     return isinstance(obj, DataclassType)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class EnumType(TypeNode):
     """An Enum with typed members."""
 
@@ -790,7 +790,7 @@ def is_enum_type_node(obj: object) -> TypeIs[EnumType]:
     return isinstance(obj, EnumType)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class NewTypeNode(TypeNode):
     """NewType('Name', base) - a distinct type alias for type checking."""
 
@@ -819,7 +819,7 @@ class Parameter:
     metadata: tuple[object, ...] = ()
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class SignatureNode(TypeNode):
     """A full callable signature with named parameters.
 
@@ -866,7 +866,7 @@ def is_method_sig(obj: object) -> TypeIs[MethodSig]:
     return isinstance(obj, MethodSig)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class ProtocolType(TypeNode):
     """Protocol defining structural interface."""
 
@@ -893,7 +893,7 @@ def is_protocol_type_node(obj: object) -> TypeIs[ProtocolType]:
     return isinstance(obj, ProtocolType)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class FunctionNode(TypeNode):
     """A function with full type information.
 
@@ -917,7 +917,7 @@ def is_function_node(obj: object) -> TypeIs[FunctionNode]:
     return isinstance(obj, FunctionNode)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class ClassNode(TypeNode):
     """A class with full type information.
 
