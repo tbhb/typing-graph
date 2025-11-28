@@ -1,0 +1,81 @@
+---
+name: Documentation issue
+description: Report unclear, incorrect, or missing documentation
+title: "[Docs]: "
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for helping improve typing-graph's documentation!
+
+        This form is for reporting issues with existing documentation or
+        identifying gaps in documentation coverage.
+
+  - type: textarea
+    id: issue
+    attributes:
+      label: Documentation issue
+      description: What documentation is unclear, incorrect, or missing?
+      placeholder: |
+        The documentation for inspect_type() doesn't explain how to handle
+        forward references...
+    validations:
+      required: true
+
+  - type: input
+    id: location
+    attributes:
+      label: Documentation location
+      description: Where is the documentation issue located? (URL or file path)
+      placeholder: >-
+        https://github.com/tbhb/typing-graph#readme or README.md
+    validations:
+      required: false
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Issue category
+      description: What type of documentation issue is this?
+      options:
+        - Unclear or confusing explanation
+        - Incorrect or outdated information
+        - Missing documentation
+        - Broken links or references
+        - Typo or grammatical error
+        - Example code doesn't work
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested improvement
+      description: >-
+        How could the documentation be improved? What would make it clearer?
+        If reporting missing documentation, what should be documented?
+      placeholder: |
+        Add an example showing how to resolve forward references before
+        inspecting types...
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Any other context or examples that might be helpful
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: >-
+            I have searched existing issues to ensure this hasn't been
+            reported already
+          required: true

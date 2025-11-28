@@ -1,0 +1,148 @@
+---
+name: Bug report
+description: Report a bug or unexpected behavior in typing-graph
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a bug! Your report helps improve typing-graph
+        during its pre-release development.
+
+        **Important**: typing-graph is pre-1.0 software in active development.
+        Some behaviors may change as the library evolves.
+
+        Please provide a **minimum reproducible example** (MRE) - a minimal,
+        complete code sample that demonstrates the issue. This is crucial for
+        quickly identifying and fixing the bug.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear, concise description of the bug
+      placeholder: >-
+        When I use X feature with Y configuration, Z unexpected behavior
+        occurs...
+    validations:
+      required: true
+
+  - type: textarea
+    id: mre
+    attributes:
+      label: Minimum reproducible example
+      description: |
+        A minimal, complete code example that reproduces the issue. This should:
+        - Be **minimal**: Only the code necessary to reproduce the issue
+        - Be **complete**: Include all imports and setup needed to run it
+        - Be **reproducible**: Consistently demonstrate the problem
+      placeholder: |
+        from typing import Annotated
+        from typing_graph import inspect_type
+
+        type MyAlias = Annotated[int, "metadata"]
+
+        node = inspect_type(MyAlias)
+        print(node.metadata)  # Unexpected result
+      render: python
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: >-
+        Step-by-step instructions to reproduce the issue using the MRE above
+      placeholder: |
+        1. Save the above code as `example.py`
+        2. Run: `python example.py`
+        3. Observe unexpected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What you expected to happen
+      placeholder: >-
+        The node.metadata should contain ["metadata"]
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What actually happened
+      placeholder: >-
+        The node.metadata is empty or raises an unexpected exception.
+    validations:
+      required: true
+
+  - type: textarea
+    id: error
+    attributes:
+      label: Error message or stack trace
+      description: >-
+        If applicable, paste the complete error message or stack trace
+      render: shell
+    validations:
+      required: false
+
+  - type: input
+    id: python-version
+    attributes:
+      label: Python version
+      description: What version of Python are you using?
+      placeholder: "3.12.5"
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      description: What operating system are you using?
+      placeholder: "Ubuntu 24.04, macOS 15.0, Windows 11"
+    validations:
+      required: true
+
+  - type: input
+    id: typing-graph-version
+    attributes:
+      label: typing-graph version or commit
+      description: |
+        What version or commit hash of typing-graph are you using?
+        If installed from git, provide the commit hash: `git rev-parse HEAD`
+      placeholder: "commit abc123def456 or version 0.1.0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: >-
+        Any other context, screenshots, or information that might be helpful
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      description: Please confirm the following
+      options:
+        - label: >-
+            I have searched existing issues to ensure this bug hasn't been
+            reported already
+          required: true
+        - label: I have provided a minimum reproducible example
+          required: true
+        - label: >-
+            I have included my environment details
+            (Python version, OS, typing-graph version)
+          required: true

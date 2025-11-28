@@ -1,0 +1,62 @@
+---
+name: Support question
+description: This will redirect you to GitHub Discussions for questions
+title: "[Question]: "
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Questions belong in GitHub Discussions
+
+        Thank you for your interest in typing-graph! However, **support questions
+        should be posted in GitHub Discussions, not as issues.**
+
+        ### Why GitHub Discussions?
+
+        Discussions are designed for:
+        - **Questions** about how to use typing-graph or how something works
+        - **Ideas and suggestions** that you'd like to discuss with the community
+        - **General feedback** about your experience with the library
+        - **Design discussions** about API decisions or architecture
+        - **Conversations** that might help others with similar questions
+
+        Issues are reserved for:
+        - **Bug reports** - Specific, reproducible problems with the library
+        - **Documentation issues** - Unclear or missing documentation
+        - **Enhancement requests** - Well-defined feature proposals
+
+        ### Where to ask your question
+
+        Please post your question in
+        [GitHub Discussions](https://github.com/tbhb/typing-graph/discussions) instead:
+
+        1. Visit
+           [https://github.com/tbhb/typing-graph/discussions](https://github.com/tbhb/typing-graph/discussions)
+        2. Check if your question has already been asked
+        3. If not, click "New discussion"
+        4. Choose the appropriate category:
+           - **Q&A** - Questions about usage, features, or how things work
+           - **Ideas** - Suggestions or proposals you'd like to discuss
+           - **General** - General feedback, experiences, or conversations
+
+        ### When to use issues instead
+
+        Use issues only if you're reporting:
+        - A specific **bug** with a reproducible example
+        - **Missing or incorrect documentation**
+        - A **well-defined enhancement** with a clear problem statement and
+          proposed solution
+
+        ---
+
+        **If you still want to create an issue**, please close this form and
+        select the appropriate issue template (Bug report, Documentation issue,
+        or Enhancement request).
+
+        ---
+
+        **Thank you for understanding!** This helps keep issues focused on bugs
+        and enhancements while fostering community discussion.
+
+        [Go to GitHub Discussions now](https://github.com/tbhb/typing-graph/discussions)

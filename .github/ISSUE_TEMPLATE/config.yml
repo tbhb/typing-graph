@@ -1,0 +1,15 @@
+---
+blank_issues_enabled: false
+contact_links:
+  - name: GitHub Discussions
+    url: https://github.com/tbhb/typing-graph/discussions
+    about: >-
+      Ask questions, share ideas, and discuss the project with the community
+  - name: Security vulnerability
+    url: https://github.com/tbhb/typing-graph/security/advisories/new
+    about: >-
+      Report a security vulnerability privately through GitHub Security
+      Advisories
+  - name: Security policy
+    url: https://github.com/tbhb/typing-graph/blob/main/SECURITY.md
+    about: Review the project's security policy and reporting guidelines
