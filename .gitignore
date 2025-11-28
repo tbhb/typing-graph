@@ -373,6 +373,7 @@ TODO.md
 # Local agent configuration
 .claude
 .claude/settings.local.json
+.claude/logs/
 
 # Benchmark baselines (local only)
 .benchmarks/

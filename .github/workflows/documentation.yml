@@ -75,8 +75,14 @@ jobs:
       - name: Lint documentation
         run: just lint-docs
 
-  vale:
-    name: Vale
+      - name: Lint prose
+        uses: errata-ai/vale-action@d89dee975228ae261d22c15adcd03578634d429c # v2.1.1
+        with:
+          version: 3.13.0
+
+  test:
+    name: Test
+    needs: lint
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -84,16 +90,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
 
-      - name: Run Vale
-        uses: errata-ai/vale-action@d89dee975228ae261d22c15adcd03578634d429c # v2.1.1
+      - name: Install uv
+        uses: astral-sh/setup-uv@1e862dfacbd1d6d858c55d9b792c756523627244 # v7.1.4
         with:
-          version: 3.13.0
+          python-version: "3.10"
+          enable-cache: true
+
+      - name: Install just
+        uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3
+
+      - name: Run documentation tests
+        run: just test-docs all
 
   deploy:
     name: Deploy
     needs:
-      - lint
-      - vale
+      - test
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment:

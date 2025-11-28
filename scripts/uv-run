@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# Run uv with optional Python version switching
+#
+# Usage:
+#   uv-run <command...>           Run with default Python
+#   uv-run 3.14 <command...>      Run with specific Python version
+#   uv-run 3.14t <command...>     Run with free-threaded Python
+#   uv-run all <command...>       Run with all configured versions
+
+set -euo pipefail
+
+run_uv() {
+    local version="$1"
+    shift
+    if [[ -z "$version" ]]; then
+        uv run --frozen "$@"
+    else
+        UV_PROJECT_ENVIRONMENT=".venv-$version" uv run --frozen --python "$version" "$@"
+    fi
+}
+
+if [[ $# -eq 0 ]]; then
+    echo "Usage: uv-run [version] <command...>" >&2
+    exit 1
+fi
+
+first="$1"
+shift
+
+# Check if first arg is "all" to run all versions
+if [[ "$first" == "all" ]]; then
+    if [[ $# -eq 0 ]]; then
+        echo "Usage: uv-run all <command...>" >&2
+        exit 1
+    fi
+    for ver in "" 3.11 3.12 3.13 3.13t 3.14 3.14t; do
+        if [[ -z "$ver" ]]; then
+            echo "=== Running with default Python ==="
+        else
+            echo "=== Running with Python $ver ==="
+        fi
+        run_uv "$ver" "$@"
+    done
+    exit 0
+fi
+
+# Check if first arg is a Python version like 3.10, 3.14t, etc.
+if [[ "$first" =~ ^3\.[0-9]+t?$ ]]; then
+    run_uv "$first" "$@"
+else
+    run_uv "" "$first" "$@"
+fi

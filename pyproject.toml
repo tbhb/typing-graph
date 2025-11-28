@@ -103,6 +103,8 @@ addopts = [
   "--cov=typing_graph",
   "--cov-branch",
   "--cov-report=json",
+  "--cov-report=term-missing:skip-covered",
+  "--cov-report=xml",
 ]
 pythonpath = ["src", "."]
 filterwarnings = ["error"]

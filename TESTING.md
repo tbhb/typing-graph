@@ -23,18 +23,18 @@ just test -v                 # Verbose output
 just test -k "test_name"     # Run specific tests by name
 just test tests/unit/        # Run only unit tests
 just test tests/properties/  # Run only property tests
-just test-coverage           # Run with coverage report
 just test-docs               # Run documentation example tests
 ```
 
 ### Direct pytest usage
 
 ```bash
-uv run pytest                           # Run all tests
-uv run pytest -x                        # Stop on first failure
-uv run pytest --tb=short                # Shorter tracebacks
-uv run pytest -v --tb=long              # Verbose with full tracebacks
-uv run pytest --cov=typing_graph        # With coverage
+just test                               # Run all tests
+just test -x                            # Stop on first failure
+just test --tb=short                    # Shorter tracebacks
+just test -v --tb=long                  # Verbose with full tracebacks
+just test 3.14                          # Test with specific Python version
+just test all                           # Test with all configured versions
 ```
 
 ## Test organization
@@ -310,7 +310,7 @@ settings.register_profile("debug", max_examples=10, phases=[Phase.generate])
 Run with a specific profile:
 
 ```bash
-uv run pytest --hypothesis-profile=ci
+just test --hypothesis-profile=ci
 ```
 
 ## Benchmarks
@@ -329,12 +329,12 @@ just benchmark-compare baseline         # Compare against saved baseline
 just benchmark-check baseline           # Fail if >15% regression vs baseline (median)
 ```
 
-Using `uv run` directly:
+Using `just run` directly:
 
 ```bash
-uv run pytest tests/benchmarks/ --benchmark-only
-uv run pytest tests/benchmarks/ --benchmark-json=.benchmarks/results.json
-uv run pytest tests/benchmarks/ --benchmark-compare=.benchmarks/baseline.json
+just run pytest tests/benchmarks/ --benchmark-only
+just run pytest tests/benchmarks/ --benchmark-json=.benchmarks/results.json
+just run pytest tests/benchmarks/ --benchmark-compare=.benchmarks/baseline.json
 ```
 
 ### CI variance handling
@@ -440,14 +440,14 @@ just mutation-html      # Generate HTML report
 just mutation-clean     # Clean session files
 ```
 
-Using `uv run` directly:
+Using `just run` directly:
 
 ```bash
-uv run cosmic-ray baseline cosmic-ray.toml  # Verify tests pass
-uv run cosmic-ray init cosmic-ray.toml session.sqlite  # Generate mutants
-uv run cosmic-ray exec cosmic-ray.toml session.sqlite  # Run mutations
-uv run cr-report session.sqlite             # View results
-uv run cr-html session.sqlite > report.html # HTML report
+just run cosmic-ray baseline cosmic-ray.toml  # Verify tests pass
+just run cosmic-ray init cosmic-ray.toml session.sqlite  # Generate mutants
+just run cosmic-ray exec cosmic-ray.toml session.sqlite  # Run mutations
+just run cr-report session.sqlite             # View results
+just run cr-html session.sqlite > report.html # HTML report
 ```
 
 ### Interpreting results
@@ -471,7 +471,7 @@ When mutations survive:
 
 ```bash
 just test-coverage                      # Via just
-uv run pytest --cov=typing_graph --cov-report=html  # Direct
+just test --cov=typing_graph --cov-report=html  # Direct
 ```
 
 ### Coverage requirements
@@ -483,7 +483,7 @@ uv run pytest --cov=typing_graph --cov-report=html  # Direct
 ### Viewing reports
 
 ```bash
-uv run coverage html                    # Generate HTML report
+just run coverage html                  # Generate HTML report
 open htmlcov/index.html                 # View in browser
 ```
 
@@ -520,26 +520,26 @@ Use the narrowest appropriate scope to avoid test interdependencies.
 ### Verbose output
 
 ```bash
-uv run pytest -v --tb=long              # Full tracebacks
-uv run pytest -s                        # Show print statements
-uv run pytest --pdb                     # Drop into debugger on failure
+just test -v --tb=long                  # Full tracebacks
+just test -s                            # Show print statements
+just test --pdb                         # Drop into debugger on failure
 ```
 
 ### Running single tests
 
 ```bash
-uv run pytest tests/unit/test_types.py::TestConcreteType::test_specific_case
-uv run pytest -k "concrete and not union"  # Pattern matching
+just test tests/unit/test_types.py::TestConcreteType::test_specific_case
+just test -k "concrete and not union"  # Pattern matching
 ```
 
 ### Hypothesis debugging
 
 ```bash
 # Shrink to minimal failing example
-uv run pytest --hypothesis-seed=<seed>
+just test --hypothesis-seed=<seed>
 
 # Show all generated examples
-uv run pytest --hypothesis-verbosity=verbose
+just test --hypothesis-verbosity=verbose
 ```
 
 ## CI integration

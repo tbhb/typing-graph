@@ -14,6 +14,15 @@ pnpm := "pnpm exec"
 default:
   @just --list
 
+# Clean build artifacts
+clean:
+  rm -rf build/
+  rm -rf dist/
+  rm -rf site/
+  find . -type d -name __pycache__ -exec rm -rf {} +
+  find . -type d -name .pytest_cache -exec rm -rf {} +
+  find . -type d -name .ruff_cache -exec rm -rf {} +
+
 # Install all dependencies (Python + Node.js)
 install:
   uv sync --frozen
@@ -27,65 +36,13 @@ install-node:
 install-python:
   uv sync --frozen
 
-# Run tests (optionally specify Python version as first arg: 3.14, 3.14t, or "all")
-[script("bash")]
-test *args:
-  set -euo pipefail
+# Run command with optional Python version (first arg: 3.14, 3.14t, or "all")
+run *args:
+  ./scripts/uv-run {{args}}
 
-  args=({{args}})
-
-  run_pytest() {
-    local version="$1"
-    shift
-    if [[ -z "$version" ]]; then
-      uv run --frozen pytest "$@"
-    else
-      UV_PROJECT_ENVIRONMENT=".venv-$version" uv run --frozen --python "$version" pytest "$@"
-    fi
-  }
-
-  if [[ ${#args[@]} -eq 0 ]]; then
-    run_pytest ""
-    exit 0
-  fi
-
-  first="${args[0]}"
-  rest=("${args[@]:1}")
-
-  # Check if first arg is "all" to run all versions
-  if [[ "$first" == "all" ]]; then
-    for ver in "" 3.11 3.12 3.13 3.13t 3.14 3.14t; do
-      if [[ -z "$ver" ]]; then
-        echo "=== Testing with default Python ==="
-      else
-        echo "=== Testing with Python $ver ==="
-      fi
-      run_pytest "$ver" "${rest[@]}"
-    done
-    exit 0
-  fi
-
-  # Check if first arg is a Python version like 3.10, 3.14t, etc.
-  if [[ "$first" =~ ^3\.[0-9]+t?$ ]]; then
-    run_pytest "$first" "${rest[@]}" --cov-report json:coverage-$first.json
-  else
-    run_pytest "" "${args[@]}"
-  fi
-
-# Run only failed tests from last run
-test-failed *args: (test args "--lf")
-
-# Run tests with coverage for CI (generates XML report)
-test-coverage-ci *args:
-  {{uv}} pytest --cov=typing_graph --cov-report=xml --cov-branch "$@"
-
-# Run property tests with specified Hypothesis profile (dev, ci, thorough, debug)
-test-properties profile="dev" *args:
-  {{uv}} pytest tests/properties/ --hypothesis-profile={{profile}} "$@"
-
-# Run documentation example tests
-test-docs *args:
-  {{uv}} pytest tests/docexamples/ -v "$@"
+# Run Python with optional version (first arg: 3.14, 3.14t, or "all")
+run-python *args:
+  ./scripts/uv-run-python {{args}}
 
 # Format code
 format:
@@ -125,10 +82,6 @@ lint-python:
   {{uv}} ruff format --check .
   {{uv}} basedpyright
 
-# Check spelling
-lint-spelling:
-  {{uv}} codespell
-
 # Lint documentation
 lint-docs:
   uv run --frozen yamllint --strict mkdocs.yml
@@ -140,26 +93,20 @@ lint-docs:
 lint-prose:
   vale docs/ CODE_OF_CONDUCT.md CONTRIBUTING.md DEVELOPMENT.md README.md RELEASING.md SECURITY.md TESTING.md
 
-# Run pre-commit hooks on changed files
-prek:
-  {{uv}} prek
+# Check spelling
+lint-spelling:
+  {{uv}} codespell
 
-# Run pre-commit hooks on all files
-prek-all:
-  {{uv}} prek run --all-files
+# Run tests (optionally specify Python version as first arg: 3.14, 3.14t, or "all")
+test *args:
+  ./scripts/uv-run-pytest {{args}}
 
-# Install pre-commit hooks
-prek-install:
-  {{uv}} prek install
+# Run only failed tests from last run
+test-failed *args: (test args "--lf")
 
-# Clean build artifacts
-clean:
-  rm -rf build/
-  rm -rf dist/
-  rm -rf site/
-  find . -type d -name __pycache__ -exec rm -rf {} +
-  find . -type d -name .pytest_cache -exec rm -rf {} +
-  find . -type d -name .ruff_cache -exec rm -rf {} +
+# Run documentation example tests
+test-docs *args:
+  ./scripts/uv-run-pytest {{args}} tests/docexamples --no-cov
 
 # Run benchmarks
 benchmark *args: install
@@ -253,11 +200,23 @@ deploy-docs-pr number: (build-docs-pr number)
 
 # Develop the documentation site locally
 dev-docs:
-  uv run --group docs mkdocs serve --livereload --dev-addr 127.0.0.1:8000
+  uv run --isolated --group docs mkdocs serve --livereload --dev-addr 127.0.0.1:8000
 
 # Sync Vale styles and dictionaries
 vale-sync:
   vale sync
+
+# Run pre-commit hooks on changed files
+prek:
+  {{uv}} prek
+
+# Run pre-commit hooks on all files
+prek-all:
+  {{uv}} prek run --all-files
+
+# Install pre-commit hooks
+prek-install:
+  {{uv}} prek install
 
 # Convert Mermaid diagrams
 mermaid *args:

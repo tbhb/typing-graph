@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# Run pytest with optional version switching and coverage reports
+#
+# Usage:
+#   uv-run-pytest                     Run tests with default Python
+#   uv-run-pytest -k foo              Run tests matching 'foo' with default Python
+#   uv-run-pytest 3.14                Run tests with specific version (generates coverage-3.14.json)
+#   uv-run-pytest 3.14 -k foo         Run tests matching 'foo' with specific version
+#   uv-run-pytest all                 Run tests with all configured versions
+#   uv-run-pytest all -k foo          Run tests matching 'foo' with all versions
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Check if --no-cov is in the arguments
+has_no_cov() {
+    for arg in "$@"; do
+        if [[ "$arg" == "--no-cov" ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+if [[ $# -eq 0 ]]; then
+    exec "$SCRIPT_DIR/uv-run" pytest
+fi
+
+first="$1"
+shift
+
+# Check if first arg is "all" to run all versions
+if [[ "$first" == "all" ]]; then
+    exec "$SCRIPT_DIR/uv-run" all pytest "$@"
+fi
+
+# Check if first arg is a Python version like 3.10, 3.14t, etc.
+if [[ "$first" =~ ^3\.[0-9]+t?$ ]]; then
+    # Only add coverage report if --no-cov is not present
+    if has_no_cov "$@"; then
+        exec "$SCRIPT_DIR/uv-run" "$first" pytest "$@"
+    else
+        exec "$SCRIPT_DIR/uv-run" "$first" pytest "$@" --cov-report=json:coverage-$first.json
+    fi
+fi
+
+# Not a version, pass everything to pytest
+exec "$SCRIPT_DIR/uv-run" pytest "$first" "$@"

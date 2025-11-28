@@ -51,18 +51,21 @@ just test <args>      # Pass arguments to pytest
 
 ### Running Python
 
-Always use `uv run python` for Python execution:
+Always use `just run-python` for Python execution:
 
 ```bash
-uv run python -c "from typing_graph import inspect_type; print(inspect_type(int))"
+just run-python -c "from typing_graph import inspect_type; print(inspect_type(int))"
+just run-python script.py           # Run a script
+just run-python 3.14 script.py      # Run with specific Python version
+just run ruff check .               # Run tools with version support
 ```
 
 ## Code quality
 
 All code changes must pass these quality gates:
 
-1. **Type checking** - `uv run basedpyright` with zero errors
-2. **Linting** - `uv run ruff check .` with no violations
+1. **Type checking** - `just run basedpyright` with zero errors
+2. **Linting** - `just run ruff check .` with no violations
 3. **Tests** - All tests passing with >95% branch coverage
 4. **Documentation** - Google-style docstrings for public APIs
 
@@ -71,7 +74,7 @@ All code changes must pass these quality gates:
 The project uses [basedpyright](https://docs.basedpyright.com/) for type checking with strict settings. Run type checking with:
 
 ```bash
-uv run basedpyright
+just run basedpyright
 ```
 
 Important notes:
@@ -85,8 +88,8 @@ Important notes:
 The project uses [ruff](https://docs.astral.sh/ruff/) for linting and formatting:
 
 ```bash
-uv run ruff check .     # Check for issues
-uv run ruff format .    # Format code
+just run ruff check .     # Check for issues
+just run ruff format .    # Format code
 ```
 
 More linters:
@@ -102,7 +105,6 @@ See [TESTING.md](TESTING.md) for detailed testing documentation.
 ```bash
 just test                    # Run all tests
 just test -k "test_name"     # Run specific tests
-just test-coverage           # Run tests with coverage report
 ```
 
 ## Project structure

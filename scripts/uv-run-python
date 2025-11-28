@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Run Python interpreter with optional version switching
+#
+# Usage:
+#   uv-run-python                     Run Python REPL with default version
+#   uv-run-python -c "print(1)"       Run inline script with default version
+#   uv-run-python 3.14                Run Python REPL with specific version
+#   uv-run-python 3.14 -c "print(1)"  Run inline script with specific version
+#   uv-run-python all -c "print(1)"   Run with all configured versions
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [[ $# -eq 0 ]]; then
+    exec "$SCRIPT_DIR/uv-run" python
+fi
+
+first="$1"
+shift
+
+# Check if first arg is "all" or a Python version
+if [[ "$first" == "all" || "$first" =~ ^3\.[0-9]+t?$ ]]; then
+    exec "$SCRIPT_DIR/uv-run" "$first" python "$@"
+else
+    exec "$SCRIPT_DIR/uv-run" python "$first" "$@"
+fi
