@@ -45,7 +45,7 @@ from ._node import (
     TypedDictType,
     TypeNode,
     TypeParamNode,
-    UnionTypeNode,
+    UnionNode,
     is_type_param_node,
 )
 
@@ -503,7 +503,7 @@ def _inspect_enum(cls: type[Enum], ctx: InspectContext) -> EnumType:
         value_type: TypeNode = _inspect_type(value_types.pop(), ctx.child())
     else:
         # Mixed types - use Union
-        value_type = UnionTypeNode(
+        value_type = UnionNode(
             members=tuple(_inspect_type(t, ctx.child()) for t in value_types)
         )
 

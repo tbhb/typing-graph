@@ -24,7 +24,7 @@ Type graph { #type-graph }
 :   The tree structure produced when inspecting a type annotation. The root node represents the top-level type, and child nodes represent nested types (like a list's element type or a dataclass's field types). Navigate the graph using each node's [`children()`][typing_graph.TypeNode.children] method. See also: [type node](#type-node).
 
 Type node { #type-node }
-:   An immutable object representing an inspected type annotation. Each node class corresponds to a category of Python types: [`ConcreteType`][typing_graph.ConcreteType] for simple types, [`SubscriptedGeneric`][typing_graph.SubscriptedGeneric] for parameterized generics, [`UnionType`][typing_graph.UnionType] for unions, and so on. All nodes inherit from [`TypeNode`][typing_graph.TypeNode], which defines the common interface.
+:   An immutable object representing an inspected type annotation. Each node class corresponds to a category of Python types: [`ConcreteType`][typing_graph.ConcreteType] for simple types, [`SubscriptedGeneric`][typing_graph.SubscriptedGeneric] for parameterized generics, [`UnionNode`][typing_graph.UnionNode] for unions, and so on. All nodes inherit from [`TypeNode`][typing_graph.TypeNode], which defines the common interface.
 
 Type qualifier { #type-qualifier }
 :   A wrapper type that modifies how another type behaves in a specific context. Qualifiers include `ClassVar` (class-level attribute), `Final` (immutable binding), `Required`/`NotRequired` (TypedDict field optionality), `ReadOnly` (immutable field), and `InitVar` (dataclass init-only field). typing-graph extracts qualifiers and exposes them through the `Qualifier` enumeration (re-exported from typing-inspection).

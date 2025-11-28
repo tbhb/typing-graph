@@ -192,6 +192,7 @@ nav:
       - Qualifiers: explanation/qualifiers.md
       - Type aliases: explanation/type-aliases.md
       - Generics and variance: explanation/generics.md
+      - Union types: explanation/union-types.md
   - Reference:
       - reference/index.md
       - API: reference/api.md

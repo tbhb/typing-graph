@@ -61,7 +61,7 @@ from ._node import (
     TypeParamNode,
     TypeVarNode,
     TypeVarTupleNode,
-    UnionTypeNode,
+    UnionNode,
     UnpackNode,
     Variance,
     is_any_type_node,
@@ -835,7 +835,7 @@ def _inspect_forward_ref(ref: TypingForwardRef, ctx: InspectContext) -> TypeNode
 def _inspect_union(args: tuple[Any, ...], ctx: InspectContext) -> TypeNode:
     """Handle Union types."""
     members = tuple(_inspect_type(arg, ctx.child()) for arg in args)
-    return UnionTypeNode(members=members)
+    return UnionNode(members=members)
 
 
 def _inspect_callable(args: tuple[Any, ...], ctx: InspectContext) -> TypeNode:

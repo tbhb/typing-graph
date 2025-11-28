@@ -21,3 +21,6 @@ This section provides understanding-oriented discussion of concepts, architectur
 
 [Generics and variance](generics.md)
 :   Type parameters (`TypeVar`, `ParamSpec`, `TypeVarTuple`), variance (covariant, contravariant, invariant), and how typing-graph represents generic types.
+
+[Union types](union-types.md)
+:   How Python represents union types (`types.UnionType` vs `typing.Union`), the `|` operator quirk with typing special forms, and how typing-graph normalizes them.

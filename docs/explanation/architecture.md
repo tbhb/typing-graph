@@ -96,7 +96,7 @@ classDiagram
     TypeNode <|-- ConcreteType
     TypeNode <|-- GenericTypeNode
     TypeNode <|-- SubscriptedGeneric
-    TypeNode <|-- UnionType
+    TypeNode <|-- UnionNode
     TypeNode <|-- TupleType
     TypeNode <|-- CallableType
     TypeNode <|-- TypeVarNode
@@ -121,7 +121,7 @@ classDiagram
         +args: tuple
     }
 
-    class UnionType {
+    class UnionNode {
         +members: tuple
     }
 ```
@@ -142,7 +142,7 @@ Nodes fall into these categories based on what they represent:
 
 **Composite types** combine other types:
 
-- [`UnionType`][typing_graph.UnionType] - Union types (`A | B`, `Union[A, B]`)
+- [`UnionNode`][typing_graph.UnionNode] - Union types (`A | B`, `Union[A, B]`)
 - [`TupleType`][typing_graph.TupleType] - Tuple types (heterogeneous and homogeneous)
 - [`CallableType`][typing_graph.CallableType] - Callable signatures
 

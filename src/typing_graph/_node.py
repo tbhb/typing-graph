@@ -461,7 +461,7 @@ def is_type_alias_node(obj: object) -> TypeIs[TypeAliasNode]:
 
 
 @dataclass(slots=True, frozen=True)
-class UnionTypeNode(TypeNode):
+class UnionNode(TypeNode):
     """A | B (non-discriminated)."""
 
     members: tuple[TypeNode, ...]
@@ -471,9 +471,9 @@ class UnionTypeNode(TypeNode):
         return self.members
 
 
-def is_union_type_node(obj: object) -> TypeIs[UnionTypeNode]:
-    """Return whether the argument is a UnionType instance."""
-    return isinstance(obj, UnionTypeNode)
+def is_union_type_node(obj: object) -> TypeIs[UnionNode]:
+    """Return whether the argument is a UnionNode instance."""
+    return isinstance(obj, UnionNode)
 
 
 @dataclass(slots=True, frozen=True)

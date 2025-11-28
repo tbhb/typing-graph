@@ -1,6 +1,5 @@
 """Configuration for type introspection."""
 
-
 # pyright: reportAny=false, reportExplicitAny=false
 
 from dataclasses import dataclass

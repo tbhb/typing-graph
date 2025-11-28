@@ -14,7 +14,7 @@ Every [`TypeNode`][typing_graph.TypeNode] has a `children()` method that returns
 | -------------------------------------------------------- | ------------------------------- |
 | [`ConcreteType`][typing_graph.ConcreteType]              | None (leaf node)                |
 | [`SubscriptedGeneric`][typing_graph.SubscriptedGeneric]  | Type arguments                  |
-| [`UnionType`][typing_graph.UnionType]                    | Union members                   |
+| [`UnionNode`][typing_graph.UnionNode]                    | Union members                   |
 | [`TupleType`][typing_graph.TupleType]                    | Element types                   |
 | [`CallableType`][typing_graph.CallableType]              | Parameter types and return type |
 | [`DataclassType`][typing_graph.DataclassType]            | Field types                     |

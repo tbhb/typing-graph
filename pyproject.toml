@@ -54,18 +54,16 @@ dev = [
   "yamllint>=1.37.1",
 ]
 docs = [
-    "djlint>=1.36.4",
-    "mkdocs-git-authors-plugin>=0.10.0",
-    "mkdocs-git-revision-date-localized-plugin>=1.5.0",
-    "mkdocs-glightbox>=0.5.2",
-    "mkdocs-material>=9.7.0",
-    "mkdocstrings[python]>=1.0.0",
-    "pytest>=9.0.1",
-    "pytest-examples>=0.0.18",
+  "djlint>=1.36.4",
+  "mkdocs-git-authors-plugin>=0.10.0",
+  "mkdocs-git-revision-date-localized-plugin>=1.5.0",
+  "mkdocs-glightbox>=0.5.2",
+  "mkdocs-material>=9.7.0",
+  "mkdocstrings[python]>=1.0.0",
+  "pytest>=9.0.1",
+  "pytest-examples>=0.0.18",
 ]
-release = [
-    "cyclonedx-bom>=7.2.1",
-]
+release = ["cyclonedx-bom>=7.2.1"]
 
 [tool.basedpyright]
 exclude = ["**/node_modules", "**/tmp", "examples/**"]
@@ -102,6 +100,9 @@ addopts = [
   "--tb",
   "short",
   "--ignore=tests/benchmarks",
+  "--cov=typing_graph",
+  "--cov-branch",
+  "--cov-report=json",
 ]
 pythonpath = ["src", "."]
 filterwarnings = ["error"]

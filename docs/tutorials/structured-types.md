@@ -105,7 +105,7 @@ Field: notes
 Each field definition has a `type` attribute containing the inspected type node:
 
 ```python
-from typing_graph import ConcreteType, SubscriptedGeneric, UnionTypeNode
+from typing_graph import ConcreteType, SubscriptedGeneric, UnionNode
 
 for field_def in node.fields:
     type_node = field_def.type

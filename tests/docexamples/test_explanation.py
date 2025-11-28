@@ -1,5 +1,6 @@
 """Tests for documentation examples in docs/explanation/."""
 
+import sys
 from pathlib import Path  # noqa: TC003
 
 import pytest
@@ -15,6 +16,9 @@ SKIP_PATTERNS = [
     "# This fails",
     "# snippet",  # Illustrative code snippets that aren't meant to be executed
 ]
+
+# Version-specific patterns
+PY_314_PLUS = sys.version_info >= (3, 14)
 
 
 def get_common_globals() -> dict[str, object]:
@@ -60,7 +64,7 @@ def get_common_globals() -> dict[str, object]:
         TypeNode,
         TypeVarNode,
         TypeVarTupleNode,
-        UnionTypeNode,
+        UnionNode,
         Variance,
         cache_clear,
         cache_info,
@@ -126,7 +130,7 @@ def get_common_globals() -> dict[str, object]:
         "TypeNode": TypeNode,
         "TypeVarNode": TypeVarNode,
         "TypeVarTupleNode": TypeVarTupleNode,
-        "UnionType": UnionTypeNode,
+        "UnionType": UnionNode,
         "Variance": Variance,
         # typing_graph functions
         "cache_clear": cache_clear,
@@ -163,6 +167,12 @@ def _should_skip_example(example: CodeExample) -> str | None:
 
     if any(pattern in example.source for pattern in SKIP_PATTERNS):
         return "Non-executable example"
+
+    # Version-specific examples
+    if "# Python < 3.14" in example.source and PY_314_PLUS:
+        return "Example only applies to Python < 3.14"
+    if "# Python 3.14+" in example.source and not PY_314_PLUS:
+        return "Example only applies to Python 3.14+"
 
     return None
 

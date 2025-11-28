@@ -3,6 +3,12 @@
 from importlib.metadata import version
 
 from ._config import EvalMode, InspectConfig
+from ._helpers import (
+    get_union_members,
+    is_optional_node,
+    is_union_node,
+    unwrap_optional,
+)
 from ._inspect_class import (
     ClassInspectResult,
     inspect_class,
@@ -69,7 +75,7 @@ from ._node import (
     TypeParamNode,
     TypeVarNode,
     TypeVarTupleNode,
-    UnionTypeNode,
+    UnionNode,
     UnpackNode,
     Variance,
     # Type guards
@@ -165,7 +171,7 @@ __all__ = [
     "TypeVarNode",
     "TypeVarTupleNode",
     "TypedDictType",
-    "UnionTypeNode",
+    "UnionNode",
     "UnpackNode",
     "Variance",
     "__version__",
@@ -173,6 +179,7 @@ __all__ = [
     "cache_clear",
     "cache_info",
     "get_type_hints_for_node",
+    "get_union_members",
     "inspect_class",
     "inspect_dataclass",
     "inspect_enum",
@@ -211,6 +218,7 @@ __all__ = [
     "is_namedtuple_type",
     "is_never_type_node",
     "is_new_type_node",
+    "is_optional_node",
     "is_param_spec_node",
     "is_protocol_type",
     "is_protocol_type_node",
@@ -231,8 +239,10 @@ __all__ = [
     "is_type_var_tuple_node",
     "is_typed_dict_type_node",
     "is_typeddict_type",
+    "is_union_node",
     "is_union_type_node",
     "is_unpack_node",
+    "unwrap_optional",
 ]
 
 __version__ = version("typing-graph")

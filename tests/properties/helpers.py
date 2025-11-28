@@ -20,7 +20,7 @@ from typing_graph._node import (
     TypeIsType,
     TypeVarNode,
     TypeVarTupleNode,
-    UnionTypeNode,
+    UnionNode,
     UnpackNode,
     is_ellipsis_type_node,
 )
@@ -178,8 +178,8 @@ def _check_type_specific_attributes(  # noqa: PLR0911, PLR0912, PLR0915 - exhaus
         assert isinstance(n2, SubscriptedGeneric)
         # origin and args are checked via children()
 
-    elif isinstance(n1, UnionTypeNode):
-        assert isinstance(n2, UnionTypeNode)
+    elif isinstance(n1, UnionNode):
+        assert isinstance(n2, UnionNode)
         # members are checked via children()
 
     elif isinstance(n1, MetaType):
