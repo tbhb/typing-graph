@@ -35,21 +35,16 @@ from typing_graph import (
 )
 from typing_graph._node import (
     AnnotatedType,
-    AttrsFieldDef,
-    AttrsType,
     ConcatenateNode,
     DiscriminatedUnion,
     IntersectionType,
     LiteralStringType,
     MetaType,
-    PydanticFieldDef,
-    PydanticModelType,
     TypeGuardType,
     TypeIsType,
     UnpackNode,
     is_annotated_type_node,
     is_any_type_node,
-    is_attrs_type_node,
     is_callable_type_node,
     is_class_node,
     is_concatenate_node,
@@ -72,7 +67,6 @@ from typing_graph._node import (
     is_new_type_node,
     is_param_spec_node,
     is_protocol_type_node,
-    is_pydantic_model_type_node,
     is_ref_state_failed,
     is_ref_state_resolved,
     is_ref_state_unresolved,
@@ -317,22 +311,6 @@ class TestTypeGuards:
         )
         assert is_dataclass_type_node(node) is True
         assert is_dataclass_type_node(ConcreteType(cls=object)) is False
-
-    def test_is_attrs_type_node(self) -> None:
-        node = AttrsType(
-            cls=object,
-            fields=(AttrsFieldDef(name="x", type=ConcreteType(cls=int)),),
-        )
-        assert is_attrs_type_node(node) is True
-        assert is_attrs_type_node(ConcreteType(cls=object)) is False
-
-    def test_is_pydantic_model_type_node(self) -> None:
-        node = PydanticModelType(
-            cls=object,
-            fields=(PydanticFieldDef(name="x", type=ConcreteType(cls=int)),),
-        )
-        assert is_pydantic_model_type_node(node) is True
-        assert is_pydantic_model_type_node(ConcreteType(cls=object)) is False
 
     def test_is_enum_type_node(self) -> None:
         class Color(Enum):
@@ -624,42 +602,6 @@ class TestNodeChildrenMethods:
         field1 = DataclassFieldDef(name="x", type=ConcreteType(cls=int))
         field2 = DataclassFieldDef(name="y", type=ConcreteType(cls=str))
         node = DataclassType(cls=object, fields=(field1, field2))
-        fields = node.get_fields()
-        assert len(fields) == 2
-        assert field1 in fields
-        assert field2 in fields
-
-    def test_attrs_type_children_includes_field_types(self) -> None:
-        field1 = AttrsFieldDef(name="x", type=ConcreteType(cls=int))
-        field2 = AttrsFieldDef(name="y", type=ConcreteType(cls=str))
-        node = AttrsType(cls=object, fields=(field1, field2))
-        children = node.children()
-        assert len(children) == 2
-        assert field1.type in children
-        assert field2.type in children
-
-    def test_attrs_type_get_fields(self) -> None:
-        field1 = AttrsFieldDef(name="x", type=ConcreteType(cls=int))
-        field2 = AttrsFieldDef(name="y", type=ConcreteType(cls=str))
-        node = AttrsType(cls=object, fields=(field1, field2))
-        fields = node.get_fields()
-        assert len(fields) == 2
-        assert field1 in fields
-        assert field2 in fields
-
-    def test_pydantic_model_type_children_includes_field_types(self) -> None:
-        field1 = PydanticFieldDef(name="x", type=ConcreteType(cls=int))
-        field2 = PydanticFieldDef(name="y", type=ConcreteType(cls=str))
-        node = PydanticModelType(cls=object, fields=(field1, field2))
-        children = node.children()
-        assert len(children) == 2
-        assert field1.type in children
-        assert field2.type in children
-
-    def test_pydantic_model_type_get_fields(self) -> None:
-        field1 = PydanticFieldDef(name="x", type=ConcreteType(cls=int))
-        field2 = PydanticFieldDef(name="y", type=ConcreteType(cls=str))
-        node = PydanticModelType(cls=object, fields=(field1, field2))
         fields = node.get_fields()
         assert len(fields) == 2
         assert field1 in fields
