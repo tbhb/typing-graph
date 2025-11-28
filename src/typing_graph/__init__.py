@@ -10,6 +10,9 @@ from ._inspect_class import (
     inspect_class,
     inspect_dataclass,
     inspect_enum,
+    inspect_named_tuple,
+    inspect_protocol,
+    inspect_typed_dict,
 )
 from ._inspect_function import inspect_function, inspect_signature
 from ._inspect_module import ModuleTypes, inspect_module
@@ -124,9 +127,12 @@ __all__ = [
     "inspect_enum",
     "inspect_function",
     "inspect_module",
+    "inspect_named_tuple",
+    "inspect_protocol",
     "inspect_signature",
     "inspect_type",
     "inspect_type_alias",
+    "inspect_typed_dict",
 ]
 
 __version__ = version("typing-graph")
