@@ -1,10 +1,11 @@
 """Tests for documentation examples in docs/explanation/."""
 
-import sys
 from pathlib import Path  # noqa: TC003
 
 import pytest
 from pytest_examples import CodeExample, EvalExample, find_examples
+
+from .conftest import check_version_skip
 
 # Patterns that indicate non-executable examples
 SKIP_PATTERNS = [
@@ -16,9 +17,6 @@ SKIP_PATTERNS = [
     "# This fails",
     "# snippet",  # Illustrative code snippets that aren't meant to be executed
 ]
-
-# Version-specific patterns
-PY_314_PLUS = sys.version_info >= (3, 14)
 
 
 def get_common_globals() -> dict[str, object]:
@@ -169,10 +167,8 @@ def _should_skip_example(example: CodeExample) -> str | None:
         return "Non-executable example"
 
     # Version-specific examples
-    if "# Python < 3.14" in example.source and PY_314_PLUS:
-        return "Example only applies to Python < 3.14"
-    if "# Python 3.14+" in example.source and not PY_314_PLUS:
-        return "Example only applies to Python 3.14+"
+    if version_skip := check_version_skip(example.source):
+        return version_skip
 
     return None
 

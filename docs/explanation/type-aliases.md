@@ -56,7 +56,7 @@ You must provide the `name` parameter because simple type aliases don't inherent
 [PEP 695](https://peps.python.org/pep-0695/) introduced a dedicated `type` statement for defining type aliases:
 
 ```python
-# snippet - PEP 695 syntax requires Python 3.12+
+# Python 3.12+
 # Simple alias
 type UserId = int
 
@@ -79,7 +79,7 @@ This syntax offers key advantages:
 typing-graph represents PEP 695 type aliases as [`GenericAlias`][typing_graph.GenericAlias] when they have type parameters:
 
 ```python
-# snippet - PEP 695 syntax requires Python 3.12+
+# snippet - PEP 695 alias inspection not yet implemented
 from typing_graph import inspect_type_alias, GenericAlias
 
 type Vector[T] = list[T]
@@ -94,7 +94,7 @@ print(node.value)           # SubscriptedGeneric referencing T
 Simple PEP 695 aliases without type parameters still produce `GenericAlias` nodes with empty `type_params`:
 
 ```python
-# snippet - PEP 695 syntax requires Python 3.12+
+# snippet - PEP 695 alias inspection not yet implemented
 type UserId = int
 
 node = inspect_type_alias(UserId)
@@ -135,7 +135,7 @@ If you use `inspect_type()` on an alias value, it sees through the alias to the 
 PEP 695 scopes type parameters to their alias. This prevents naming conflicts:
 
 ```python
-# snippet - PEP 695 syntax requires Python 3.12+
+# Python 3.12+
 # Each alias has its own T, they don't conflict
 type Container[T] = list[T]
 type Mapping[T, U] = dict[T, U]
@@ -144,7 +144,7 @@ type Mapping[T, U] = dict[T, U]
 typing-graph captures these scoped parameters in the [`GenericAlias.type_params`][typing_graph.GenericAlias] tuple. Each parameter becomes a [`TypeVarNode`][typing_graph.TypeVarNode], [`ParamSpecNode`][typing_graph.ParamSpecNode], or [`TypeVarTupleNode`][typing_graph.TypeVarTupleNode]:
 
 ```python
-# snippet - PEP 695 syntax requires Python 3.12+
+# snippet - PEP 695 alias inspection not yet implemented
 type Transform[T, **P, *Ts] = Callable[P, tuple[T, *Ts]]
 
 node = inspect_type_alias(Transform)
@@ -160,7 +160,7 @@ for param in node.type_params:
 Type parameters can have bounds or constraints:
 
 ```python
-# snippet - PEP 695 syntax requires Python 3.12+
+# Python 3.12+
 from typing import Protocol
 
 class Comparable(Protocol):
@@ -176,7 +176,7 @@ type Number[T: (int, float, complex)] = T
 typing-graph captures these on the [`TypeVarNode`][typing_graph.TypeVarNode]:
 
 ```python
-# snippet - PEP 695 syntax requires Python 3.12+
+# snippet - PEP 695 alias inspection not yet implemented
 type SortedList[T: Comparable] = list[T]
 
 node = inspect_type_alias(SortedList)

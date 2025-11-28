@@ -5,6 +5,8 @@ from pathlib import Path  # noqa: TC003
 import pytest
 from pytest_examples import CodeExample, EvalExample, find_examples
 
+from .conftest import check_version_skip
+
 # Patterns that indicate non-executable examples
 SKIP_PATTERNS = [
     "pip install",
@@ -117,6 +119,10 @@ def _should_skip_example(example: CodeExample) -> str | None:
 
     if any(pattern in example.source for pattern in SKIP_PATTERNS):
         return "Non-executable example"
+
+    # Version-specific examples
+    if version_skip := check_version_skip(example.source):
+        return version_skip
 
     return None
 
