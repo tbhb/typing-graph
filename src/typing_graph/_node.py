@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from typing_inspection.introspection import Qualifier
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class SourceLocation:
     """Source code location for a type definition."""
 
@@ -644,7 +644,7 @@ def is_type_is_type_node(obj: object) -> TypeIs[TypeIsType]:
     return isinstance(obj, TypeIsType)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class FieldDef:
     """A named field with a type (not a TypeNode itself)."""
 
@@ -727,7 +727,7 @@ def is_named_tuple_type_node(obj: object) -> TypeIs[NamedTupleType]:
 # === Dataclass ===
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class DataclassFieldDef(FieldDef):
     """Extended field definition for dataclasses."""
 
@@ -775,7 +775,7 @@ def is_dataclass_type_node(obj: object) -> TypeIs[DataclassType]:
 # === Attrs ===
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class AttrsFieldDef(FieldDef):
     """Extended field definition for attrs classes."""
 
@@ -819,7 +819,7 @@ def is_attrs_type_node(obj: object) -> TypeIs[AttrsType]:
     return isinstance(obj, AttrsType)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class PydanticFieldDef(FieldDef):
     """Extended field definition for Pydantic models."""
 
@@ -895,7 +895,7 @@ def is_new_type_node(obj: object) -> TypeIs[NewTypeNode]:
     return isinstance(obj, NewTypeNode)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class Parameter:
     """A callable parameter (not a TypeNode itself)."""
 
@@ -938,7 +938,7 @@ def is_signature_node(obj: object) -> TypeIs[SignatureNode]:
     return isinstance(obj, SignatureNode)
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class MethodSig:
     """A method signature (not a TypeNode itself)."""
 
