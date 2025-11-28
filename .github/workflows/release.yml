@@ -6,9 +6,8 @@ on:
     tags:
       - "v*"
   release:
-    # created/edited: validate draft releases
-    # published: publish to PyPI
-    types: [created, edited, published]
+    # published: publish to PyPI (fires when release is created or draft is published)
+    types: [published]
 
 concurrency:
   group: release-${{ github.ref }}
