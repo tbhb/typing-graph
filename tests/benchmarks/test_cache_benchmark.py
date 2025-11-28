@@ -2,8 +2,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from typing_graph import TypeNode, clear_cache, inspect_type
-from typing_graph._inspect_type import _type_cache
+from typing_graph import TypeNode, cache_clear, cache_info, inspect_type
 from typing_graph._node import is_concrete_type, is_subscripted_generic_node
 
 from .conftest import (
@@ -17,14 +16,14 @@ if TYPE_CHECKING:
 
 class TestColdCacheBenchmarks:
     @pytest.fixture(autouse=True)
-    def clear_cache_for_each_test(self) -> None:
-        clear_cache()
+    def cache_clear_for_each_test(self) -> None:
+        cache_clear()
 
     def test_benchmark_cold_cache_simple_type(
         self, benchmark: "BenchmarkFixture"
     ) -> None:
         def inspect_with_cold_cache() -> TypeNode:
-            clear_cache()
+            cache_clear()
             return inspect_type(int)
 
         result = benchmark(inspect_with_cold_cache)
@@ -35,7 +34,7 @@ class TestColdCacheBenchmarks:
         self, benchmark: "BenchmarkFixture"
     ) -> None:
         def inspect_with_cold_cache() -> TypeNode:
-            clear_cache()
+            cache_clear()
             return inspect_type(list[int])
 
         result = benchmark(inspect_with_cold_cache)
@@ -48,7 +47,7 @@ class TestColdCacheBenchmarks:
         complex_type = dict[str, list[tuple[int, str] | None]]
 
         def inspect_with_cold_cache() -> TypeNode:
-            clear_cache()
+            cache_clear()
             return inspect_type(complex_type)
 
         result = benchmark(inspect_with_cold_cache)
@@ -59,7 +58,7 @@ class TestColdCacheBenchmarks:
 class TestWarmCacheBenchmarks:
     @pytest.fixture(autouse=True)
     def setup_warm_cache(self) -> None:
-        clear_cache()
+        cache_clear()
         # Pre-warm cache with common types
         for t in [int, str, float, bool, bytes, list, dict, set, tuple]:
             inspect_type(t)
@@ -100,8 +99,8 @@ class TestWarmCacheBenchmarks:
 
 class TestCacheHitRateBenchmarks:
     @pytest.fixture(autouse=True)
-    def clear_cache_for_each_test(self) -> None:
-        clear_cache()
+    def cache_clear_for_each_test(self) -> None:
+        cache_clear()
 
     def test_benchmark_100_percent_hit_rate(
         self, benchmark: "BenchmarkFixture"
@@ -121,7 +120,7 @@ class TestCacheHitRateBenchmarks:
 
     def test_benchmark_0_percent_hit_rate(self, benchmark: "BenchmarkFixture") -> None:
         def inspect_uncached_types() -> list[TypeNode]:
-            clear_cache()
+            cache_clear()
             types_to_inspect = [int, str, float, bool, bytes]
             return [inspect_type(t, use_cache=False) for t in types_to_inspect]
 
@@ -148,8 +147,8 @@ class TestCacheHitRateBenchmarks:
 
 class TestCacheDisabledBenchmarks:
     @pytest.fixture(autouse=True)
-    def clear_cache_for_each_test(self) -> None:
-        clear_cache()
+    def cache_clear_for_each_test(self) -> None:
+        cache_clear()
 
     def test_benchmark_no_cache_simple_type(
         self, benchmark: "BenchmarkFixture"
@@ -189,8 +188,8 @@ class TestCacheDisabledBenchmarks:
 
 class TestCacheVsNoCacheComparison:
     @pytest.fixture(autouse=True)
-    def clear_cache_for_each_test(self) -> None:
-        clear_cache()
+    def cache_clear_for_each_test(self) -> None:
+        cache_clear()
 
     def test_benchmark_cached_nested_type(self, benchmark: "BenchmarkFixture") -> None:
         nested_type = build_nested_list(5)
@@ -229,8 +228,8 @@ class TestCacheVsNoCacheComparison:
 
 class TestCacheSizeImpact:
     @pytest.fixture(autouse=True)
-    def clear_cache_for_each_test(self) -> None:
-        clear_cache()
+    def cache_clear_for_each_test(self) -> None:
+        cache_clear()
 
     def test_benchmark_lookup_small_cache(self, benchmark: "BenchmarkFixture") -> None:
         # Small cache: 10 entries
@@ -262,37 +261,37 @@ class TestCacheSizeImpact:
 
 class TestCacheClearBenchmarks:
     def test_benchmark_clear_empty_cache(self, benchmark: "BenchmarkFixture") -> None:
-        clear_cache()
+        cache_clear()
 
-        benchmark(clear_cache)
+        benchmark(cache_clear)
 
-        assert len(_type_cache) == 0
+        assert cache_info().currsize == 0
 
     def test_benchmark_clear_small_cache(self, benchmark: "BenchmarkFixture") -> None:
         # Populate with 10 entries
-        clear_cache()
+        cache_clear()
         for t in [int, str, float, bool, bytes, list, dict, set, tuple, type]:
             inspect_type(t)
 
-        benchmark(clear_cache)
+        benchmark(cache_clear)
 
-        assert len(_type_cache) == 0
+        assert cache_info().currsize == 0
 
     def test_benchmark_clear_large_cache(self, benchmark: "BenchmarkFixture") -> None:
         # Populate with many entries
-        clear_cache()
+        cache_clear()
         for i in range(100):
             inspect_type(build_nested_list(i % 5 + 1))
 
-        benchmark(clear_cache)
+        benchmark(cache_clear)
 
-        assert len(_type_cache) == 0
+        assert cache_info().currsize == 0
 
 
 class TestCacheMemoryEfficiency:
     @pytest.fixture(autouse=True)
-    def clear_cache_for_each_test(self) -> None:
-        clear_cache()
+    def cache_clear_for_each_test(self) -> None:
+        cache_clear()
 
     def test_benchmark_inspect_same_type_identity(
         self, benchmark: "BenchmarkFixture"

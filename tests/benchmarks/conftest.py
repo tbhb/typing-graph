@@ -17,7 +17,7 @@ from typing import (
 
 import pytest
 
-from typing_graph import clear_cache
+from typing_graph import cache_clear
 
 _THIS_DIR = Path(__file__).parent
 
@@ -34,10 +34,10 @@ if TYPE_CHECKING:
 
 
 @pytest.fixture(autouse=True)
-def clear_cache_between_benchmarks() -> Generator[None, None, None]:
-    clear_cache()
+def cache_clear_between_benchmarks() -> Generator[None, None, None]:
+    cache_clear()
     yield
-    clear_cache()
+    cache_clear()
 
 
 def build_nested_list(depth: int) -> type:

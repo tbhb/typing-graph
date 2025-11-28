@@ -21,7 +21,7 @@ import pytest
 
 from typing_graph import (
     InspectConfig,
-    clear_cache,
+    cache_clear,
     inspect_class,
     inspect_dataclass,
     inspect_enum,
@@ -240,9 +240,9 @@ class NotAnEnum:
 
 @pytest.fixture(autouse=True)
 def clear_type_cache() -> "Generator[None]":
-    clear_cache()
+    cache_clear()
     yield
-    clear_cache()
+    cache_clear()
 
 
 class TestDataclassType:

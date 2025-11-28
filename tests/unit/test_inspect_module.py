@@ -8,7 +8,7 @@ import pytest
 from typing_graph import (
     InspectConfig,
     ModuleTypes,
-    clear_cache,
+    cache_clear,
     inspect_module,
 )
 from typing_graph._node import (
@@ -27,9 +27,9 @@ if TYPE_CHECKING:
 
 @pytest.fixture(autouse=True)
 def clear_type_cache() -> "Generator[None]":
-    clear_cache()
+    cache_clear()
     yield
-    clear_cache()
+    cache_clear()
 
 
 def _create_sample_module() -> types.ModuleType:

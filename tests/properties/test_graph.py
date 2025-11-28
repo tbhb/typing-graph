@@ -22,7 +22,7 @@ from typing_graph import (
     TypeNode,
     UnionType,
     UnpackNode,
-    clear_cache,
+    cache_clear,
     inspect_type,
 )
 from typing_graph._node import LiteralStringType
@@ -213,7 +213,7 @@ def test_inspect_type_is_idempotent(annotation: Any) -> None:
     deadline=None,
 )
 def test_inspect_type_never_raises_unexpectedly(annotation: Any) -> None:
-    clear_cache()
+    cache_clear()
 
     # inspect_type should never raise exceptions for valid type annotations.
     # The only expected exception is NameError for EAGER mode with unresolvable
@@ -237,6 +237,6 @@ def test_inspect_type_never_raises_unexpectedly(annotation: Any) -> None:
 @given(type_annotations())
 @settings(deadline=None)
 def test_none_variants_all_produce_valid_nodes(annotation: Any) -> None:
-    clear_cache()
+    cache_clear()
     node = inspect_type(annotation)
     assert isinstance(node, TypeNode)

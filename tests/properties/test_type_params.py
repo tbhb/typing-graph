@@ -5,7 +5,7 @@ from typing_extensions import TypeVarTuple
 
 from hypothesis import HealthCheck, example, given, settings
 
-from typing_graph import Variance, clear_cache, inspect_type
+from typing_graph import Variance, cache_clear, inspect_type
 from typing_graph._node import (
     is_concrete_type,
     is_param_spec_node,
@@ -29,7 +29,7 @@ from .strategies import (
 @given(typevar_instances())
 @settings(suppress_health_check=[HealthCheck.too_slow], deadline=None)
 def test_typevar_is_correctly_recognized(tv: TypeVar) -> None:
-    clear_cache()
+    cache_clear()
     node = inspect_type(tv)
 
     assert is_type_var_node(node), f"Expected TypeVarNode, got {type(node).__name__}"
@@ -39,7 +39,7 @@ def test_typevar_is_correctly_recognized(tv: TypeVar) -> None:
 @given(typevar_instances())
 @settings(deadline=None)
 def test_typevar_variance_correctly_captured(tv: TypeVar) -> None:
-    clear_cache()
+    cache_clear()
     node = inspect_type(tv)
 
     assert is_type_var_node(node)
@@ -56,7 +56,7 @@ def test_typevar_variance_correctly_captured(tv: TypeVar) -> None:
 @given(typevar_instances())
 @settings(deadline=None)
 def test_typevar_bound_preserved(tv: TypeVar) -> None:
-    clear_cache()
+    cache_clear()
     node = inspect_type(tv)
 
     assert is_type_var_node(node)
@@ -73,7 +73,7 @@ def test_typevar_bound_preserved(tv: TypeVar) -> None:
 @given(typevar_instances())
 @settings(deadline=None)
 def test_typevar_constraints_preserved(tv: TypeVar) -> None:
-    clear_cache()
+    cache_clear()
     node = inspect_type(tv)
 
     assert is_type_var_node(node)
@@ -91,7 +91,7 @@ def test_typevar_constraints_preserved(tv: TypeVar) -> None:
 @given(typevar_instances())
 @settings(deadline=None)
 def test_typevar_metadata_and_qualifiers_empty(tv: TypeVar) -> None:
-    clear_cache()
+    cache_clear()
     node = inspect_type(tv)
 
     assert is_type_var_node(node)
@@ -102,7 +102,7 @@ def test_typevar_metadata_and_qualifiers_empty(tv: TypeVar) -> None:
 @given(typevar_instances())
 @settings(deadline=None)
 def test_typevar_children_match_bound_and_constraints(tv: TypeVar) -> None:
-    clear_cache()
+    cache_clear()
     node = inspect_type(tv)
 
     assert is_type_var_node(node)
@@ -128,7 +128,7 @@ def test_typevar_children_match_bound_and_constraints(tv: TypeVar) -> None:
 @given(typevar_instances())
 @settings(deadline=None)
 def test_typevar_inspection_is_idempotent(tv: TypeVar) -> None:
-    clear_cache()
+    cache_clear()
     node1 = inspect_type(tv)
     node2 = inspect_type(tv)
 
@@ -144,7 +144,7 @@ def test_typevar_inspection_is_idempotent(tv: TypeVar) -> None:
 @given(paramspec_instances())
 @settings(deadline=None)
 def test_paramspec_is_correctly_recognized(ps: ParamSpec) -> None:
-    clear_cache()
+    cache_clear()
     node = inspect_type(ps)
 
     assert is_param_spec_node(node), (
@@ -156,7 +156,7 @@ def test_paramspec_is_correctly_recognized(ps: ParamSpec) -> None:
 @given(paramspec_instances())
 @settings(deadline=None)
 def test_paramspec_metadata_and_qualifiers_empty(ps: ParamSpec) -> None:
-    clear_cache()
+    cache_clear()
     node = inspect_type(ps)
 
     assert is_param_spec_node(node)
@@ -167,7 +167,7 @@ def test_paramspec_metadata_and_qualifiers_empty(ps: ParamSpec) -> None:
 @given(paramspec_instances())
 @settings(deadline=None)
 def test_paramspec_children_empty(ps: ParamSpec) -> None:
-    clear_cache()
+    cache_clear()
     node = inspect_type(ps)
 
     assert is_param_spec_node(node)
@@ -179,7 +179,7 @@ def test_paramspec_children_empty(ps: ParamSpec) -> None:
 @given(paramspec_instances())
 @settings(deadline=None)
 def test_paramspec_inspection_is_idempotent(ps: ParamSpec) -> None:
-    clear_cache()
+    cache_clear()
     node1 = inspect_type(ps)
     node2 = inspect_type(ps)
 
@@ -195,7 +195,7 @@ def test_paramspec_inspection_is_idempotent(ps: ParamSpec) -> None:
 @given(typevartuple_instances())
 @settings(deadline=None)
 def test_typevartuple_is_correctly_recognized(tvt: TypeVarTuple) -> None:
-    clear_cache()
+    cache_clear()
     node = inspect_type(tvt)
 
     assert is_type_var_tuple_node(node), (
@@ -207,7 +207,7 @@ def test_typevartuple_is_correctly_recognized(tvt: TypeVarTuple) -> None:
 @given(typevartuple_instances())
 @settings(deadline=None)
 def test_typevartuple_metadata_and_qualifiers_empty(tvt: TypeVarTuple) -> None:
-    clear_cache()
+    cache_clear()
     node = inspect_type(tvt)
 
     assert is_type_var_tuple_node(node)
@@ -218,7 +218,7 @@ def test_typevartuple_metadata_and_qualifiers_empty(tvt: TypeVarTuple) -> None:
 @given(typevartuple_instances())
 @settings(deadline=None)
 def test_typevartuple_children_empty(tvt: TypeVarTuple) -> None:
-    clear_cache()
+    cache_clear()
     node = inspect_type(tvt)
 
     assert is_type_var_tuple_node(node)
@@ -230,7 +230,7 @@ def test_typevartuple_children_empty(tvt: TypeVarTuple) -> None:
 @given(typevartuple_instances())
 @settings(deadline=None)
 def test_typevartuple_inspection_is_idempotent(tvt: TypeVarTuple) -> None:
-    clear_cache()
+    cache_clear()
     node1 = inspect_type(tvt)
     node2 = inspect_type(tvt)
 
@@ -246,7 +246,7 @@ def test_typevartuple_inspection_is_idempotent(tvt: TypeVarTuple) -> None:
 @given(unpack_types())
 @settings(deadline=None)
 def test_unpack_is_correctly_recognized(unpack_type: object) -> None:
-    clear_cache()
+    cache_clear()
     node = inspect_type(unpack_type)
 
     assert is_unpack_node(node), f"Expected UnpackNode, got {type(node).__name__}"
@@ -255,7 +255,7 @@ def test_unpack_is_correctly_recognized(unpack_type: object) -> None:
 @given(unpack_types())
 @settings(deadline=None)
 def test_unpack_target_is_typevartuple(unpack_type: object) -> None:
-    clear_cache()
+    cache_clear()
     node = inspect_type(unpack_type)
 
     assert is_unpack_node(node)
@@ -265,7 +265,7 @@ def test_unpack_target_is_typevartuple(unpack_type: object) -> None:
 @given(unpack_types())
 @settings(deadline=None)
 def test_unpack_children_contains_target(unpack_type: object) -> None:
-    clear_cache()
+    cache_clear()
     node = inspect_type(unpack_type)
 
     assert is_unpack_node(node)
@@ -277,7 +277,7 @@ def test_unpack_children_contains_target(unpack_type: object) -> None:
 @given(unpack_types())
 @settings(deadline=None)
 def test_unpack_metadata_and_qualifiers_empty(unpack_type: object) -> None:
-    clear_cache()
+    cache_clear()
     node = inspect_type(unpack_type)
 
     assert is_unpack_node(node)
@@ -293,7 +293,7 @@ def test_unpack_metadata_and_qualifiers_empty(unpack_type: object) -> None:
 @given(typevar_instances())
 @settings(deadline=None)
 def test_typevar_infer_variance_is_boolean(tv: TypeVar) -> None:
-    clear_cache()
+    cache_clear()
     node = inspect_type(tv)
 
     assert is_type_var_node(node)

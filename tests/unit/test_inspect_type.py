@@ -42,7 +42,7 @@ from typing_graph import (
     NeverType,
     SelfType,
     Variance,
-    clear_cache,
+    cache_clear,
     get_type_hints_for_node,
     inspect_type,
     inspect_type_alias,
@@ -95,9 +95,9 @@ from typing_graph._node import (
 
 @pytest.fixture(autouse=True)
 def clear_type_cache() -> Generator[None]:
-    clear_cache()
+    cache_clear()
     yield
-    clear_cache()
+    cache_clear()
 
 
 class TestConcreteType:

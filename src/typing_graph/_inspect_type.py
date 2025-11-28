@@ -136,16 +136,65 @@ def _get_type_params(obj: Any) -> tuple[Any, ...]:
     return ()
 
 
-# Module-level cache for type inspection results.
-# Note: WeakValueDictionary cannot be used because TypeNode subclasses use
-# slots=True which prevents weak references. Users should call clear_cache()
-# periodically in long-running applications to prevent memory growth.
-_type_cache: dict[int, TypeNode] = {}
+class _TypeKey:
+    """Wrapper to make unhashable types cacheable by identity.
+
+    Generic aliases like list[int] are unhashable, so lru_cache can't use them
+    directly as keys. This wrapper makes any type hashable via id().
+
+    The identity comparison in __eq__ (using `is`) solves the id-reuse problem:
+    lru_cache holds strong references to keys, so while cached, the original
+    object can't be garbage collected. After LRU eviction, if the id is reused
+    by a new object, `is` returns False (different objects), causing a cache miss.
+    """
+
+    __slots__: tuple[str, ...] = ("obj",)
+    obj: Any
+
+    def __init__(self, obj: Any) -> None:
+        self.obj = obj
+
+    def __hash__(self) -> int:  # pyright: ignore[reportImplicitOverride]
+        return id(self.obj)
+
+    def __eq__(self, other: object) -> bool:  # pyright: ignore[reportImplicitOverride]
+        if isinstance(other, _TypeKey):
+            return self.obj is other.obj
+        return NotImplemented
 
 
-def clear_cache() -> None:
+@functools.cache
+def _inspect_type_cached(key: _TypeKey) -> TypeNode:
+    """Cached type inspection using default config.
+
+    This is the cached implementation used when config is DEFAULT_CONFIG.
+    The _TypeKey wrapper makes unhashable types cacheable.
+    """
+    _register_dispatch_tables()
+    _register_type_inspectors()
+    ctx = InspectContext(config=DEFAULT_CONFIG)
+    return _inspect_type(key.obj, ctx)
+
+
+def cache_clear() -> None:
     """Clear the global type inspection cache."""
-    _type_cache.clear()
+    _inspect_type_cached.cache_clear()
+
+
+def cache_info() -> functools._CacheInfo:  # pyright: ignore[reportPrivateUsage]
+    """Return type inspection cache statistics.
+
+    Returns a named tuple with hits, misses, maxsize, and currsize.
+    Useful for debugging and monitoring cache performance.
+
+    Returns:
+        A CacheInfo named tuple with:
+        - hits: Number of cache hits
+        - misses: Number of cache misses
+        - maxsize: Maximum cache size (None means unbounded)
+        - currsize: Current number of cached entries
+    """
+    return _inspect_type_cached.cache_info()
 
 
 class TypeInspector:
@@ -610,6 +659,7 @@ def inspect_type(
         annotation: Any valid type annotation.
         config: Introspection configuration. Uses defaults if None.
         use_cache: Whether to use the global cache (default True).
+            Note: Cache is only used when config is None or DEFAULT_CONFIG.
 
     Returns:
         A TypeNode representing the annotation's structure.
@@ -617,20 +667,14 @@ def inspect_type(
     _register_type_inspectors()
 
     config = config if config is not None else DEFAULT_CONFIG
-    cache_key = id(annotation) if use_cache else 0
 
-    if use_cache:
-        cached = _type_cache.get(cache_key)
-        if cached is not None:
-            return cached
+    # Use lru_cache only with default config (custom configs may need
+    # different forward ref resolution via globalns/localns)
+    if use_cache and config is DEFAULT_CONFIG:
+        return _inspect_type_cached(_TypeKey(annotation))
 
     ctx = InspectContext(config=config)
-    result = _inspect_type(annotation, ctx)
-
-    if use_cache:
-        _type_cache[cache_key] = result
-
-    return result
+    return _inspect_type(annotation, ctx)
 
 
 def _inspect_type(annotation: Any, ctx: InspectContext) -> TypeNode:

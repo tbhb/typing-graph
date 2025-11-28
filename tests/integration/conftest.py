@@ -11,7 +11,7 @@ from typing_extensions import Doc
 import pytest
 from annotated_types import Gt, MaxLen, MinLen
 
-from typing_graph import clear_cache
+from typing_graph import cache_clear
 
 _THIS_DIR = Path(__file__).parent
 
@@ -197,6 +197,6 @@ def has_metadata_of_type(metadata: tuple[object, ...], marker_type: type[_T]) ->
 @pytest.fixture(autouse=True)
 def clear_type_cache() -> "Generator[None]":
     """Clear the type inspection cache before and after each test."""
-    clear_cache()
+    cache_clear()
     yield
-    clear_cache()
+    cache_clear()

@@ -7,7 +7,7 @@ import pytest
 from typing_graph import (
     EvalMode,
     InspectConfig,
-    clear_cache,
+    cache_clear,
     inspect_function,
     inspect_signature,
 )
@@ -109,9 +109,9 @@ class MyClass:
 
 @pytest.fixture(autouse=True)
 def clear_type_cache() -> "Generator[None]":
-    clear_cache()
+    cache_clear()
     yield
-    clear_cache()
+    cache_clear()
 
 
 class TestFunctionNode:

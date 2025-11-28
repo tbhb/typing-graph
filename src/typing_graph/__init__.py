@@ -17,7 +17,8 @@ from ._inspect_class import (
 from ._inspect_function import inspect_function, inspect_signature
 from ._inspect_module import ModuleTypes, inspect_module
 from ._inspect_type import (
-    clear_cache,
+    cache_clear,
+    cache_info,
     get_type_hints_for_node,
     inspect_type,
     inspect_type_alias,
@@ -112,7 +113,8 @@ __all__ = [
     "UnpackNode",
     "Variance",
     "__version__",
-    "clear_cache",
+    "cache_clear",
+    "cache_info",
     "get_type_hints_for_node",
     "inspect_class",
     "inspect_dataclass",

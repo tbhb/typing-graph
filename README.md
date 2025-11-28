@@ -219,7 +219,8 @@ node = inspect_type(SomeType, config=config)
 | `inspect_module()`          | Discover all public types in a module       |
 | `inspect_type_alias()`      | Inspect a type alias                        |
 | `get_type_hints_for_node()` | Convert a node back to runtime type hints   |
-| `clear_cache()`             | Clear the global inspection cache           |
+| `cache_clear()`             | Clear the global inspection cache           |
+| `cache_info()`              | Get cache statistics                        |
 
 ## Documentation
 

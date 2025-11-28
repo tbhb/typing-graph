@@ -4,7 +4,7 @@ from typing import Any
 
 from hypothesis import HealthCheck, example, given, settings, strategies as st
 
-from typing_graph import EvalMode, InspectConfig, clear_cache, inspect_type
+from typing_graph import EvalMode, InspectConfig, cache_clear, inspect_type
 from typing_graph._node import (
     is_forward_ref_node,
     is_ref_state_failed,
@@ -131,7 +131,7 @@ def test_max_depth_none_vs_explicit_limit(max_depth: int) -> None:
 
     # Clear cache before testing - the cache is keyed by annotation id, not config,
     # so we need to clear it to get fresh results for different max_depth values
-    clear_cache()
+    cache_clear()
 
     # With unlimited depth
     unlimited_config = InspectConfig(max_depth=None)
@@ -139,7 +139,7 @@ def test_max_depth_none_vs_explicit_limit(max_depth: int) -> None:
     unlimited_depth = measure_depth(unlimited_node)
 
     # Clear cache again before limited depth test
-    clear_cache()
+    cache_clear()
 
     # With limited depth
     limited_config = InspectConfig(max_depth=max_depth)
@@ -169,7 +169,7 @@ def test_eval_mode_affects_unresolvable_ref_state(
 ) -> None:
     # Use unique ref name per invocation to avoid cache collisions
     ref_name = f"NonExistent{ref_suffix}"
-    clear_cache()  # Ensure clean state for this test
+    cache_clear()  # Ensure clean state for this test
 
     config = InspectConfig(eval_mode=eval_mode)
     node = inspect_type(ref_name, config=config)
@@ -198,7 +198,7 @@ def test_max_depth_exceeded_returns_failed_state(max_depth: int) -> None:
     This test specifically verifies the state TYPE is Failed (not Unresolved)
     when depth limit is exceeded, killing mutants that change the state type.
     """
-    clear_cache()
+    cache_clear()
 
     # Create a type deeper than max_depth
     deep_type = list[list[list[list[list[int]]]]]
@@ -229,7 +229,7 @@ def test_recursive_string_ref_returns_unresolved(ref_name: str) -> None:
     This tests the cycle detection code path in _inspect_string_annotation
     that checks `if ref in ctx.resolving`.
     """
-    clear_cache()
+    cache_clear()
 
     # Create a namespace where the ref refers to itself (self-referential)
     # When resolve is attempted, it would recurse infinitely without cycle detection

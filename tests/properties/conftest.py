@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from hypothesis import HealthCheck, Phase, Verbosity, settings
 
-from typing_graph import clear_cache
+from typing_graph import cache_clear
 
 _THIS_DIR = Path(__file__).parent
 
@@ -50,9 +50,9 @@ settings.load_profile("dev")
 
 
 @pytest.fixture(autouse=True)
-def clear_cache_between_tests():
+def cache_clear_between_tests():
     """Clear type cache before and after each test."""
 
-    clear_cache()
+    cache_clear()
     yield
-    clear_cache()
+    cache_clear()

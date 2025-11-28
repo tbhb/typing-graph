@@ -4,7 +4,7 @@ from typing import Annotated, Any, ClassVar, Final, Literal
 
 from hypothesis import HealthCheck, example, given, settings
 
-from typing_graph import TypeNode, clear_cache, inspect_type
+from typing_graph import TypeNode, cache_clear, inspect_type
 
 from .helpers import nodes_structurally_equal
 from .strategies import type_annotations
@@ -24,7 +24,7 @@ from .strategies import type_annotations
 @example(ClassVar[int])
 @example(Final[str])
 def test_cache_returns_identical_objects(annotation: Any) -> None:
-    clear_cache()
+    cache_clear()
     result1 = inspect_type(annotation, use_cache=True)
     result2 = inspect_type(annotation, use_cache=True)
 
@@ -42,7 +42,7 @@ def test_cache_returns_identical_objects(annotation: Any) -> None:
 @example(ClassVar[int])
 @example(Final[str])
 def test_cache_disabled_returns_different_objects(annotation: Any) -> None:
-    clear_cache()
+    cache_clear()
     result1 = inspect_type(annotation, use_cache=False)
     result2 = inspect_type(annotation, use_cache=False)
 
@@ -57,9 +57,9 @@ def test_cache_disabled_returns_different_objects(annotation: Any) -> None:
 @example(list[int])
 @example(dict[str, int])
 @example(int | str)
-def test_clear_cache_invalidates_results(annotation: Any) -> None:
+def test_cache_clear_invalidates_results(annotation: Any) -> None:
     result1 = inspect_type(annotation, use_cache=True)
-    clear_cache()
+    cache_clear()
     result2 = inspect_type(annotation, use_cache=True)
 
     # After clearing cache, results should be different objects
@@ -80,7 +80,7 @@ def test_clear_cache_invalidates_results(annotation: Any) -> None:
 @example(ClassVar[int])
 @example(Final[str])
 def test_caching_does_not_affect_result_structure(annotation: Any) -> None:
-    clear_cache()
+    cache_clear()
     cached = inspect_type(annotation, use_cache=True)
     uncached = inspect_type(annotation, use_cache=False)
 
@@ -95,7 +95,7 @@ def test_caching_does_not_affect_result_structure(annotation: Any) -> None:
 @example(list[int])
 @example(Annotated[int, "meta"])
 def test_cache_disabled_produces_equivalent_results(annotation: Any) -> None:
-    clear_cache()
+    cache_clear()
     result1 = inspect_type(annotation, use_cache=False)
     result2 = inspect_type(annotation, use_cache=False)
 
@@ -111,7 +111,7 @@ def test_cache_disabled_produces_equivalent_results(annotation: Any) -> None:
 
 
 def test_default_caching_behavior_is_enabled() -> None:
-    clear_cache()
+    cache_clear()
 
     # Call without specifying use_cache - should use default (True)
     result1 = inspect_type(int)
@@ -122,7 +122,7 @@ def test_default_caching_behavior_is_enabled() -> None:
 
 
 def test_different_types_have_different_cache_entries() -> None:
-    clear_cache()
+    cache_clear()
 
     int_node = inspect_type(int, use_cache=True)
     str_node = inspect_type(str, use_cache=True)
@@ -136,7 +136,7 @@ def test_different_types_have_different_cache_entries() -> None:
 
 
 def test_cache_actually_returns_stored_value() -> None:
-    clear_cache()
+    cache_clear()
 
     first = inspect_type(int, use_cache=True)
     second = inspect_type(int, use_cache=True)
@@ -153,7 +153,7 @@ def test_cache_actually_returns_stored_value() -> None:
 @example(list[int])
 @example(dict[str, int])
 def test_cached_result_is_valid_typenode(annotation: Any) -> None:
-    clear_cache()
+    cache_clear()
 
     first = inspect_type(annotation, use_cache=True)
     cached = inspect_type(annotation, use_cache=True)
@@ -168,7 +168,7 @@ def test_cached_result_is_valid_typenode(annotation: Any) -> None:
 @example(list[int])
 @example(Annotated[int, "meta"])
 def test_cache_stores_actual_result_not_none(annotation: Any) -> None:
-    clear_cache()
+    cache_clear()
 
     result = inspect_type(annotation, use_cache=True)
     assert isinstance(result, TypeNode)

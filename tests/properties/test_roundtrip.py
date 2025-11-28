@@ -7,7 +7,7 @@ from typing_extensions import Never, Self
 
 from hypothesis import HealthCheck, example, given, settings
 
-from typing_graph import clear_cache, get_type_hints_for_node, inspect_type
+from typing_graph import cache_clear, get_type_hints_for_node, inspect_type
 from typing_graph._node import is_concrete_type
 
 from .strategies import primitive_types, roundtrippable_annotations
@@ -166,7 +166,7 @@ def _types_equivalent(  # noqa: PLR0911, PLR0912 - Inherently complex type dispa
 def test_roundtrip_preserves_structure(annotation: Any) -> None:
     # Clear cache to avoid stale entries from other tests when Hypothesis
     # replays examples from its database
-    clear_cache()
+    cache_clear()
     node = inspect_type(annotation)
     reconstructed = get_type_hints_for_node(node)
 
@@ -190,7 +190,7 @@ def test_roundtrip_preserves_structure(annotation: Any) -> None:
 def test_concrete_type_cls_attribute_preserved(cls: type) -> None:
     # Clear cache to avoid stale entries from other tests when Hypothesis
     # replays examples from its database
-    clear_cache()
+    cache_clear()
     node = inspect_type(cls)
 
     assert is_concrete_type(node), f"Expected ConcreteType for {cls}, got {type(node)}"
@@ -214,7 +214,7 @@ def test_concrete_type_cls_attribute_preserved(cls: type) -> None:
 def test_roundtrip_without_extras_strips_metadata(annotation: Any) -> None:
     # Clear cache to avoid stale entries from other tests when Hypothesis
     # replays examples from its database
-    clear_cache()
+    cache_clear()
     node = inspect_type(annotation)
 
     # Get type hint without metadata (include_extras=False)

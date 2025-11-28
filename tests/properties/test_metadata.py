@@ -247,9 +247,9 @@ def test_classvar_annotated_preserves_qualifier() -> None:
     when both sides have the same qualifier.
     """
     # ClassVar around Annotated
-    from typing_graph import clear_cache
+    from typing_graph import cache_clear
 
-    clear_cache()
+    cache_clear()
     ann = ClassVar[_make_annotated(int, "meta")]
     node = inspect_type(ann)
 
@@ -264,9 +264,9 @@ def test_classvar_annotated_preserves_qualifier() -> None:
 
 def test_final_annotated_preserves_qualifier() -> None:
     """Test that Final qualifier is preserved when combined with Annotated."""
-    from typing_graph import clear_cache
+    from typing_graph import cache_clear
 
-    clear_cache()
+    cache_clear()
     ann = Final[_make_annotated(str, "description")]
     node = inspect_type(ann)
 
@@ -281,9 +281,9 @@ def test_final_annotated_preserves_qualifier() -> None:
 
 def test_annotated_classvar_preserves_qualifier() -> None:
     """Test that ClassVar inside Annotated preserves qualifier."""
-    from typing_graph import clear_cache
+    from typing_graph import cache_clear
 
-    clear_cache()
+    cache_clear()
     ann = _make_annotated(ClassVar[int], "meta")
     node = inspect_type(ann)
 
