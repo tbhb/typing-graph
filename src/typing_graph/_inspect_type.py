@@ -149,7 +149,7 @@ def clear_cache() -> None:
 
 
 class TypeInspector:
-    """Protocol for type inspector functions.
+    """Callable interface for type inspector functions.
 
     Type inspectors are registered in a priority order and called sequentially.
     Each inspector examines an annotation and either:
@@ -1108,6 +1108,11 @@ def resolve_forward_ref(
 ) -> TypeNode:
     """Resolve a forward reference to a TypeNode.
 
+    Warning:
+        Forward reference resolution uses Python's eval() function.
+        Do not use this function with untrusted type annotations,
+        as malicious forward references could execute arbitrary code.
+
     Args:
         ref: A string or ForwardRef to resolve.
         globalns: Global namespace for resolution.
@@ -1117,7 +1122,8 @@ def resolve_forward_ref(
         A TypeNode representing the resolved reference.
 
     Raises:
-        NameError: If eval_mode is EAGER and resolution fails.
+        NameError: If the forward reference cannot be resolved in the
+            provided namespaces.
     """
     config = InspectConfig(
         eval_mode=EvalMode.EAGER,
@@ -1146,6 +1152,12 @@ def get_type_hints_for_node(  # noqa: PLR0912, PLR0915 - Inherently complex type
 
     Returns:
         A runtime type annotation corresponding to the node.
+
+    Raises:
+        TypeError: If the node is a TypeVarNode, ParamSpecNode,
+            TypeVarTupleNode, or a CallableType with ParamSpec parameters.
+            These types cannot be reconstructed because the original
+            TypeVar/ParamSpec objects are not preserved.
     """
     result: Any
 
