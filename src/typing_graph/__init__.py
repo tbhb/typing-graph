@@ -69,7 +69,7 @@ from ._node import (
     TypeParamNode,
     TypeVarNode,
     TypeVarTupleNode,
-    UnionType,
+    UnionTypeNode,
     UnpackNode,
     Variance,
     # Type guards
@@ -165,7 +165,7 @@ __all__ = [
     "TypeVarNode",
     "TypeVarTupleNode",
     "TypedDictType",
-    "UnionType",
+    "UnionTypeNode",
     "UnpackNode",
     "Variance",
     "__version__",

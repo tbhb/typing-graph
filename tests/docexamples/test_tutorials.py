@@ -41,7 +41,7 @@ def get_common_globals() -> dict[str, object]:
         SubscriptedGeneric,
         TypedDictType,
         TypeNode,
-        UnionType,
+        UnionTypeNode,
         cache_clear,
         cache_info,
         inspect_class,
@@ -82,7 +82,7 @@ def get_common_globals() -> dict[str, object]:
         "SubscriptedGeneric": SubscriptedGeneric,
         "TypedDictType": TypedDictType,
         "TypeNode": TypeNode,
-        "UnionType": UnionType,
+        "UnionType": UnionTypeNode,
         # typing_graph functions
         "cache_clear": cache_clear,
         "cache_info": cache_info,

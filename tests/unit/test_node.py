@@ -32,7 +32,7 @@ from typing_graph import (
     TypeNode,
     TypeVarNode,
     TypeVarTupleNode,
-    UnionType,
+    UnionTypeNode,
 )
 from typing_graph._node import (
     AnnotatedType,
@@ -105,7 +105,7 @@ class TestTypeVarNode:
 class TestUnionType:
     def test_union_children(self) -> None:
         members = (ConcreteType(cls=int), ConcreteType(cls=str))
-        node = UnionType(members=members)
+        node = UnionTypeNode(members=members)
         assert len(node.children()) == 2
 
 
@@ -136,7 +136,7 @@ class TestTypeGuards:
 
     def test_is_union_type_node(self) -> None:
         members = (ConcreteType(cls=int), ConcreteType(cls=str))
-        assert is_union_type_node(UnionType(members=members)) is True
+        assert is_union_type_node(UnionTypeNode(members=members)) is True
         assert is_union_type_node(ConcreteType(cls=int)) is False
 
     def test_is_tuple_type_node(self) -> None:
@@ -216,14 +216,14 @@ class TestTypeGuards:
             variants={"a": ConcreteType(cls=dict), "b": ConcreteType(cls=list)},
         )
         assert is_discriminated_union_node(node) is True
-        assert is_discriminated_union_node(UnionType(members=())) is False
+        assert is_discriminated_union_node(UnionTypeNode(members=())) is False
 
     def test_is_intersection_type_node(self) -> None:
         node = IntersectionType(
             members=(ConcreteType(cls=dict), ConcreteType(cls=list))
         )
         assert is_intersection_type_node(node) is True
-        assert is_intersection_type_node(UnionType(members=())) is False
+        assert is_intersection_type_node(UnionTypeNode(members=())) is False
 
     def test_is_named_tuple_type_node(self) -> None:
         node = NamedTupleType(
@@ -398,7 +398,7 @@ class TestNodeHashability:
 
     def test_complex_nodes_usable_as_dict_keys(self) -> None:
         cache: dict[TypeNode, str] = {}
-        union = UnionType(members=(ConcreteType(cls=int), ConcreteType(cls=str)))
+        union = UnionTypeNode(members=(ConcreteType(cls=int), ConcreteType(cls=str)))
         callable_node = CallableType(
             params=(ConcreteType(cls=int),),
             returns=ConcreteType(cls=str),

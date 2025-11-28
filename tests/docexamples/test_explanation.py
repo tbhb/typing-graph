@@ -60,7 +60,7 @@ def get_common_globals() -> dict[str, object]:
         TypeNode,
         TypeVarNode,
         TypeVarTupleNode,
-        UnionType,
+        UnionTypeNode,
         Variance,
         cache_clear,
         cache_info,
@@ -126,7 +126,7 @@ def get_common_globals() -> dict[str, object]:
         "TypeNode": TypeNode,
         "TypeVarNode": TypeVarNode,
         "TypeVarTupleNode": TypeVarTupleNode,
-        "UnionType": UnionType,
+        "UnionType": UnionTypeNode,
         "Variance": Variance,
         # typing_graph functions
         "cache_clear": cache_clear,

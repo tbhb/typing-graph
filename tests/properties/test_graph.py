@@ -20,7 +20,7 @@ from typing_graph import (
     TypeGuardType,
     TypeIsType,
     TypeNode,
-    UnionType,
+    UnionTypeNode,
     UnpackNode,
     cache_clear,
     inspect_type,
@@ -48,7 +48,7 @@ LEAF_TYPES = (
 # Note: CallableType with empty params still has return type child
 CONTAINER_TYPES = (
     SubscriptedGeneric,
-    UnionType,
+    UnionTypeNode,
     MetaType,
     TypeGuardType,
     TypeIsType,
