@@ -383,7 +383,9 @@ mutation-report.html
 
 # Coverage reports
 coverage.json
+coverage-*.json
 coverage.xml
+coverage-*.xml
 
 # Local configuration
 mise.local.toml
@@ -401,3 +403,6 @@ tmp/
 !.vale/config/vocabularies/
 .vale/config/vocabularies/*
 !.vale/config/vocabularies/typing-graph/
+
+# Additional venvs
+.venv-*/

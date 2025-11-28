@@ -1,6 +1,12 @@
 set unstable
 
 uv := "uv run --frozen"
+uv311 := "UV_PROJECT_ENVIRONMENT=.venv-3.11 uv run --frozen --python 3.11"
+uv312 := "UV_PROJECT_ENVIRONMENT=.venv-3.12 uv run --frozen --python 3.12"
+uv313 := "UV_PROJECT_ENVIRONMENT=.venv-3.13 uv run --frozen --python 3.13"
+uv313t := "UV_PROJECT_ENVIRONMENT=.venv-3.13t uv run --frozen --python 3.13t"
+uv314 := "UV_PROJECT_ENVIRONMENT=.venv-3.14 uv run --frozen --python 3.14"
+uv314t := "UV_PROJECT_ENVIRONMENT=.venv-3.14t uv run --frozen --python 3.14t"
 uv_release := "uv run --frozen --group release"
 pnpm := "pnpm exec"
 
@@ -21,17 +27,65 @@ install-node:
 install-python:
   uv sync --frozen
 
-# Run tests
+# Run tests (optionally specify Python version as first arg: 3.14, 3.14t, or "all")
+[script("bash")]
 test *args:
-  {{uv}} pytest "$@"
+  set -euo pipefail
 
-# Run tests with coverage
-test-coverage *args:
-  {{uv}} pytest --cov=typing_graph --cov-report=term-missing --cov-branch "$@"
+  args=({{args}})
+
+  run_pytest() {
+    local version="$1"
+    shift
+    if [[ -z "$version" ]]; then
+      uv run --frozen pytest "$@"
+    else
+      UV_PROJECT_ENVIRONMENT=".venv-$version" uv run --frozen --python "$version" pytest "$@"
+    fi
+  }
+
+  if [[ ${#args[@]} -eq 0 ]]; then
+    run_pytest ""
+    exit 0
+  fi
+
+  first="${args[0]}"
+  rest=("${args[@]:1}")
+
+  # Check if first arg is "all" to run all versions
+  if [[ "$first" == "all" ]]; then
+    for ver in "" 3.11 3.12 3.13 3.13t 3.14 3.14t; do
+      if [[ -z "$ver" ]]; then
+        echo "=== Testing with default Python ==="
+      else
+        echo "=== Testing with Python $ver ==="
+      fi
+      run_pytest "$ver" "${rest[@]}"
+    done
+    exit 0
+  fi
+
+  # Check if first arg is a Python version like 3.10, 3.14t, etc.
+  if [[ "$first" =~ ^3\.[0-9]+t?$ ]]; then
+    run_pytest "$first" "${rest[@]}" --cov-report json:coverage-$first.json
+  else
+    run_pytest "" "${args[@]}"
+  fi
+
+# Run only failed tests from last run
+test-failed *args: (test args "--lf")
 
 # Run tests with coverage for CI (generates XML report)
 test-coverage-ci *args:
   {{uv}} pytest --cov=typing_graph --cov-report=xml --cov-branch "$@"
+
+# Run property tests with specified Hypothesis profile (dev, ci, thorough, debug)
+test-properties profile="dev" *args:
+  {{uv}} pytest tests/properties/ --hypothesis-profile={{profile}} "$@"
+
+# Run documentation example tests
+test-docs *args:
+  {{uv}} pytest tests/docexamples/ -v "$@"
 
 # Format code
 format:
@@ -145,14 +199,6 @@ benchmark-check baseline="baseline": install
   {{uv}} pytest tests/benchmarks/ \
     --benchmark-compare=.benchmarks/{{baseline}}.json \
     --benchmark-compare-fail=median:15%
-
-# Run property tests with specified Hypothesis profile (dev, ci, thorough, debug)
-test-properties profile="dev" *args:
-  {{uv}} pytest tests/properties/ --hypothesis-profile={{profile}} "$@"
-
-# Run documentation example tests
-test-docs *args:
-  {{uv}} pytest tests/docexamples/ -v "$@"
 
 # Update documentation examples (refresh output blocks)
 update-docs *args:
