@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "typing-graph"
+abstract: "A Python library for inspecting and querying metadata from type annotations."
+authors:
+  - family-names: Burns
+    given-names: Tony
+    orcid: "https://orcid.org/0009-0006-4480-2939"
+repository-code: "https://github.com/tbhb/typing-graph"
+url: "https://github.com/tbhb/typing-graph"
+license: MIT
+version: "0.1.0"
+date-released: "2025-01-15"
+keywords:
+  - python
+  - typing
+  - type-annotations
+  - metadata
+  - introspection

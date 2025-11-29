@@ -3,11 +3,12 @@
 # requires-python = ">=3.10"
 # dependencies = []
 # ///
-"""Bump version in pyproject.toml following PEP 440."""
+"""Bump version in pyproject.toml and CITATION.cff following PEP 440."""
 
 import re
 import sys
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 
 # PEP 440 version pattern
@@ -89,8 +90,41 @@ def bump_version(current: str, bump_type: str) -> str:  # noqa: PLR0911
             raise ValueError(msg)
 
 
+def update_citation_cff(new_version: str) -> bool:
+    """Update version and date-released in CITATION.cff if it exists."""
+    citation_path = Path("CITATION.cff")
+
+    if not citation_path.exists():
+        print("Warning: CITATION.cff not found, skipping", file=sys.stderr)
+        return False
+
+    content = citation_path.read_text()
+    today = datetime.now(tz=timezone.utc).date().isoformat()
+
+    # Update version field
+    new_content = re.sub(
+        r'^version:\s*["\']?[^"\'\n]+["\']?',
+        f'version: "{new_version}"',
+        content,
+        count=1,
+        flags=re.MULTILINE,
+    )
+
+    # Update date-released field
+    new_content = re.sub(
+        r'^date-released:\s*["\']?[^"\'\n]+["\']?',
+        f'date-released: "{today}"',
+        new_content,
+        count=1,
+        flags=re.MULTILINE,
+    )
+
+    _ = citation_path.write_text(new_content)
+    return True
+
+
 def main() -> int:
-    """Bump version in pyproject.toml."""
+    """Bump version in pyproject.toml and CITATION.cff."""
     if len(sys.argv) != EXPECTED_ARGS:
         print("Usage: version_bump.py <type>", file=sys.stderr)
         print("Types: major, minor, patch, dev, alpha, beta, rc, post", file=sys.stderr)
@@ -131,8 +165,12 @@ def main() -> int:
         flags=re.MULTILINE,
     )
     _ = pyproject_path.write_text(new_content)
-
     print("\u2713 Updated pyproject.toml")
+
+    # Update CITATION.cff
+    if update_citation_cff(new):
+        print("\u2713 Updated CITATION.cff")
+
     return 0
 
 
