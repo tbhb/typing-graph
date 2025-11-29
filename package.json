@@ -1,12 +1,7 @@
 {
-  "name": "aclaf",
+  "name": "typing-graph",
+  "private": true,
   "version": "0.1.0",
-  "author": {
-    "name": "Tony Burns",
-    "email": "tony@tonyburns.net"
-  },
-  "description": "Personal development environment tools.",
-  "license": "MIT",
   "packageManager": "pnpm@10.23.0",
   "type": "module",
   "devDependencies": {
