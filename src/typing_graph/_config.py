@@ -22,6 +22,13 @@ class EvalMode(Enum):
     STRINGIFIED = auto()
 
 
+EVAL_MODE_TO_FORMAT: Final[dict[EvalMode, Format]] = {
+    EvalMode.EAGER: Format.VALUE,
+    EvalMode.DEFERRED: Format.FORWARDREF,
+    EvalMode.STRINGIFIED: Format.STRING,
+}
+
+
 @dataclass(slots=True)
 class InspectConfig:
     """Configuration for type introspection.
@@ -70,11 +77,7 @@ class InspectConfig:
         Returns:
             The Format corresponding to the current eval_mode.
         """
-        return {
-            EvalMode.EAGER: Format.VALUE,
-            EvalMode.DEFERRED: Format.FORWARDREF,
-            EvalMode.STRINGIFIED: Format.STRING,
-        }[self.eval_mode]
+        return EVAL_MODE_TO_FORMAT[self.eval_mode]
 
 
 DEFAULT_CONFIG: Final[InspectConfig] = InspectConfig()
