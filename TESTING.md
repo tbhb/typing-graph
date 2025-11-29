@@ -428,27 +428,29 @@ This is useful in CI to catch performance regressions before merging. The 15% me
 
 Mutation testing verifies that tests catch bugs by introducing small changes (mutations) to the code.
 
+### Worktree isolation
+
+Mutation testing runs in an isolated git worktree (`.mutation-worktree/`) to avoid modifying source files in the main working directory. This allows you to continue development while mutation tests run.
+
+The session database (`session.sqlite`) is stored in the main project directory so you can view results without entering the worktree.
+
 ### Running mutation tests
 
-Using `just` recipes:
-
 ```bash
-just mutation-init      # Initialize session (baseline + generate mutants)
-just mutation-run       # Execute mutation testing
+just mutation-init      # Create worktree and initialize session
+just mutation-run       # Execute mutation testing in worktree
+just mutation-resume    # Resume interrupted run
 just mutation-results   # View results summary
 just mutation-html      # Generate HTML report
-just mutation-clean     # Clean session files
+just mutation-status    # Show worktree and session status
+just mutation-clean     # Remove worktree and session files
 ```
 
-Using `just run` directly:
+**Options:**
 
-```bash
-just run cosmic-ray baseline cosmic-ray.toml  # Verify tests pass
-just run cosmic-ray init cosmic-ray.toml session.sqlite  # Generate mutants
-just run cosmic-ray exec cosmic-ray.toml session.sqlite  # Run mutations
-just run cr-report session.sqlite             # View results
-just run cr-html session.sqlite > report.html # HTML report
-```
+- `just mutation-init --fresh` - Force recreation of worktree
+- Staged changes are automatically included in mutation testing
+- Unstaged changes are NOT included (you'll see a warning)
 
 ### Interpreting results
 
@@ -464,6 +466,17 @@ When mutations survive:
 2. Determine if it's a meaningful change
 3. Add a test that catches the mutation
 4. Re-run mutation testing to verify
+
+### Configuration
+
+The module to mutate is configured in `cosmic-ray.toml`:
+
+```toml
+[cosmic-ray]
+module-path = "src/typing_graph/_metadata.py"
+timeout = 60.0
+test-command = "uv run pytest tests/ -x -q --no-cov"
+```
 
 ## Coverage
 

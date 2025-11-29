@@ -41,6 +41,7 @@ coverage.xml
 # Mutation testing
 *.sqlite
 mutation-report.html
+.mutation-worktree/
 
 # Documentation
 site/

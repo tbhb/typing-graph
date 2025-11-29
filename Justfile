@@ -154,16 +154,19 @@ benchmark-check baseline="baseline": install
 update-docs *args:
   {{uv}} pytest tests/docexamples/ --update-examples "$@"
 
-# Initialize mutation testing session
-mutation-init:
-  {{uv}} cosmic-ray baseline cosmic-ray.toml
-  {{uv}} cosmic-ray init cosmic-ray.toml session.sqlite
+# Initialize mutation testing (creates worktree if needed)
+mutation-init *args:
+  scripts/mutation-worktree.sh init {{args}}
 
-# Run mutation testing
+# Run mutation testing in worktree
 mutation-run:
-  {{uv}} cosmic-ray exec cosmic-ray.toml session.sqlite
+  scripts/mutation-worktree.sh exec
 
-# Show mutation testing results
+# Resume interrupted mutation run
+mutation-resume:
+  scripts/mutation-worktree.sh exec --resume
+
+# Show mutation testing results (works from main dir)
 mutation-results:
   {{uv}} cr-report session.sqlite
 
@@ -171,9 +174,67 @@ mutation-results:
 mutation-html:
   {{uv}} cr-html session.sqlite > mutation-report.html
 
-# Clean mutation testing artifacts
+# Show worktree and session status
+mutation-status:
+  scripts/mutation-worktree.sh status
+
+# Clean worktree and artifacts
 mutation-clean:
-  rm -f session.sqlite *-session.sqlite mutation-report.html
+  scripts/mutation-worktree.sh clean
+
+# List surviving mutants (tests didn't catch)
+mutation-survivors:
+  @sqlite3 -header -column session.sqlite \
+    "SELECT ms.job_id, ms.operator_name, ms.occurrence, ms.start_pos_row as line, wr.diff \
+     FROM mutation_specs ms \
+     JOIN work_results wr ON ms.job_id = wr.job_id \
+     WHERE wr.test_outcome = 'SURVIVED' \
+     ORDER BY ms.start_pos_row"
+
+# List killed mutants (tests caught)
+mutation-killed:
+  @sqlite3 -header -column session.sqlite \
+    "SELECT ms.job_id, ms.operator_name, ms.occurrence, ms.start_pos_row as line \
+     FROM mutation_specs ms \
+     JOIN work_results wr ON ms.job_id = wr.job_id \
+     WHERE wr.test_outcome = 'KILLED' \
+     ORDER BY ms.start_pos_row"
+
+# Show mutation summary statistics
+mutation-summary:
+  @echo "=== Mutation Testing Summary ==="
+  @sqlite3 -header -column session.sqlite \
+    "SELECT test_outcome, COUNT(*) as count FROM work_results GROUP BY test_outcome ORDER BY count DESC"
+  @echo ""
+  @echo "Total mutants: $(sqlite3 session.sqlite 'SELECT COUNT(*) FROM mutation_specs')"
+  @echo "Completed: $(sqlite3 session.sqlite 'SELECT COUNT(*) FROM work_results')"
+  @echo "Survival rate: $(sqlite3 session.sqlite 'SELECT ROUND(100.0 * SUM(CASE WHEN test_outcome = '\''SURVIVED'\'' THEN 1 ELSE 0 END) / COUNT(*), 1) FROM work_results')%"
+
+# List pending mutants (not yet tested)
+mutation-pending:
+  @sqlite3 -header -column session.sqlite \
+    "SELECT job_id, operator_name, occurrence, start_pos_row as line \
+     FROM mutation_specs \
+     WHERE job_id NOT IN (SELECT job_id FROM work_results) \
+     ORDER BY start_pos_row"
+
+# Show details for a specific mutant by job_id
+mutation-show job_id:
+  @sqlite3 -header -column session.sqlite \
+    "SELECT * FROM mutation_specs WHERE job_id = '{{job_id}}'"
+  @echo ""
+  @sqlite3 -header -column session.sqlite \
+    "SELECT * FROM work_results WHERE job_id = '{{job_id}}'"
+
+# Count survivors by operator type
+mutation-survivors-by-operator:
+  @sqlite3 -header -column session.sqlite \
+    "SELECT ms.operator_name, COUNT(*) as count \
+     FROM mutation_specs ms \
+     JOIN work_results wr ON ms.job_id = wr.job_id \
+     WHERE wr.test_outcome = 'SURVIVED' \
+     GROUP BY ms.operator_name \
+     ORDER BY count DESC"
 
 # Build the latest documentation
 build-docs: clean
