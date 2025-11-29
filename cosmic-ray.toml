@@ -1,17 +1,20 @@
 # Cosmic Ray mutation testing configuration
+# This configuration targets MetadataCollection for mutation testing.
+# See .internal/plans/mutation-test-focus.json for mutation targets.
 
 [cosmic-ray]
 # Target module for mutation testing
-module-path = "src/typing_graph/_inspect_type.py"
+module-path = "src/typing_graph/_metadata.py"
 
-# Timeout per test run (seconds) - handles infinite loops
+# Timeout per test run (seconds) - handles infinite loops from recursive mutations
 timeout = 60.0
 
 # Exclude test files from mutation
 excluded-modules = []
 
 # Test command - pytest with fail-fast for efficiency
-test-command = "uv run pytest tests/ -x -q"
+# Uses -x to stop on first failure, -q for quiet output
+test-command = "uv run pytest tests/ -x -q --no-cov"
 
 [cosmic-ray.distributor]
 name = "local"
