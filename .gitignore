@@ -363,6 +363,7 @@ vite.config.ts.timestamp-*
 !GEMINI.md
 
 # Local documentation
+.internal
 plans
 reports
 research

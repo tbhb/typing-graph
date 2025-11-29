@@ -66,7 +66,7 @@ docs = [
 release = ["cyclonedx-bom>=7.2.1"]
 
 [tool.basedpyright]
-exclude = ["**/node_modules", "**/tmp", "examples/**"]
+exclude = ["**/node_modules", "**/tmp", "examples/**", ".internal/**"]
 include = ["src", "tests"]
 pythonVersion = "3.10"
 reportImportCycles = "error"
@@ -122,7 +122,7 @@ markers = [
 branch = true
 source = ["src/typing_graph"]
 relative_files = true
-omit = ["tests/*", "**/__pycache__/*", "**/site-packages/*"]
+omit = ["tests/*", "**/__pycache__/*", "**/site-packages/*", ".internal/**/*"]
 
 [tool.coverage.report]
 exclude_lines = [
@@ -146,7 +146,12 @@ output = "coverage.xml"
 directory = "htmlcov"
 
 [tool.ruff]
-extend-exclude = ["**/node_modules/**", "**/tmp/**", "examples/**"]
+extend-exclude = [
+  "**/node_modules/**",
+  "**/tmp/**",
+  "examples/**",
+  ".internal/**",
+]
 force-exclude = true
 target-version = "py310"
 
