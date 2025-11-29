@@ -35,6 +35,7 @@ from ._config import (
     InspectConfig,
 )
 from ._context import InspectContext, get_source_location
+from ._metadata import MetadataCollection
 from ._node import (
     AnyNode,
     CallableNode,
@@ -725,7 +726,7 @@ def _inspect_type(annotation: Any, ctx: InspectContext) -> TypeNode:
     # Get the unwrapped type, qualifiers, and metadata
     unwrapped_type = inspected.type
     qualifiers = frozenset(inspected.qualifiers)
-    metadata = tuple(inspected.metadata)
+    metadata = MetadataCollection.of(inspected.metadata)
 
     # Handle UNKNOWN sentinel (bare qualifiers like `x: Final`)
     if unwrapped_type is UNKNOWN:

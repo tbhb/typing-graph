@@ -21,10 +21,6 @@ from .strategies import (
     unpack_types,
 )
 
-# =============================================================================
-# TypeVar Property Tests
-# =============================================================================
-
 
 @given(typevar_instances())
 @settings(suppress_health_check=[HealthCheck.too_slow], deadline=None)
@@ -95,7 +91,7 @@ def test_typevar_metadata_and_qualifiers_empty(tv: TypeVar) -> None:
     node = inspect_type(tv)
 
     assert is_type_var_node(node)
-    assert node.metadata == ()
+    assert not node.metadata
     assert node.qualifiers == frozenset()
 
 
@@ -119,7 +115,6 @@ def test_typevar_children_match_bound_and_constraints(tv: TypeVar) -> None:
     assert len(children) == expected_count
 
 
-# Explicit examples for common TypeVar patterns
 @example(TypeVar("T"))
 @example(TypeVar("T_co", covariant=True))
 @example(TypeVar("T_contra", contravariant=True))
@@ -134,11 +129,6 @@ def test_typevar_inspection_is_idempotent(tv: TypeVar) -> None:
 
     # Cache should return same instance
     assert node1 is node2
-
-
-# =============================================================================
-# ParamSpec Property Tests
-# =============================================================================
 
 
 @given(paramspec_instances())
@@ -160,7 +150,7 @@ def test_paramspec_metadata_and_qualifiers_empty(ps: ParamSpec) -> None:
     node = inspect_type(ps)
 
     assert is_param_spec_node(node)
-    assert node.metadata == ()
+    assert not node.metadata
     assert node.qualifiers == frozenset()
 
 
@@ -174,7 +164,6 @@ def test_paramspec_children_empty(ps: ParamSpec) -> None:
     assert node.children() == ()
 
 
-# Explicit examples for ParamSpec
 @example(ParamSpec("P"))
 @given(paramspec_instances())
 @settings(deadline=None)
@@ -185,11 +174,6 @@ def test_paramspec_inspection_is_idempotent(ps: ParamSpec) -> None:
 
     # Cache should return same instance
     assert node1 is node2
-
-
-# =============================================================================
-# TypeVarTuple Property Tests
-# =============================================================================
 
 
 @given(typevartuple_instances())
@@ -211,7 +195,7 @@ def test_typevartuple_metadata_and_qualifiers_empty(tvt: TypeVarTuple) -> None:
     node = inspect_type(tvt)
 
     assert is_type_var_tuple_node(node)
-    assert node.metadata == ()
+    assert not node.metadata
     assert node.qualifiers == frozenset()
 
 
@@ -236,11 +220,6 @@ def test_typevartuple_inspection_is_idempotent(tvt: TypeVarTuple) -> None:
 
     # Cache should return same instance
     assert node1 is node2
-
-
-# =============================================================================
-# Unpack Property Tests
-# =============================================================================
 
 
 @given(unpack_types())
@@ -281,13 +260,8 @@ def test_unpack_metadata_and_qualifiers_empty(unpack_type: object) -> None:
     node = inspect_type(unpack_type)
 
     assert is_unpack_node(node)
-    assert node.metadata == ()
+    assert not node.metadata
     assert node.qualifiers == frozenset()
-
-
-# =============================================================================
-# TypeVar Property Tests - Additional Assertions
-# =============================================================================
 
 
 @given(typevar_instances())

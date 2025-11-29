@@ -38,7 +38,7 @@ The collection is immutable---all transformation methods return new collections 
 An empty `MetadataCollection` represents a type with no metadata:
 
 ```python
-from typing_graph._metadata import MetadataCollection
+from typing_graph import MetadataCollection
 
 # Create an empty collection
 empty = MetadataCollection()
@@ -52,7 +52,7 @@ print(list(empty))  # []
 For efficiency, use the `EMPTY` singleton instead of creating new empty collections:
 
 ```python
-from typing_graph._metadata import MetadataCollection
+from typing_graph import MetadataCollection
 
 # Use the singleton for empty collections
 empty = MetadataCollection.EMPTY
@@ -74,7 +74,7 @@ This pattern avoids repeated allocations when many types have no metadata.
 ### Length and iteration
 
 ```python
-from typing_graph._metadata import MetadataCollection
+from typing_graph import MetadataCollection
 
 coll = MetadataCollection(_items=("doc", 42, True))
 
@@ -99,7 +99,7 @@ print(items)  # ['doc', 42, True]
 Use `in` to check if an item exists in the collection:
 
 ```python
-from typing_graph._metadata import MetadataCollection
+from typing_graph import MetadataCollection
 
 coll = MetadataCollection(_items=("doc", 42, True))
 
@@ -115,7 +115,7 @@ Membership testing uses equality comparison (`==`), not identity (`is`).
 Access items by index or slice:
 
 ```python
-from typing_graph._metadata import MetadataCollection
+from typing_graph import MetadataCollection
 
 coll = MetadataCollection(_items=("a", "b", "c", "d"))
 
@@ -140,7 +140,7 @@ Integer indexing returns the item at that position. Slice indexing returns a new
 Empty collections are falsy, non-empty collections are truthy:
 
 ```python
-from typing_graph._metadata import MetadataCollection
+from typing_graph import MetadataCollection
 
 empty = MetadataCollection.EMPTY
 non_empty = MetadataCollection(_items=(1,))
@@ -159,7 +159,7 @@ if not empty:
 Two collections are equal if they contain the same items in the same order:
 
 ```python
-from typing_graph._metadata import MetadataCollection
+from typing_graph import MetadataCollection
 
 a = MetadataCollection(_items=(1, 2, 3))
 b = MetadataCollection(_items=(1, 2, 3))
@@ -172,7 +172,7 @@ print(a == c)  # False - same items, different order
 Comparing with non-`MetadataCollection` objects returns `NotImplemented`, allowing Python to try the reverse comparison:
 
 ```python
-from typing_graph._metadata import MetadataCollection
+from typing_graph import MetadataCollection
 
 coll = MetadataCollection(_items=(1, 2, 3))
 print(coll == [1, 2, 3])  # False - different types
@@ -184,7 +184,7 @@ print(coll == (1, 2, 3))  # False - different types
 Collections with all hashable items can be used as dict keys or set members:
 
 ```python
-from typing_graph._metadata import MetadataCollection
+from typing_graph import MetadataCollection
 
 # Hashable items work
 coll = MetadataCollection(_items=(1, "doc", (2, 3)))
@@ -199,7 +199,7 @@ print(hash(coll) == hash(other))  # True
 If any item is unhashable, attempting to hash the collection raises `TypeError`:
 
 ```python
-from typing_graph._metadata import MetadataCollection
+from typing_graph import MetadataCollection
 
 # Contains an unhashable dict
 coll = MetadataCollection(_items=([1, 2],))
@@ -215,7 +215,7 @@ except TypeError as e:
 Use the `is_hashable` property to check before attempting hash operations:
 
 ```python
-from typing_graph._metadata import MetadataCollection
+from typing_graph import MetadataCollection
 
 hashable = MetadataCollection(_items=(1, "doc"))
 unhashable = MetadataCollection(_items=([1, 2],))
@@ -236,7 +236,7 @@ This property never raises an exception---it returns `False` for unhashable coll
 The `repr()` of a collection shows its contents:
 
 ```python
-from typing_graph._metadata import MetadataCollection
+from typing_graph import MetadataCollection
 
 # Empty collection
 print(repr(MetadataCollection.EMPTY))
@@ -264,7 +264,7 @@ For collections with more than 5 items, the representation truncates to show the
 Raised when a required metadata type is not found in a collection:
 
 ```python
-from typing_graph._metadata import MetadataCollection, MetadataNotFoundError
+from typing_graph import MetadataCollection, MetadataNotFoundError
 
 coll = MetadataCollection()
 
@@ -290,7 +290,7 @@ Raised when a non-runtime-checkable protocol is used with protocol-based methods
 
 ```python
 from typing import Protocol
-from typing_graph._metadata import ProtocolNotRuntimeCheckableError
+from typing_graph import ProtocolNotRuntimeCheckableError
 
 class NotRuntime(Protocol):
     value: int
@@ -316,7 +316,7 @@ This exception will be raised by protocol-based methods like `find_protocol()` a
 Use `MetadataCollection.of()` to create a collection from any iterable:
 
 ```python
-from typing_graph._metadata import MetadataCollection
+from typing_graph import MetadataCollection
 
 # Create from a list
 coll = MetadataCollection.of(["doc", 42, True])
@@ -340,7 +340,7 @@ Use `MetadataCollection.from_annotated()` to extract metadata from `Annotated` t
 
 ```python
 from typing import Annotated
-from typing_graph._metadata import MetadataCollection
+from typing_graph import MetadataCollection
 
 # Extract metadata from Annotated
 MyType = Annotated[int, "description", 42]
@@ -359,7 +359,7 @@ The factory methods automatically flatten `GroupedMetadata` from `annotated-type
 ```python
 from typing import Annotated
 from annotated_types import Ge, Interval, Le
-from typing_graph._metadata import MetadataCollection
+from typing_graph import MetadataCollection
 
 # Interval is a GroupedMetadata containing Ge and Le
 interval = Interval(ge=0, le=100)
@@ -376,7 +376,7 @@ To preserve `GroupedMetadata` without flattening, use `auto_flatten=False`:
 
 ```python
 from annotated_types import Interval
-from typing_graph._metadata import MetadataCollection
+from typing_graph import MetadataCollection
 
 interval = Interval(ge=0, le=100)
 coll = MetadataCollection.of([interval], auto_flatten=False)
@@ -391,7 +391,7 @@ Use `flatten()` to expand `GroupedMetadata` items one level:
 
 ```python
 from annotated_types import Ge, Interval, Le
-from typing_graph._metadata import MetadataCollection
+from typing_graph import MetadataCollection
 
 interval = Interval(ge=5, le=15)
 coll = MetadataCollection.of([interval], auto_flatten=False)
@@ -404,7 +404,7 @@ print(list(flattened))  # [Ge(ge=5), Le(le=15)]
 Use `flatten_deep()` to recursively expand nested `GroupedMetadata`:
 
 ```python
-from typing_graph._metadata import MetadataCollection
+from typing_graph import MetadataCollection
 
 # For deeply nested GroupedMetadata structures
 coll = MetadataCollection(_items=(1, 2, 3))
@@ -422,7 +422,7 @@ Use `find()` to get the first item matching a specific type:
 
 ```python
 from dataclasses import dataclass
-from typing_graph._metadata import MetadataCollection
+from typing_graph import MetadataCollection
 
 @dataclass(frozen=True)
 class Gt:
@@ -446,7 +446,7 @@ print(missing)  # None
 The `find()` method uses `isinstance` semantics, so subclasses also match:
 
 ```python
-from typing_graph._metadata import MetadataCollection
+from typing_graph import MetadataCollection
 
 class Animal:
     pass
@@ -463,7 +463,7 @@ result = coll.find(Animal)  # Returns the Dog instance
 Use `find_first()` to find the first item matching any of several types:
 
 ```python
-from typing_graph._metadata import MetadataCollection
+from typing_graph import MetadataCollection
 
 coll = MetadataCollection(_items=("doc", 42, True))
 
@@ -482,7 +482,7 @@ Use `find_all()` to get all items matching specific types:
 
 ```python
 from dataclasses import dataclass
-from typing_graph._metadata import MetadataCollection
+from typing_graph import MetadataCollection
 
 @dataclass(frozen=True)
 class Gt:
@@ -513,7 +513,7 @@ Use `has()` to check if any item matches given types:
 
 ```python
 from dataclasses import dataclass
-from typing_graph._metadata import MetadataCollection
+from typing_graph import MetadataCollection
 
 @dataclass(frozen=True)
 class Gt:
@@ -536,7 +536,7 @@ Use `count()` to count items matching given types:
 
 ```python
 from dataclasses import dataclass
-from typing_graph._metadata import MetadataCollection
+from typing_graph import MetadataCollection
 
 @dataclass(frozen=True)
 class Gt:
@@ -561,7 +561,7 @@ Use `get()` to retrieve an item with a default value if not found:
 
 ```python
 from dataclasses import dataclass
-from typing_graph._metadata import MetadataCollection
+from typing_graph import MetadataCollection
 
 @dataclass(frozen=True)
 class Gt:
@@ -589,7 +589,7 @@ print(result)  # Gt(value=0)
 The `get()` method correctly handles falsy values like `0`, `False`, and empty strings:
 
 ```python
-from typing_graph._metadata import MetadataCollection
+from typing_graph import MetadataCollection
 
 coll = MetadataCollection(_items=(0, False, ""))
 
@@ -604,7 +604,7 @@ Use `get_required()` when metadata must exist:
 
 ```python
 from dataclasses import dataclass
-from typing_graph._metadata import MetadataCollection, MetadataNotFoundError
+from typing_graph import MetadataCollection, MetadataNotFoundError
 
 @dataclass(frozen=True)
 class Gt:
@@ -633,7 +633,7 @@ except MetadataNotFoundError as e:
 Use the `is_empty` property for readable empty checks:
 
 ```python
-from typing_graph._metadata import MetadataCollection
+from typing_graph import MetadataCollection
 
 empty = MetadataCollection.EMPTY
 non_empty = MetadataCollection(_items=(1, 2))
@@ -653,7 +653,7 @@ if coll.is_empty:
 Use `filter()` to filter items by a predicate function:
 
 ```python
-from typing_graph._metadata import MetadataCollection
+from typing_graph import MetadataCollection
 
 coll = MetadataCollection(_items=(1, 2, 3, 4, 5))
 evens = coll.filter(lambda x: x % 2 == 0)
@@ -664,7 +664,7 @@ Use `filter_by_type()` for type-safe filtering with a typed predicate:
 
 ```python
 from dataclasses import dataclass
-from typing_graph._metadata import MetadataCollection
+from typing_graph import MetadataCollection
 
 @dataclass(frozen=True)
 class Gt:
@@ -681,7 +681,7 @@ Use `find_protocol()` to find items matching a `@runtime_checkable` protocol:
 
 ```python
 from typing import Protocol, runtime_checkable
-from typing_graph._metadata import MetadataCollection
+from typing_graph import MetadataCollection
 
 @runtime_checkable
 class HasValue(Protocol):
@@ -703,7 +703,7 @@ print(list(matches))  # [Constraint(value=0)]
 Use `+` or `|` to combine collections:
 
 ```python
-from typing_graph._metadata import MetadataCollection
+from typing_graph import MetadataCollection
 
 a = MetadataCollection(_items=(1, 2))
 b = MetadataCollection(_items=(3, 4))
@@ -721,7 +721,7 @@ print(list(combined))  # [1, 2, 3, 4]
 Use `exclude()` to remove items of specific types:
 
 ```python
-from typing_graph._metadata import MetadataCollection
+from typing_graph import MetadataCollection
 
 coll = MetadataCollection(_items=("a", 1, "b", 2))
 no_strings = coll.exclude(str)
@@ -733,7 +733,7 @@ print(list(no_strings))  # [1, 2]
 Use `unique()` to remove duplicate items:
 
 ```python
-from typing_graph._metadata import MetadataCollection
+from typing_graph import MetadataCollection
 
 coll = MetadataCollection(_items=(1, 2, 1, 3, 2))
 unique = coll.unique()
@@ -747,7 +747,7 @@ The method preserves first occurrence order and handles unhashable items.
 Use `sorted()` to sort items:
 
 ```python
-from typing_graph._metadata import MetadataCollection
+from typing_graph import MetadataCollection
 
 coll = MetadataCollection(_items=(3, 1, 2))
 sorted_coll = coll.sorted()
@@ -764,7 +764,7 @@ print(list(by_len))  # ['a', 'bb', 'ccc']
 Use `reversed()` to reverse the order:
 
 ```python
-from typing_graph._metadata import MetadataCollection
+from typing_graph import MetadataCollection
 
 coll = MetadataCollection(_items=(1, 2, 3))
 rev = coll.reversed()
@@ -776,7 +776,7 @@ print(list(rev))  # [3, 2, 1]
 Use `map()` to transform items. This is a terminal operation that returns a tuple:
 
 ```python
-from typing_graph._metadata import MetadataCollection
+from typing_graph import MetadataCollection
 
 coll = MetadataCollection(_items=(1, 2, 3))
 doubled = coll.map(lambda x: x * 2)
@@ -788,7 +788,7 @@ print(doubled)  # (2, 4, 6)
 Use `partition()` to split a collection by a predicate:
 
 ```python
-from typing_graph._metadata import MetadataCollection
+from typing_graph import MetadataCollection
 
 coll = MetadataCollection(_items=(1, 2, 3, 4, 5))
 evens, odds = coll.partition(lambda x: x % 2 == 0)
@@ -803,7 +803,7 @@ print(list(odds))   # [1, 3, 5]
 Use `types()` to get the unique types in a collection:
 
 ```python
-from typing_graph._metadata import MetadataCollection
+from typing_graph import MetadataCollection
 
 coll = MetadataCollection(_items=("a", 1, "b", 2.0))
 types = coll.types()
@@ -815,7 +815,7 @@ print(sorted(t.__name__ for t in types))  # ['float', 'int', 'str']
 Use `by_type()` to group items by their type:
 
 ```python
-from typing_graph._metadata import MetadataCollection
+from typing_graph import MetadataCollection
 
 coll = MetadataCollection(_items=("a", 1, "b", 2))
 grouped = coll.by_type()
@@ -824,12 +824,6 @@ print(list(grouped[int]))  # [1, 2]
 ```
 
 The returned mapping is immutable.
-
-## Coming soon
-
-### TypeNode integration
-
-Integration with the type graph for seamless metadata access on all type nodes.
 
 ## See also
 

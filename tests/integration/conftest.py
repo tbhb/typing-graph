@@ -8,6 +8,9 @@ from typing import (
 )
 from typing_extensions import Doc
 
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
 import pytest
 from annotated_types import Gt, MaxLen, MinLen
 
@@ -144,12 +147,12 @@ _T = TypeVar("_T")
 
 
 def find_metadata_of_type(
-    metadata: tuple[object, ...], marker_type: type[_T]
+    metadata: "Iterable[object]", marker_type: type[_T]
 ) -> _T | None:
     """Find first metadata item of the given type.
 
     Args:
-        metadata: Tuple of metadata objects.
+        metadata: Iterable of metadata objects (tuple, list, MetadataCollection, etc.).
         marker_type: The type to search for.
 
     Returns:
@@ -162,12 +165,12 @@ def find_metadata_of_type(
 
 
 def find_all_metadata_of_type(
-    metadata: tuple[object, ...], marker_type: type[_T]
+    metadata: "Iterable[object]", marker_type: type[_T]
 ) -> list[_T]:
     """Find all metadata items of the given type.
 
     Args:
-        metadata: Tuple of metadata objects.
+        metadata: Iterable of metadata objects (tuple, list, MetadataCollection, etc.).
         marker_type: The type to search for.
 
     Returns:
@@ -176,11 +179,11 @@ def find_all_metadata_of_type(
     return [item for item in metadata if isinstance(item, marker_type)]
 
 
-def has_metadata_of_type(metadata: tuple[object, ...], marker_type: type[_T]) -> bool:
+def has_metadata_of_type(metadata: "Iterable[object]", marker_type: type[_T]) -> bool:
     """Check if metadata contains an item of the given type.
 
     Args:
-        metadata: Tuple of metadata objects.
+        metadata: Iterable of metadata objects (tuple, list, MetadataCollection, etc.).
         marker_type: The type to search for.
 
     Returns:

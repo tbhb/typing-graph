@@ -33,6 +33,12 @@ from ._inspect_type import (
     inspect_type_param,
     to_runtime_type,
 )
+from ._metadata import (
+    MetadataCollection,
+    MetadataNotFoundError,
+    ProtocolNotRuntimeCheckableError,
+    SupportsLessThan,
+)
 from ._node import (
     AnnotatedNode,
     AnyNode,
@@ -152,6 +158,8 @@ __all__ = [
     "LiteralNode",
     "LiteralStringNode",
     "MetaNode",
+    "MetadataCollection",
+    "MetadataNotFoundError",
     "MethodSig",
     "ModuleTypes",
     "NamedTupleNode",
@@ -160,6 +168,7 @@ __all__ = [
     "ParamSpecNode",
     "Parameter",
     "ProtocolNode",
+    "ProtocolNotRuntimeCheckableError",
     "RefFailed",
     "RefResolved",
     "RefState",
@@ -169,6 +178,7 @@ __all__ = [
     "SourceLocation",
     "StructuredNode",
     "SubscriptedGenericNode",
+    "SupportsLessThan",
     "TupleNode",
     "TypeAliasNode",
     "TypeGuardNode",

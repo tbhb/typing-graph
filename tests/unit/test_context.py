@@ -2,7 +2,7 @@ from typing import Annotated
 
 import pytest
 
-from typing_graph import ConcreteNode, InspectConfig, inspect_type
+from typing_graph import ConcreteNode, InspectConfig, MetadataCollection, inspect_type
 from typing_graph._context import (
     InspectContext,
     extract_field_metadata,
@@ -95,7 +95,7 @@ class TestExtractFieldMetadata:
         result = extract_field_metadata(node)
 
         # AnnotatedNode stores metadata in annotations field
-        assert result == ("meta1", "meta2")
+        assert list(result) == ["meta1", "meta2"]
 
     def test_returns_metadata_for_annotated_via_inspect_type(self) -> None:
         # inspect_type returns ConcreteNode with hoisted metadata
@@ -104,21 +104,22 @@ class TestExtractFieldMetadata:
         result = extract_field_metadata(node)
 
         # Metadata is hoisted to the ConcreteNode's metadata field
-        assert result == ("meta1", "meta2")
+        assert list(result) == ["meta1", "meta2"]
 
     def test_returns_metadata_for_concrete_type(self) -> None:
-        node = ConcreteNode(cls=int, metadata=("meta",))
+        node = ConcreteNode(cls=int, metadata=MetadataCollection.of(["meta"]))
 
         result = extract_field_metadata(node)
 
-        assert result == ("meta",)
+        assert list(result) == ["meta"]
 
-    def test_returns_empty_tuple_for_no_metadata(self) -> None:
+    def test_returns_empty_collection_for_no_metadata(self) -> None:
         node = ConcreteNode(cls=int)
 
         result = extract_field_metadata(node)
 
-        assert result == ()
+        assert len(result) == 0
+        assert result is MetadataCollection.EMPTY
 
 
 class TestGetSourceLocation:

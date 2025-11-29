@@ -6,6 +6,8 @@ from enum import Enum, auto
 from typing import TYPE_CHECKING, TypeVar
 from typing_extensions import TypeIs, override
 
+from ._metadata import MetadataCollection
+
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
@@ -38,7 +40,9 @@ class TypeNode(ABC):
     """
 
     source: SourceLocation | None = field(default=None, kw_only=True)
-    metadata: tuple[object, ...] = field(default=(), kw_only=True)
+    metadata: MetadataCollection = field(
+        default_factory=lambda: MetadataCollection.EMPTY, kw_only=True
+    )
     qualifiers: "frozenset[Qualifier]" = field(default_factory=frozenset, kw_only=True)
 
     @abstractmethod
@@ -689,7 +693,9 @@ class FieldDef:
     name: str
     type: TypeNode
     required: bool = True
-    metadata: tuple[object, ...] = ()  # Metadata from Annotated on this field
+    metadata: MetadataCollection = field(
+        default_factory=lambda: MetadataCollection.EMPTY
+    )  # Metadata from Annotated on this field
 
 
 class StructuredNode(TypeNode, ABC):
@@ -854,7 +860,9 @@ class Parameter:
     kind: str = "POSITIONAL_OR_KEYWORD"  # matches inspect.Parameter.Kind names
     default: object | None = None
     has_default: bool = False
-    metadata: tuple[object, ...] = ()
+    metadata: MetadataCollection = field(
+        default_factory=lambda: MetadataCollection.EMPTY
+    )
 
 
 @dataclass(slots=True, frozen=True)

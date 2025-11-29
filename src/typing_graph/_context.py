@@ -7,6 +7,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
+from ._metadata import MetadataCollection
 from ._node import SourceLocation, is_annotated_node
 
 if TYPE_CHECKING:
@@ -58,7 +59,7 @@ class InspectContext:
         return self.depth < self.config.max_depth
 
 
-def extract_field_metadata(type_node: "TypeNode") -> tuple[object, ...]:
+def extract_field_metadata(type_node: "TypeNode") -> MetadataCollection:
     """Extract metadata from a type node for field definition.
 
     Prefers annotations from AnnotatedType, falls back to node metadata.
@@ -67,10 +68,10 @@ def extract_field_metadata(type_node: "TypeNode") -> tuple[object, ...]:
         type_node: The type node to extract metadata from.
 
     Returns:
-        A tuple of metadata objects, empty if no metadata found.
+        A MetadataCollection with metadata objects, EMPTY if no metadata found.
     """
     if is_annotated_node(type_node):
-        return type_node.annotations
+        return MetadataCollection.of(type_node.annotations)
     return type_node.metadata
 
 

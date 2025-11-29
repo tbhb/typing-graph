@@ -106,7 +106,7 @@ class TestConcreteType:
 
         assert is_concrete_node(result)
         assert result.cls is int
-        assert result.metadata == ()
+        assert not result.metadata
         assert result.qualifiers == frozenset()
 
     def test_str_sets_cls_to_str(self) -> None:
@@ -161,7 +161,7 @@ class TestAnyNode:
 
         assert is_any_node(result)
         assert isinstance(result, AnyNode)
-        assert result.metadata == ()
+        assert not result.metadata
         assert result.qualifiers == frozenset()
 
 
@@ -171,7 +171,7 @@ class TestSelfNode:
 
         assert is_self_node(result)
         assert isinstance(result, SelfNode)
-        assert result.metadata == ()
+        assert not result.metadata
         assert result.qualifiers == frozenset()
 
 
@@ -181,7 +181,7 @@ class TestNeverNode:
 
         assert is_never_node(result)
         assert isinstance(result, NeverNode)
-        assert result.metadata == ()
+        assert not result.metadata
         assert result.qualifiers == frozenset()
 
     @pytest.mark.skipif(
@@ -200,7 +200,7 @@ class TestLiteralStringType:
         result = inspect_type(LiteralString)
 
         assert is_literal_string_node(result)
-        assert result.metadata == ()
+        assert not result.metadata
         assert result.qualifiers == frozenset()
 
 
@@ -212,7 +212,7 @@ class TestTypeVarTupleNode:
         assert is_type_var_tuple_node(result)
         assert result.name == "Ts"
         assert result.default is None
-        assert result.metadata == ()
+        assert not result.metadata
 
 
 class TestUnionType:
@@ -259,7 +259,7 @@ class TestUnionType:
         result = inspect_type(int | str)
 
         assert is_union_type_node(result)
-        assert result.metadata == ()
+        assert not result.metadata
         assert result.qualifiers == frozenset()
 
 
@@ -269,7 +269,7 @@ class TestLiteralNode:
 
         assert is_literal_node(result)
         assert result.values == ("a", "b")
-        assert result.metadata == ()
+        assert not result.metadata
         assert result.qualifiers == frozenset()
 
     def test_int_literals_have_correct_values(self) -> None:
@@ -389,7 +389,7 @@ class TestSubscriptedGeneric:
         result = inspect_type(list[int])
 
         assert is_subscripted_generic_node(result)
-        assert result.metadata == ()
+        assert not result.metadata
         assert result.qualifiers == frozenset()
 
 
@@ -455,7 +455,7 @@ class TestTupleType:
         result = inspect_type(tuple[int, str])
 
         assert is_tuple_node(result)
-        assert result.metadata == ()
+        assert not result.metadata
         assert result.qualifiers == frozenset()
 
 
@@ -552,7 +552,7 @@ class TestCallableType:
         result = inspect_type(Callable[[int], str])
 
         assert is_callable_node(result)
-        assert result.metadata == ()
+        assert not result.metadata
         assert result.qualifiers == frozenset()
 
 
@@ -618,7 +618,7 @@ class TestTypeVarNode:
         result = inspect_type(T)
 
         assert is_type_var_node(result)
-        assert result.metadata == ()
+        assert not result.metadata
         assert result.qualifiers == frozenset()
 
 
@@ -636,7 +636,7 @@ class TestParamSpecNode:
         result = inspect_type(P)
 
         assert is_param_spec_node(result)
-        assert result.metadata == ()
+        assert not result.metadata
         assert result.qualifiers == frozenset()
 
 
@@ -667,7 +667,7 @@ class TestMetaType:
         result = inspect_type(type[int])
 
         assert is_meta_node(result)
-        assert result.metadata == ()
+        assert not result.metadata
         assert result.qualifiers == frozenset()
 
 
@@ -697,7 +697,7 @@ class TestForwardRef:
         result = inspect_type("SomeRef")
 
         assert is_forward_ref_node(result)
-        assert result.metadata == ()
+        assert not result.metadata
         assert result.qualifiers == frozenset()
 
 
@@ -734,7 +734,7 @@ class TestNewTypeNode:
         result = inspect_type(UserId)
 
         assert is_new_type_node(result)
-        assert result.metadata == ()
+        assert not result.metadata
         assert result.qualifiers == frozenset()
 
 
@@ -758,7 +758,7 @@ class TestTypeGuardType:
         result = inspect_type(TypeGuard[int])
 
         assert is_type_guard_node(result)
-        assert result.metadata == ()
+        assert not result.metadata
         assert result.qualifiers == frozenset()
 
 
@@ -782,7 +782,7 @@ class TestTypeIsType:
         result = inspect_type(TypeIs[int])
 
         assert is_type_is_node(result)
-        assert result.metadata == ()
+        assert not result.metadata
         assert result.qualifiers == frozenset()
 
 
@@ -933,7 +933,7 @@ class TestEdgeCases:
         assert is_union_type_node(inner_union)
 
 
-class TestGetTypeHintsForNode:
+class TestToRuntimeType:
     def test_concrete_type_returns_cls(self) -> None:
         node = inspect_type(int)
         result: object = to_runtime_type(node)
