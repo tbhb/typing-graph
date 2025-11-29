@@ -1,4 +1,5 @@
 set unstable
+set positional-arguments
 
 uv := "uv run --frozen"
 uv311 := "UV_PROJECT_ENVIRONMENT=.venv-3.11 uv run --frozen --python 3.11"
@@ -38,11 +39,11 @@ install-python:
 
 # Run command with optional Python version (first arg: 3.14, 3.14t, or "all")
 run *args:
-  ./scripts/uv-run {{args}}
+  ./scripts/uv-run "$@"
 
 # Run Python with optional version (first arg: 3.14, 3.14t, or "all")
 run-python *args:
-  ./scripts/uv-run-python {{args}}
+  ./scripts/uv-run-python "$@"
 
 # Format code
 format:
@@ -99,14 +100,14 @@ lint-spelling:
 
 # Run tests (optionally specify Python version as first arg: 3.14, 3.14t, or "all")
 test *args:
-  ./scripts/uv-run-pytest {{args}}
+  ./scripts/uv-run-pytest "$@"
 
 # Run only failed tests from last run
 test-failed *args: (test args "--lf")
 
 # Run documentation example tests
 test-docs *args:
-  ./scripts/uv-run-pytest {{args}} tests/docexamples --no-cov
+  ./scripts/uv-run-pytest "$@" tests/docexamples --no-cov
 
 # Run benchmarks
 benchmark *args: install
