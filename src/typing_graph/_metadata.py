@@ -387,32 +387,6 @@ class MetadataCollection:
             msg = f"MetadataCollection contains unhashable items: {e}"
             raise TypeError(msg) from e
 
-    @property
-    def is_hashable(self) -> bool:
-        """Check if all items are hashable without raising an exception.
-
-        This property allows checking hashability before attempting
-        operations that require it (like using the collection as a
-        dict key or set member).
-
-        Returns:
-            True if all items are hashable, False otherwise.
-
-        Examples:
-            >>> coll = MetadataCollection(_items=(1, "doc"))
-            >>> coll.is_hashable
-            True
-            >>> coll_unhashable = MetadataCollection(_items=([1, 2],))
-            >>> coll_unhashable.is_hashable
-            False
-        """
-        try:
-            _ = hash(self._items)
-        except TypeError:
-            return False
-        else:
-            return True
-
     @override
     def __repr__(self) -> str:
         """Return a debug representation of the collection.
@@ -438,6 +412,82 @@ class MetadataCollection:
         displayed = ", ".join(repr(item) for item in self._items[:max_display])
         remaining = len(self._items) - max_display
         return f"MetadataCollection([{displayed}, ...<{remaining} more>])"
+
+    def __add__(self, other: object) -> "MetadataCollection":
+        """Concatenate two collections.
+
+        Returns a new collection containing items from both collections,
+        with self's items first followed by other's items.
+
+        Args:
+            other: Another MetadataCollection to concatenate.
+
+        Returns:
+            New MetadataCollection with concatenated items, or EMPTY if
+            both collections are empty. Returns NotImplemented if other
+            is not a MetadataCollection.
+
+        Examples:
+            >>> a = MetadataCollection(_items=(1, 2))
+            >>> b = MetadataCollection(_items=(3, 4))
+            >>> list(a + b)
+            [1, 2, 3, 4]
+            >>> empty = MetadataCollection.EMPTY
+            >>> (empty + empty) is MetadataCollection.EMPTY
+            True
+        """
+        if not isinstance(other, MetadataCollection):
+            return NotImplemented
+        combined = self._items + other._items
+        if not combined:
+            return MetadataCollection.EMPTY
+        return MetadataCollection(_items=combined)
+
+    def __or__(self, other: object) -> "MetadataCollection":
+        """Concatenate two collections using the | operator.
+
+        This is an alias for __add__, providing an alternative syntax
+        for collection concatenation.
+
+        Args:
+            other: Another MetadataCollection to concatenate.
+
+        Returns:
+            New MetadataCollection with concatenated items.
+
+        Examples:
+            >>> a = MetadataCollection(_items=(1, 2))
+            >>> b = MetadataCollection(_items=(3, 4))
+            >>> list(a | b)
+            [1, 2, 3, 4]
+        """
+        return self.__add__(other)
+
+    @property
+    def is_hashable(self) -> bool:
+        """Check if all items are hashable without raising an exception.
+
+        This property allows checking hashability before attempting
+        operations that require it (like using the collection as a
+        dict key or set member).
+
+        Returns:
+            True if all items are hashable, False otherwise.
+
+        Examples:
+            >>> coll = MetadataCollection(_items=(1, "doc"))
+            >>> coll.is_hashable
+            True
+            >>> coll_unhashable = MetadataCollection(_items=([1, 2],))
+            >>> coll_unhashable.is_hashable
+            False
+        """
+        try:
+            _ = hash(self._items)
+        except TypeError:
+            return False
+        else:
+            return True
 
     @property
     def is_empty(self) -> bool:
@@ -983,56 +1033,6 @@ class MetadataCollection:
         if not current:
             return MetadataCollection.EMPTY
         return MetadataCollection(_items=current)
-
-    def __add__(self, other: object) -> "MetadataCollection":
-        """Concatenate two collections.
-
-        Returns a new collection containing items from both collections,
-        with self's items first followed by other's items.
-
-        Args:
-            other: Another MetadataCollection to concatenate.
-
-        Returns:
-            New MetadataCollection with concatenated items, or EMPTY if
-            both collections are empty. Returns NotImplemented if other
-            is not a MetadataCollection.
-
-        Examples:
-            >>> a = MetadataCollection(_items=(1, 2))
-            >>> b = MetadataCollection(_items=(3, 4))
-            >>> list(a + b)
-            [1, 2, 3, 4]
-            >>> empty = MetadataCollection.EMPTY
-            >>> (empty + empty) is MetadataCollection.EMPTY
-            True
-        """
-        if not isinstance(other, MetadataCollection):
-            return NotImplemented
-        combined = self._items + other._items
-        if not combined:
-            return MetadataCollection.EMPTY
-        return MetadataCollection(_items=combined)
-
-    def __or__(self, other: object) -> "MetadataCollection":
-        """Concatenate two collections using the | operator.
-
-        This is an alias for __add__, providing an alternative syntax
-        for collection concatenation.
-
-        Args:
-            other: Another MetadataCollection to concatenate.
-
-        Returns:
-            New MetadataCollection with concatenated items.
-
-        Examples:
-            >>> a = MetadataCollection(_items=(1, 2))
-            >>> b = MetadataCollection(_items=(3, 4))
-            >>> list(a | b)
-            [1, 2, 3, 4]
-        """
-        return self.__add__(other)
 
     def exclude(self, *types: type) -> "MetadataCollection":
         """Return items that are NOT instances of any of the given types.
