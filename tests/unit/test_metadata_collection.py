@@ -1,8 +1,10 @@
-# pyright: reportAny=false, reportExplicitAny=false
-# pyright: reportUnusedCallResult=false
 # ruff: noqa: SLF001
 
+from typing import TYPE_CHECKING, Annotated, Protocol, final
+from typing_extensions import override
+
 import pytest
+from annotated_types import Ge, GroupedMetadata, Interval, Le
 
 from typing_graph._metadata import (
     MetadataCollection,
@@ -11,21 +13,19 @@ from typing_graph._metadata import (
     SupportsLessThan,
 )
 
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
 
 class TestEmptyConstructionAndSingleton:
-    # MC-001
     def test_empty_construction_returns_zero_length(self) -> None:
         coll = MetadataCollection()
         assert len(coll) == 0
 
-    # MC-002: Note - Direct construction does NOT return singleton.
-    # The EMPTY singleton is accessed via MetadataCollection.EMPTY.
-    # The test verifies that the EMPTY class variable is correctly set.
     def test_empty_singleton_is_correct(self) -> None:
         assert len(MetadataCollection.EMPTY) == 0
         assert MetadataCollection.EMPTY._items == ()
 
-    # MC-003
     def test_empty_singleton_identity(self) -> None:
         first = MetadataCollection.EMPTY
         second = MetadataCollection.EMPTY
@@ -35,7 +35,6 @@ class TestEmptyConstructionAndSingleton:
 
 
 class TestSequenceProtocol:
-    # MC-058
     def test_len_returns_item_count(self) -> None:
         coll = MetadataCollection(_items=("a", "b", "c"))
         assert len(coll) == 3
@@ -49,7 +48,6 @@ class TestSequenceProtocol:
         coll = MetadataCollection(_items=items)
         assert len(coll) == 100
 
-    # MC-059
     def test_iter_yields_items_in_order(self) -> None:
         items = ("a", "b", "c")
         coll = MetadataCollection(_items=items)
@@ -61,33 +59,28 @@ class TestSequenceProtocol:
         result = list(coll)
         assert result == []
 
-    # MC-060
     def test_contains_returns_true_for_present_item(self) -> None:
         coll = MetadataCollection(_items=("doc", 42))
         assert "doc" in coll
         assert 42 in coll
 
-    # MC-061
     def test_contains_returns_false_for_absent_item(self) -> None:
         coll = MetadataCollection(_items=("doc", 42))
         assert "missing" not in coll
         assert 99 not in coll
 
-    # MC-062
     def test_getitem_integer_returns_item_at_index(self) -> None:
         coll = MetadataCollection(_items=("a", "b", "c"))
         assert coll[0] == "a"
         assert coll[1] == "b"
         assert coll[2] == "c"
 
-    # MC-063
     def test_getitem_negative_index_counts_from_end(self) -> None:
         coll = MetadataCollection(_items=("a", "b", "c"))
         assert coll[-1] == "c"
         assert coll[-2] == "b"
         assert coll[-3] == "a"
 
-    # MC-064
     def test_getitem_slice_returns_new_collection(self) -> None:
         coll = MetadataCollection(_items=("a", "b", "c", "d"))
         result = coll[1:3]
@@ -105,7 +98,6 @@ class TestSequenceProtocol:
         assert isinstance(result, MetadataCollection)
         assert list(result) == ["a", "b", "c"]
 
-    # MC-065
     def test_getitem_raises_index_error_for_out_of_bounds(self) -> None:
         coll = MetadataCollection(_items=("a", "b", "c"))
         with pytest.raises(IndexError):
@@ -116,7 +108,6 @@ class TestSequenceProtocol:
         with pytest.raises(IndexError):
             _ = coll[-10]
 
-    # MC-066
     def test_bool_returns_true_for_non_empty(self) -> None:
         coll = MetadataCollection(_items=(1,))
         assert bool(coll) is True
@@ -125,7 +116,6 @@ class TestSequenceProtocol:
         coll = MetadataCollection(_items=(1, 2, 3))
         assert bool(coll) is True
 
-    # MC-067
     def test_bool_returns_false_for_empty(self) -> None:
         coll = MetadataCollection()
         assert bool(coll) is False
@@ -135,7 +125,6 @@ class TestSequenceProtocol:
 
 
 class TestHashability:
-    # MC-091
     def test_is_hashable_returns_true_for_hashable_items(self) -> None:
         coll = MetadataCollection(_items=("doc", 42, (1, 2, 3)))
         assert coll.is_hashable is True
@@ -144,7 +133,6 @@ class TestHashability:
         coll = MetadataCollection()
         assert coll.is_hashable is True
 
-    # MC-092
     def test_is_hashable_returns_false_for_unhashable_items(self) -> None:
         coll = MetadataCollection(_items=({"key": "value"},))
         assert coll.is_hashable is False
@@ -159,7 +147,6 @@ class TestHashability:
 
 
 class TestRepr:
-    # MC-093
     def test_repr_small_collection_shows_all_items(self) -> None:
         coll = MetadataCollection(_items=(1, 2))
         result = repr(coll)
@@ -175,7 +162,6 @@ class TestRepr:
         result = repr(coll)
         assert result == "MetadataCollection([1, 2, 3, 4, 5])"
 
-    # MC-094
     def test_repr_large_collection_truncates(self) -> None:
         coll = MetadataCollection(_items=(1, 2, 3, 4, 5, 6, 7, 8, 9, 10))
         result = repr(coll)
@@ -186,7 +172,6 @@ class TestRepr:
         result = repr(coll)
         assert result == "MetadataCollection([1, 2, 3, 4, 5, ...<1 more>])"
 
-    # MC-095
     def test_repr_empty_collection_format(self) -> None:
         coll = MetadataCollection.EMPTY
         result = repr(coll)
@@ -199,7 +184,6 @@ class TestRepr:
 
 
 class TestEqualityAndHashing:
-    # MC-096
     def test_eq_equal_collections_are_equal(self) -> None:
         a = MetadataCollection(_items=(1, 2, 3))
         b = MetadataCollection(_items=(1, 2, 3))
@@ -210,7 +194,6 @@ class TestEqualityAndHashing:
         b = MetadataCollection()
         assert a == b
 
-    # MC-097
     def test_eq_different_order_not_equal(self) -> None:
         a = MetadataCollection(_items=("a", "b"))
         b = MetadataCollection(_items=("b", "a"))
@@ -221,7 +204,6 @@ class TestEqualityAndHashing:
         b = MetadataCollection(_items=(1, 2))
         assert a != b
 
-    # MC-098
     def test_eq_non_collection_not_equal(self) -> None:
         coll = MetadataCollection(_items=(1, 2, 3))
         assert (coll == [1, 2, 3]) is False
@@ -234,7 +216,6 @@ class TestEqualityAndHashing:
         # which Python interprets as False
         assert coll != [1, 2]
 
-    # MC-099
     def test_hash_consistent_for_equal_collections(self) -> None:
         a = MetadataCollection(_items=(1, "doc", (2, 3)))
         b = MetadataCollection(_items=(1, "doc", (2, 3)))
@@ -246,18 +227,16 @@ class TestEqualityAndHashing:
         b = MetadataCollection()
         assert hash(a) == hash(b)
 
-    # MC-100
     def test_hash_raises_for_unhashable_items(self) -> None:
         coll = MetadataCollection(_items=({"key": "value"},))
         with pytest.raises(TypeError, match="unhashable"):
-            hash(coll)
+            _ = hash(coll)
 
     def test_hash_raises_for_list_item(self) -> None:
         coll = MetadataCollection(_items=([1, 2, 3],))
         with pytest.raises(TypeError, match="unhashable"):
-            hash(coll)
+            _ = hash(coll)
 
-    # MC-101
     def test_hashable_collection_can_be_set_member(self) -> None:
         coll = MetadataCollection(_items=(1, "doc"))
         s = {coll}
@@ -269,7 +248,6 @@ class TestEqualityAndHashing:
         s = {a, b}
         assert len(s) == 1
 
-    # MC-102
     def test_hashable_collection_can_be_dict_key(self) -> None:
         coll = MetadataCollection(_items=(1, "doc"))
         d = {coll: "value"}
@@ -307,8 +285,6 @@ class TestExceptionClasses:
         assert isinstance(error, LookupError)
 
     def test_protocol_not_runtime_checkable_error_has_protocol_attribute(self) -> None:
-        from typing import Protocol
-
         class NotRuntime(Protocol):
             value: int
 
@@ -316,8 +292,6 @@ class TestExceptionClasses:
         assert error.protocol is NotRuntime
 
     def test_protocol_not_runtime_checkable_error_message_format(self) -> None:
-        from typing import Protocol
-
         class MyProtocol(Protocol):
             pass
 
@@ -328,8 +302,6 @@ class TestExceptionClasses:
         assert "find_protocol()" in msg or "has_protocol()" in msg
 
     def test_protocol_not_runtime_checkable_error_is_type_error(self) -> None:
-        from typing import Protocol
-
         class TestProto(Protocol):
             pass
 
@@ -339,9 +311,308 @@ class TestExceptionClasses:
 
 class TestSupportsLessThanProtocol:
     def test_supports_less_than_is_protocol(self) -> None:
-        from typing import Protocol
-
         assert issubclass(SupportsLessThan, Protocol)
 
     def test_supports_less_than_defines_lt(self) -> None:
         assert hasattr(SupportsLessThan, "__lt__")
+
+
+class TestOfFactoryMethod:
+    def test_of_creates_collection_from_list(self) -> None:
+        items = [1, "doc", True]
+        coll = MetadataCollection.of(items)
+        assert len(coll) == 3
+        assert list(coll) == [1, "doc", True]
+
+    def test_of_creates_collection_from_tuple(self) -> None:
+        items = (1, 2, 3)
+        coll = MetadataCollection.of(items)
+        assert len(coll) == 3
+        assert list(coll) == [1, 2, 3]
+
+    def test_of_creates_collection_from_generator(self) -> None:
+        items = (x * 2 for x in range(3))
+        coll = MetadataCollection.of(items)
+        assert list(coll) == [0, 2, 4]
+
+    def test_of_preserves_insertion_order(self) -> None:
+        items = ["first", "second", "third", "fourth", "fifth"]
+        coll = MetadataCollection.of(items)
+        assert list(coll) == ["first", "second", "third", "fourth", "fifth"]
+
+    def test_of_preserves_order_with_mixed_types(self) -> None:
+        items = [1, "a", None, True, 3.14]
+        coll = MetadataCollection.of(items)
+        assert list(coll) == [1, "a", None, True, 3.14]
+
+    def test_of_auto_flattens_grouped_metadata(self) -> None:
+        interval = Interval(ge=0, le=100)
+        items = ["doc", interval, "end"]
+        coll = MetadataCollection.of(items)
+        # Interval should be flattened to Ge and Le
+        result = list(coll)
+        assert result[0] == "doc"
+        assert result[1] == Ge(ge=0)
+        assert result[2] == Le(le=100)
+        assert result[3] == "end"
+        assert len(coll) == 4
+
+    def test_of_auto_flattens_multiple_grouped_metadata(self) -> None:
+        interval1 = Interval(ge=0, le=10)
+        interval2 = Interval(ge=20, le=30)
+        items = [interval1, interval2]
+        coll = MetadataCollection.of(items)
+        # Both intervals should be flattened
+        assert len(coll) == 4
+
+    def test_of_preserves_grouped_metadata_when_disabled(self) -> None:
+        interval = Interval(ge=0, le=100)
+        items = ["doc", interval, "end"]
+        coll = MetadataCollection.of(items, auto_flatten=False)
+        result = list(coll)
+        assert result[0] == "doc"
+        assert result[1] is interval
+        assert result[2] == "end"
+        assert len(coll) == 3
+
+    def test_of_empty_iterable_returns_singleton(self) -> None:
+        coll = MetadataCollection.of([])
+        assert coll is MetadataCollection.EMPTY
+
+    def test_of_empty_generator_returns_singleton(self) -> None:
+        empty: list[object] = []
+        coll = MetadataCollection.of(x for x in empty)
+        assert coll is MetadataCollection.EMPTY
+
+    def test_of_empty_tuple_returns_singleton(self) -> None:
+        coll = MetadataCollection.of(())
+        assert coll is MetadataCollection.EMPTY
+
+    def test_of_no_args_returns_singleton(self) -> None:
+        coll = MetadataCollection.of()
+        assert coll is MetadataCollection.EMPTY
+
+
+class TestFromAnnotatedFactoryMethod:
+    def test_from_annotated_extracts_metadata(self) -> None:
+        t = Annotated[int, "doc", 42]
+        coll = MetadataCollection.from_annotated(t)
+        assert len(coll) == 2
+        assert list(coll) == ["doc", 42]
+
+    def test_from_annotated_extracts_single_metadata(self) -> None:
+        t = Annotated[str, "description"]
+        coll = MetadataCollection.from_annotated(t)
+        assert len(coll) == 1
+        assert list(coll) == ["description"]
+
+    def test_from_annotated_extracts_many_metadata(self) -> None:
+        t = Annotated[int, "a", "b", "c", "d", "e"]
+        coll = MetadataCollection.from_annotated(t)
+        assert len(coll) == 5
+        assert list(coll) == ["a", "b", "c", "d", "e"]
+
+    # Note: Python automatically flattens nested Annotated types at definition
+    # time, with inner metadata appearing before outer metadata. This is Python
+    # behavior, not typing-graph behavior.
+    def test_from_annotated_unwraps_nested_by_default(self) -> None:
+        inner_type = Annotated[int, "inner1", "inner2"]
+        outer_type = Annotated[inner_type, "outer1", "outer2"]
+        coll = MetadataCollection.from_annotated(outer_type)
+        # Python flattens nested Annotated: inner metadata comes first
+        assert list(coll) == ["inner1", "inner2", "outer1", "outer2"]
+
+    def test_from_annotated_unwraps_deeply_nested(self) -> None:
+        level1 = Annotated[int, "L1"]
+        level2 = Annotated[level1, "L2"]
+        level3 = Annotated[level2, "L3"]
+        coll = MetadataCollection.from_annotated(level3)
+        # Python flattens all levels: innermost metadata comes first
+        assert list(coll) == ["L1", "L2", "L3"]
+
+    # Note: Since Python automatically flattens nested Annotated types,
+    # the unwrap_nested=False parameter has no practical effect - all
+    # metadata is already collected by get_args().
+    def test_from_annotated_preserves_nesting_when_disabled(self) -> None:
+        inner_type = Annotated[int, "inner"]
+        outer_type = Annotated[inner_type, "outer"]
+        coll = MetadataCollection.from_annotated(outer_type, unwrap_nested=False)
+        # Python already flattened, so we get all metadata
+        assert list(coll) == ["inner", "outer"]
+
+    def test_from_annotated_preserves_deep_nesting_when_disabled(self) -> None:
+        level1 = Annotated[int, "L1"]
+        level2 = Annotated[level1, "L2"]
+        level3 = Annotated[level2, "L3"]
+        coll = MetadataCollection.from_annotated(level3, unwrap_nested=False)
+        # Python already flattened, so we get all metadata
+        assert list(coll) == ["L1", "L2", "L3"]
+
+    def test_from_annotated_non_annotated_returns_empty(self) -> None:
+        coll = MetadataCollection.from_annotated(int)
+        assert coll is MetadataCollection.EMPTY
+
+    def test_from_annotated_list_type_returns_empty(self) -> None:
+        coll = MetadataCollection.from_annotated(list[int])
+        assert coll is MetadataCollection.EMPTY
+
+    def test_from_annotated_none_type_returns_empty(self) -> None:
+        coll = MetadataCollection.from_annotated(None)
+        assert coll is MetadataCollection.EMPTY
+
+    def test_from_annotated_string_returns_empty(self) -> None:
+        coll = MetadataCollection.from_annotated("not a type")
+        assert coll is MetadataCollection.EMPTY
+
+    def test_from_annotated_flattens_grouped_metadata(self) -> None:
+        interval = Interval(ge=0, le=100)
+        t = Annotated[int, "doc", interval]
+        coll = MetadataCollection.from_annotated(t)
+        result = list(coll)
+        assert result[0] == "doc"
+        assert result[1] == Ge(ge=0)
+        assert result[2] == Le(le=100)
+
+    def test_from_annotated_flattens_nested_grouped_metadata(self) -> None:
+        inner_type = Annotated[int, Interval(ge=0, le=10)]
+        outer_type = Annotated[inner_type, Interval(ge=100, le=200)]
+        coll = MetadataCollection.from_annotated(outer_type)
+        result = list(coll)
+        # Outer interval flattened first, then inner
+        assert Ge(ge=100) in result
+        assert Le(le=200) in result
+        assert Ge(ge=0) in result
+        assert Le(le=10) in result
+
+
+class TestFlattenMethod:
+    def test_flatten_expands_grouped_metadata(self) -> None:
+        interval = Interval(ge=5, le=15)
+        coll = MetadataCollection.of([interval], auto_flatten=False)
+        flattened = coll.flatten()
+        result = list(flattened)
+        assert result == [Ge(ge=5), Le(le=15)]
+
+    def test_flatten_expands_multiple_grouped_metadata(self) -> None:
+        interval1 = Interval(ge=0, le=10)
+        interval2 = Interval(ge=20, le=30)
+        coll = MetadataCollection.of([interval1, interval2], auto_flatten=False)
+        flattened = coll.flatten()
+        assert len(flattened) == 4
+
+    def test_flatten_preserves_non_grouped_items(self) -> None:
+        coll = MetadataCollection(_items=("doc", 42, True))
+        flattened = coll.flatten()
+        assert list(flattened) == ["doc", 42, True]
+
+    def test_flatten_preserves_order(self) -> None:
+        interval = Interval(ge=0, le=10)
+        coll = MetadataCollection.of(["before", interval, "after"], auto_flatten=False)
+        flattened = coll.flatten()
+        result = list(flattened)
+        assert result[0] == "before"
+        assert result[1] == Ge(ge=0)
+        assert result[2] == Le(le=10)
+        assert result[3] == "after"
+
+    def test_flatten_returns_self_when_no_grouped(self) -> None:
+        coll = MetadataCollection(_items=(1, 2, 3))
+        flattened = coll.flatten()
+        assert flattened is coll
+
+    def test_flatten_empty_returns_self(self) -> None:
+        coll = MetadataCollection.EMPTY
+        flattened = coll.flatten()
+        assert flattened is coll
+
+    def test_flatten_empty_grouped_metadata_returns_empty(self) -> None:
+        @final
+        class EmptyGrouped(GroupedMetadata):
+            @override
+            def __iter__(self) -> "Iterator[object]":
+                return iter([])
+
+        empty_grouped = EmptyGrouped()
+        coll = MetadataCollection.of([empty_grouped], auto_flatten=False)
+        flattened = coll.flatten()
+        assert flattened is MetadataCollection.EMPTY
+
+
+class TestFlattenDeepMethod:
+    def test_flatten_deep_handles_nested_grouped(self) -> None:
+        @final
+        class NestedGrouped(GroupedMetadata):
+            _items: list[object]
+
+            def __init__(self, items: list[object]) -> None:
+                self._items = items
+
+            @override
+            def __iter__(self) -> "Iterator[object]":
+                return iter(self._items)
+
+        # Create nested GroupedMetadata: outer contains inner
+        inner = NestedGrouped([3, 4])
+        outer = NestedGrouped([1, inner, 2])
+        coll = MetadataCollection.of([outer], auto_flatten=False)
+
+        # Single flatten would produce [1, inner, 2]
+        single_flat = coll.flatten()
+        assert len(single_flat) == 3
+
+        # Deep flatten should fully expand
+        deep_flat = coll.flatten_deep()
+        assert list(deep_flat) == [1, 3, 4, 2]
+
+    def test_flatten_deep_handles_triple_nested(self) -> None:
+        @final
+        class NestedGrouped(GroupedMetadata):
+            _items: list[object]
+
+            def __init__(self, items: list[object]) -> None:
+                self._items = items
+
+            @override
+            def __iter__(self) -> "Iterator[object]":
+                return iter(self._items)
+
+        innermost = NestedGrouped([5, 6])
+        middle = NestedGrouped([3, innermost, 4])
+        outer = NestedGrouped([1, middle, 2])
+        coll = MetadataCollection.of([outer], auto_flatten=False)
+        deep_flat = coll.flatten_deep()
+        assert list(deep_flat) == [1, 3, 5, 6, 4, 2]
+
+    def test_flatten_deep_preserves_non_grouped(self) -> None:
+        coll = MetadataCollection(_items=("doc", 42, True))
+        deep_flat = coll.flatten_deep()
+        assert list(deep_flat) == ["doc", 42, True]
+
+    def test_flatten_deep_returns_self_when_no_grouped(self) -> None:
+        coll = MetadataCollection(_items=(1, 2, 3))
+        deep_flat = coll.flatten_deep()
+        assert deep_flat is coll
+
+    def test_flatten_deep_empty_returns_self(self) -> None:
+        coll = MetadataCollection.EMPTY
+        deep_flat = coll.flatten_deep()
+        assert deep_flat is coll
+
+    def test_flatten_deep_same_as_flatten_for_single_level(self) -> None:
+        interval = Interval(ge=0, le=10)
+        coll = MetadataCollection.of(["doc", interval], auto_flatten=False)
+        single_flat = coll.flatten()
+        deep_flat = coll.flatten_deep()
+        assert list(single_flat) == list(deep_flat)
+
+    def test_flatten_deep_empty_grouped_metadata_returns_empty(self) -> None:
+        @final
+        class EmptyGrouped(GroupedMetadata):
+            @override
+            def __iter__(self) -> "Iterator[object]":
+                return iter([])
+
+        empty_grouped = EmptyGrouped()
+        coll = MetadataCollection.of([empty_grouped], auto_flatten=False)
+        deep_flat = coll.flatten_deep()
+        assert deep_flat is MetadataCollection.EMPTY

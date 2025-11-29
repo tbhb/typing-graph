@@ -5,11 +5,62 @@ metadata extracted from Annotated type annotations.
 """
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, ClassVar, Protocol, final, overload
+from typing import (
+    TYPE_CHECKING,
+    Annotated,
+    ClassVar,
+    Protocol,
+    final,
+    get_args,
+    get_origin,
+    overload,
+)
 from typing_extensions import Self, override
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Iterable, Iterator
+
+# Annotated[T, ...] requires at least the base type T plus one metadata item
+_MIN_ANNOTATED_ARGS = 2
+
+
+def _is_grouped_metadata(item: object) -> bool:
+    """Check if item is GroupedMetadata without importing annotated-types.
+
+    Uses duck typing to avoid runtime dependency on annotated-types.
+    Checks if the item's type or any of its base classes is named
+    'GroupedMetadata', which handles both the protocol itself and
+    concrete implementations like Interval.
+
+    Args:
+        item: Any object to check.
+
+    Returns:
+        True if item appears to be a GroupedMetadata instance.
+    """
+    if not hasattr(item, "__iter__"):
+        return False
+    # Check if 'GroupedMetadata' is anywhere in the MRO
+    return any(cls.__name__ == "GroupedMetadata" for cls in type(item).__mro__)
+
+
+def _flatten_items(items: "Iterable[object]") -> tuple[object, ...]:
+    """Flatten GroupedMetadata items (single level).
+
+    Args:
+        items: Iterable of metadata objects, possibly containing GroupedMetadata.
+
+    Returns:
+        Tuple with GroupedMetadata items expanded one level.
+    """
+    result: list[object] = []
+    for item in items:
+        if _is_grouped_metadata(item):
+            # Ignore: duck-typed detection can't be tracked by type system
+            result.extend(item)  # pyright: ignore[reportArgumentType]
+        else:
+            result.append(item)
+    return tuple(result)
 
 
 class SupportsLessThan(Protocol):
@@ -56,7 +107,6 @@ class MetadataNotFoundError(LookupError):
         """
         self.requested_type = requested_type
         self.collection = collection
-        # Simplified message for Stage 0 (types() method comes in Stage 4)
         msg = (
             f"No metadata of type {requested_type.__name__!r} found. "
             f"Use find() instead of get_required() if the type may not exist."
@@ -363,6 +413,161 @@ class MetadataCollection:
         displayed = ", ".join(repr(item) for item in self._items[:max_display])
         remaining = len(self._items) - max_display
         return f"MetadataCollection([{displayed}, ...<{remaining} more>])"
+
+    @classmethod
+    def of(
+        cls,
+        items: "Iterable[object]" = (),
+        *,
+        auto_flatten: bool = True,
+    ) -> "MetadataCollection":
+        """Create a collection from an iterable.
+
+        This is the primary factory method for creating MetadataCollection
+        instances. It handles GroupedMetadata flattening automatically unless
+        disabled.
+
+        Args:
+            items: Iterable of metadata objects.
+            auto_flatten: If True (default), expand GroupedMetadata items
+                one level. Set to False to preserve GroupedMetadata as-is.
+
+        Returns:
+            New MetadataCollection containing the items, or EMPTY if no items.
+
+        Examples:
+            >>> MetadataCollection.of([1, 2, 3])
+            MetadataCollection([1, 2, 3])
+            >>> MetadataCollection.of([])
+            MetadataCollection([])
+            >>> MetadataCollection.of([]) is MetadataCollection.EMPTY
+            True
+        """
+        if auto_flatten:
+            flattened = _flatten_items(items)
+            if not flattened:
+                return cls.EMPTY
+            return cls(_items=flattened)
+        items_tuple = tuple(items)
+        if not items_tuple:
+            return cls.EMPTY
+        return cls(_items=items_tuple)
+
+    @classmethod
+    def from_annotated(
+        cls,
+        annotated_type: object,
+        *,
+        unwrap_nested: bool = True,
+    ) -> "MetadataCollection":
+        """Extract metadata from an Annotated type.
+
+        This method inspects a type and extracts any metadata from Annotated
+        type hints. Non-Annotated types return an empty collection.
+
+        Args:
+            annotated_type: A type, potentially ``Annotated[T, ...]``.
+            unwrap_nested: If True (default), recursively unwrap nested
+                Annotated types, collecting all metadata. Outer metadata
+                comes first, then inner metadata.
+
+        Returns:
+            MetadataCollection with extracted metadata, or EMPTY if the type
+            is not Annotated or has no metadata.
+
+        Examples:
+            >>> from typing import Annotated
+            >>> MetadataCollection.from_annotated(Annotated[int, "doc", 42])
+            MetadataCollection(['doc', 42])
+            >>> MetadataCollection.from_annotated(int)
+            MetadataCollection([])
+            >>> # Nested Annotated types are unwrapped by default
+            >>> Inner = Annotated[int, "inner"]
+            >>> Outer = Annotated[Inner, "outer"]
+            >>> MetadataCollection.from_annotated(Outer)
+            MetadataCollection(['outer', 'inner'])
+        """
+        # Check if it's an Annotated type
+        origin = get_origin(annotated_type)
+        if origin is not Annotated:
+            return cls.EMPTY
+
+        # Get the base type and metadata
+        # get_args returns tuple[Any, ...] but we know it's safe for Annotated
+        args: tuple[object, ...] = get_args(annotated_type)
+        if len(args) < _MIN_ANNOTATED_ARGS:  # pragma: no cover
+            # Defensive: valid Annotated always has >= 2 args
+            return cls.EMPTY
+
+        base_type: object = args[0]
+        metadata: tuple[object, ...] = args[1:]
+
+        # Collect all metadata items
+        all_metadata: list[object] = list(metadata)
+
+        # Recursively unwrap nested Annotated if requested
+        # Note: Python auto-flattens nested Annotated at definition time,
+        # so this branch handles edge cases from dynamic type construction
+        if unwrap_nested:
+            nested_origin: object = get_origin(base_type)
+            if nested_origin is Annotated:  # pragma: no cover
+                nested_collection = cls.from_annotated(base_type, unwrap_nested=True)
+                all_metadata.extend(nested_collection)
+
+        # Always flatten GroupedMetadata
+        return cls.of(all_metadata, auto_flatten=True)
+
+    def flatten(self) -> "MetadataCollection":
+        """Return new collection with GroupedMetadata expanded (single level).
+
+        This method expands any GroupedMetadata items one level, leaving
+        nested GroupedMetadata intact. Use flatten_deep() for recursive
+        expansion.
+
+        Returns:
+            New MetadataCollection with GroupedMetadata expanded one level,
+            or self if no GroupedMetadata items exist.
+
+        Examples:
+            >>> coll = MetadataCollection(_items=(1, 2, 3))
+            >>> coll.flatten()
+            MetadataCollection([1, 2, 3])
+        """
+        flattened = _flatten_items(self._items)
+        if flattened == self._items:
+            return self
+        if not flattened:
+            return MetadataCollection.EMPTY
+        return MetadataCollection(_items=flattened)
+
+    def flatten_deep(self) -> "MetadataCollection":
+        """Return new collection with GroupedMetadata recursively expanded.
+
+        This method repeatedly expands GroupedMetadata items until no more
+        GroupedMetadata remains. Use flatten() for single-level expansion.
+
+        Returns:
+            New MetadataCollection with all GroupedMetadata fully expanded,
+            or self if no GroupedMetadata items exist.
+
+        Examples:
+            >>> coll = MetadataCollection(_items=(1, 2, 3))
+            >>> coll.flatten_deep()
+            MetadataCollection([1, 2, 3])
+        """
+        current = self._items
+        while True:
+            # Check if any GroupedMetadata remains
+            has_grouped = any(_is_grouped_metadata(item) for item in current)
+            if not has_grouped:
+                break
+            current = _flatten_items(current)
+
+        if current == self._items:
+            return self
+        if not current:
+            return MetadataCollection.EMPTY
+        return MetadataCollection(_items=current)
 
 
 # Initialize the EMPTY singleton after class definition

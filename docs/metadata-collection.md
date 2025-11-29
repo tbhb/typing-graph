@@ -323,14 +323,114 @@ class SupportsLessThan(Protocol):
 
 This protocol will be used by the `sorted()` method in later stages to ensure type safety when sorting collections.
 
+## Factory methods
+
+### Creating from iterables
+
+Use `MetadataCollection.of()` to create a collection from any iterable:
+
+```python
+from typing_graph._metadata import MetadataCollection
+
+# Create from a list
+coll = MetadataCollection.of(["doc", 42, True])
+print(list(coll))  # ['doc', 42, True]
+
+# Create from a tuple
+coll = MetadataCollection.of(("a", "b", "c"))
+
+# Create from a generator
+coll = MetadataCollection.of(x for x in range(3))
+print(list(coll))  # [0, 1, 2]
+
+# Empty iterables return the EMPTY singleton
+empty = MetadataCollection.of([])
+assert empty is MetadataCollection.EMPTY
+```
+
+### Extracting from Annotated types
+
+Use `MetadataCollection.from_annotated()` to extract metadata from `Annotated` types:
+
+```python
+from typing import Annotated
+from typing_graph._metadata import MetadataCollection
+
+# Extract metadata from Annotated
+MyType = Annotated[int, "description", 42]
+coll = MetadataCollection.from_annotated(MyType)
+print(list(coll))  # ['description', 42]
+
+# Non-Annotated types return EMPTY
+coll = MetadataCollection.from_annotated(int)
+assert coll is MetadataCollection.EMPTY
+```
+
+### GroupedMetadata handling
+
+The factory methods automatically flatten `GroupedMetadata` from `annotated-types`:
+
+```python
+from typing import Annotated
+from annotated_types import Ge, Interval, Le
+from typing_graph._metadata import MetadataCollection
+
+# Interval is a GroupedMetadata containing Ge and Le
+interval = Interval(ge=0, le=100)
+coll = MetadataCollection.of([interval])
+print(list(coll))  # [Ge(ge=0), Le(le=100)]
+
+# Also works with from_annotated
+MyType = Annotated[int, Interval(ge=0, le=100)]
+coll = MetadataCollection.from_annotated(MyType)
+print(list(coll))  # [Ge(ge=0), Le(le=100)]
+```
+
+To preserve `GroupedMetadata` without flattening, use `auto_flatten=False`:
+
+```python
+from annotated_types import Interval
+from typing_graph._metadata import MetadataCollection
+
+interval = Interval(ge=0, le=100)
+coll = MetadataCollection.of([interval], auto_flatten=False)
+print(len(coll))  # 1 - the Interval itself
+```
+
+## Flatten methods
+
+### Single-level flattening
+
+Use `flatten()` to expand `GroupedMetadata` items one level:
+
+```python
+from annotated_types import Ge, Interval, Le
+from typing_graph._metadata import MetadataCollection
+
+interval = Interval(ge=5, le=15)
+coll = MetadataCollection.of([interval], auto_flatten=False)
+flattened = coll.flatten()
+print(list(flattened))  # [Ge(ge=5), Le(le=15)]
+```
+
+### Deep flattening
+
+Use `flatten_deep()` to recursively expand nested `GroupedMetadata`:
+
+```python
+from typing_graph._metadata import MetadataCollection
+
+# For deeply nested GroupedMetadata structures
+coll = MetadataCollection(_items=(1, 2, 3))
+deep_flat = coll.flatten_deep()
+print(list(deep_flat))  # [1, 2, 3]
+```
+
+Both flatten methods return `self` if no `GroupedMetadata` items exist, avoiding unnecessary allocations.
+
 ## Coming soon
 
 The following features are planned for future stages of the MetadataCollection implementation.
-
-### Factory methods (Stage 1)
-
-- `MetadataCollection.of(items)` - Create from any iterable with auto-flattening
-- `MetadataCollection.from_annotated(type)` - Extract metadata from Annotated types
 
 ### Query methods (Stage 2)
 

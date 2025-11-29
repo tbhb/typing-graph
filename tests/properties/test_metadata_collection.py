@@ -1,8 +1,6 @@
-# pyright: reportAny=false, reportExplicitAny=false
-# pyright: reportAttributeAccessIssue=false
 # ruff: noqa: SLF001
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from hypothesis import given, settings, strategies as st
 
@@ -12,36 +10,37 @@ if TYPE_CHECKING:
     from hypothesis.strategies import DrawFn
 
 
-# =============================================================================
-# Custom Hypothesis Strategies for MetadataCollection
-# =============================================================================
-
-
 @st.composite
 def hashable_items(draw: "DrawFn") -> object:
     """Generate hashable items for MetadataCollection."""
-    return draw(
-        st.one_of(
-            st.text(min_size=0, max_size=20),
-            st.integers(-100, 100),
-            st.booleans(),
-            st.floats(allow_nan=False, allow_infinity=False),
-            st.none(),
-            st.tuples(st.integers(), st.integers()),
-            st.frozensets(st.integers(0, 10), max_size=3),
-        )
+    return cast(
+        "object",
+        draw(
+            st.one_of(
+                st.text(min_size=0, max_size=20),
+                st.integers(-100, 100),
+                st.booleans(),
+                st.floats(allow_nan=False, allow_infinity=False),
+                st.none(),
+                st.tuples(st.integers(), st.integers()),
+                st.frozensets(st.integers(0, 10), max_size=3),
+            )
+        ),
     )
 
 
 @st.composite
 def unhashable_items(draw: "DrawFn") -> object:
     """Generate unhashable items for MetadataCollection."""
-    return draw(
-        st.one_of(
-            st.lists(st.integers(), max_size=5),
-            st.dictionaries(st.text(max_size=5), st.integers(), max_size=3),
-            st.lists(st.text(max_size=5), max_size=3),
-        )
+    return cast(
+        "object",
+        draw(
+            st.one_of(
+                st.lists(st.integers(), max_size=5),
+                st.dictionaries(st.text(max_size=5), st.integers(), max_size=3),
+                st.lists(st.text(max_size=5), max_size=3),
+            )
+        ),
     )
 
 
@@ -54,7 +53,7 @@ def metadata_items(draw: "DrawFn") -> object:
 @st.composite
 def metadata_collections(draw: "DrawFn", max_size: int = 10) -> MetadataCollection:
     """Generate MetadataCollection instances with random items."""
-    items = draw(st.lists(metadata_items(), max_size=max_size))
+    items: list[object] = draw(st.lists(metadata_items(), max_size=max_size))
     return MetadataCollection(_items=tuple(items))
 
 
@@ -63,26 +62,20 @@ def hashable_metadata_collections(
     draw: "DrawFn", max_size: int = 10
 ) -> MetadataCollection:
     """Generate MetadataCollection instances with only hashable items."""
-    items = draw(st.lists(hashable_items(), max_size=max_size))
+    items: list[object] = draw(st.lists(hashable_items(), max_size=max_size))
     return MetadataCollection(_items=tuple(items))
 
 
 @st.composite
 def slice_indices(draw: "DrawFn", max_len: int = 20) -> slice:
     """Generate slice objects for testing __getitem__."""
-    start = draw(st.none() | st.integers(-max_len * 2, max_len * 2))
-    stop = draw(st.none() | st.integers(-max_len * 2, max_len * 2))
-    step = draw(st.none() | st.integers(1, 5))
+    start: int | None = draw(st.none() | st.integers(-max_len * 2, max_len * 2))
+    stop: int | None = draw(st.none() | st.integers(-max_len * 2, max_len * 2))
+    step: int | None = draw(st.none() | st.integers(1, 5))
     return slice(start, stop, step)
 
 
-# =============================================================================
-# Property Tests - Immutability (MC-103, MC-104, MC-105)
-# =============================================================================
-
-
 class TestImmutabilityProperties:
-    # MC-103
     @given(metadata_collections())
     @settings(deadline=None)
     def test_immutability_no_public_mutation_methods(
@@ -107,7 +100,6 @@ class TestImmutabilityProperties:
         assert coll._items is original_items
         assert len(coll) == original_len
 
-    # MC-105
     @given(
         st.lists(hashable_items(), min_size=2, max_size=10),
         slice_indices(),
@@ -130,20 +122,13 @@ class TestImmutabilityProperties:
             assert sliced is not coll
 
 
-# =============================================================================
-# Property Tests - Sequence Invariants (MC-109, MC-110, MC-130)
-# =============================================================================
-
-
 class TestSequenceInvariants:
-    # MC-109
     @given(metadata_collections())
     @settings(deadline=None)
     def test_len_equals_iteration_count(self, coll: MetadataCollection) -> None:
         iteration_count = sum(1 for _ in coll)
         assert len(coll) == iteration_count
 
-    # MC-110
     @given(metadata_collections(), metadata_items())
     @settings(deadline=None)
     def test_contains_consistent_with_iteration(
@@ -153,7 +138,6 @@ class TestSequenceInvariants:
         in_contains = item in coll
         assert in_contains == in_iteration
 
-    # MC-130
     @given(
         st.lists(hashable_items(), min_size=1, max_size=10),
         slice_indices(),
@@ -170,20 +154,13 @@ class TestSequenceInvariants:
         assert list(sliced) == expected
 
 
-# =============================================================================
-# Property Tests - Equality (MC-122, MC-123)
-# =============================================================================
-
-
 class TestEqualityProperties:
-    # MC-122
     @given(metadata_collections())
     @settings(deadline=None)
     def test_equality_reflexive(self, coll: MetadataCollection) -> None:
         # Using explicit comparison to test __eq__ behavior
         assert coll.__eq__(coll) is True
 
-    # MC-123
     @given(metadata_collections(), metadata_collections())
     @settings(deadline=None)
     def test_equality_symmetric(
@@ -195,13 +172,7 @@ class TestEqualityProperties:
             assert b != a
 
 
-# =============================================================================
-# Property Tests - Hashing (MC-124, MC-125)
-# =============================================================================
-
-
 class TestHashingProperties:
-    # MC-124
     @given(hashable_metadata_collections())
     @settings(deadline=None)
     def test_hash_deterministic(self, coll: MetadataCollection) -> None:
@@ -210,7 +181,6 @@ class TestHashingProperties:
         h3 = hash(coll)
         assert h1 == h2 == h3
 
-    # MC-125
     @given(hashable_metadata_collections(), hashable_metadata_collections())
     @settings(deadline=None)
     def test_hash_consistency_with_equality(
@@ -221,13 +191,7 @@ class TestHashingProperties:
         # Note: hash(a) == hash(b) does NOT imply a == b (hash collisions allowed)
 
 
-# =============================================================================
-# Property Tests - Singleton Safety (MC-129)
-# =============================================================================
-
-
 class TestSingletonProperties:
-    # MC-129
     def test_empty_singleton_initialization_safe(self) -> None:
         # Test that EMPTY is available immediately after import
         assert MetadataCollection.EMPTY is not None
@@ -245,3 +209,52 @@ class TestSingletonProperties:
         empties = [MetadataCollection.EMPTY for _ in range(n)]
         first = empties[0]
         assert all(e is first for e in empties)
+
+
+class TestOfFactoryProperties:
+    @given(st.lists(hashable_items(), max_size=20))
+    @settings(deadline=None)
+    def test_of_roundtrip_preserves_items(self, items: list[object]) -> None:
+        # Items without GroupedMetadata should roundtrip exactly
+        coll = MetadataCollection.of(items, auto_flatten=False)
+        assert list(coll) == items
+
+    @given(st.lists(hashable_items(), max_size=20))
+    @settings(deadline=None)
+    def test_of_length_matches_input_when_no_grouped(self, items: list[object]) -> None:
+        coll = MetadataCollection.of(items, auto_flatten=False)
+        assert len(coll) == len(items)
+
+
+class TestFlattenProperties:
+    @given(st.lists(hashable_items(), max_size=20))
+    @settings(deadline=None)
+    def test_flatten_idempotent(self, items: list[object]) -> None:
+        coll = MetadataCollection.of(items, auto_flatten=False)
+        once = coll.flatten()
+        twice = once.flatten()
+        assert list(once) == list(twice)
+
+    @given(st.lists(hashable_items(), max_size=20))
+    @settings(deadline=None)
+    def test_flatten_deep_idempotent(self, items: list[object]) -> None:
+        coll = MetadataCollection.of(items, auto_flatten=False)
+        once = coll.flatten_deep()
+        twice = once.flatten_deep()
+        assert list(once) == list(twice)
+
+    @given(st.lists(hashable_items(), max_size=20))
+    @settings(deadline=None)
+    def test_flatten_preserves_non_grouped_items(self, items: list[object]) -> None:
+        # Items without GroupedMetadata should be unchanged by flatten
+        coll = MetadataCollection.of(items, auto_flatten=False)
+        flattened = coll.flatten()
+        assert list(flattened) == items
+
+    @given(st.lists(hashable_items(), max_size=20))
+    @settings(deadline=None)
+    def test_flatten_deep_preserves_non_grouped(self, items: list[object]) -> None:
+        # Items without GroupedMetadata should be unchanged by flatten_deep
+        coll = MetadataCollection.of(items, auto_flatten=False)
+        flattened = coll.flatten_deep()
+        assert list(flattened) == items
