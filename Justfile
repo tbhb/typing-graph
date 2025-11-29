@@ -1,6 +1,8 @@
 set unstable
 set positional-arguments
 
+mod? internal '.internal'
+
 uv := "uv run --frozen"
 uv311 := "UV_PROJECT_ENVIRONMENT=.venv-3.11 uv run --frozen --python 3.11"
 uv312 := "UV_PROJECT_ENVIRONMENT=.venv-3.12 uv run --frozen --python 3.12"
