@@ -90,19 +90,19 @@ class TestFlattenWithAnnotatedTypes:
 
 
 class TestProtocolMatchingWithConstraints:
-    @pytest.mark.xfail(reason="find_protocol method not yet implemented")
     def test_protocol_matching_with_annotated_types_constraints(self) -> None:
         @runtime_checkable
-        class HasValue(Protocol):
-            value: object
+        class HasGt(Protocol):
+            gt: object
 
-        # Collection with constraint types
+        # Collection with constraint types - Gt has 'gt' attribute
         coll = MetadataCollection(_items=(Gt(0), Lt(100), Ge(0), Le(100)))
 
-        matches = coll.find_protocol(HasValue)  # pyright: ignore[reportAttributeAccessIssue,reportUnknownMemberType,reportUnknownVariableType]
+        matches = coll.find_protocol(HasGt)
 
-        # All constraint types have 'value' attribute
-        assert len(matches) == 4  # pyright: ignore[reportUnknownArgumentType]
+        # Only Gt has the 'gt' attribute
+        assert len(matches) == 1
+        assert isinstance(next(iter(matches)), Gt)
 
 
 class TestFromAnnotatedNested:
@@ -133,7 +133,6 @@ class TestGetRequiredErrorMessage:
 
 
 class TestPredicateExecutionIsolation:
-    @pytest.mark.xfail(reason="filter method not yet implemented")
     def test_predicate_execution_isolation(self) -> None:
         coll = MetadataCollection(_items=(1, 2, 3, 4, 5))
         original_items = coll._items
@@ -145,14 +144,13 @@ class TestPredicateExecutionIsolation:
             return True
 
         with contextlib.suppress(ValueError):
-            _ = coll.filter(failing_predicate)  # pyright: ignore[reportAttributeAccessIssue,reportUnknownMemberType,reportUnknownVariableType]
+            _ = coll.filter(failing_predicate)
 
         # Collection should be unchanged
         assert coll._items is original_items
 
 
 class TestProtocolNotRuntimeCheckableErrorClear:
-    @pytest.mark.xfail(reason="find_protocol method not yet implemented")
     def test_protocol_not_runtime_checkable_error_clear(self) -> None:
         class NotRuntime(Protocol):
             value: int
@@ -160,7 +158,7 @@ class TestProtocolNotRuntimeCheckableErrorClear:
         coll = MetadataCollection(_items=("doc",))
 
         with pytest.raises(ProtocolNotRuntimeCheckableError) as exc_info:
-            coll.find_protocol(NotRuntime)  # pyright: ignore[reportAttributeAccessIssue,reportUnknownMemberType]
+            _ = coll.find_protocol(NotRuntime)
 
         # Error message should suggest adding @runtime_checkable
         msg = str(exc_info.value)

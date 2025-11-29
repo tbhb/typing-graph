@@ -278,22 +278,6 @@ class TestQueryMethodProperties:
 
     @given(metadata_collections())
     @settings(deadline=None)
-    def test_find_subclass_consistent_with_find(self, coll: MetadataCollection) -> None:
-        # find_subclass uses isinstance semantics, same as find
-        assert coll.find_subclass(int) == coll.find(int)
-        assert coll.find_subclass(str) == coll.find(str)
-
-    @given(metadata_collections())
-    @settings(deadline=None)
-    def test_find_all_subclass_consistent_with_find_all(
-        self, coll: MetadataCollection
-    ) -> None:
-        # find_all_subclass uses isinstance semantics, same as find_all
-        assert list(coll.find_all_subclass(int)) == list(coll.find_all(int))
-        assert list(coll.find_all_subclass(str)) == list(coll.find_all(str))
-
-    @given(metadata_collections())
-    @settings(deadline=None)
     def test_find_all_no_args_returns_all_items(self, coll: MetadataCollection) -> None:
         # find_all() with no args should return all items
         result = coll.find_all()

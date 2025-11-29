@@ -1,5 +1,6 @@
 """Metadata collection for type annotations."""
 
+import builtins
 from dataclasses import dataclass, field
 from typing import (
     TYPE_CHECKING,
@@ -15,7 +16,7 @@ from typing import (
 from typing_extensions import Self, override
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Iterator
+    from collections.abc import Callable, Iterable, Iterator
 
 # Type variables for generic query operations
 T = TypeVar("T")
@@ -57,11 +58,28 @@ def _flatten_items(items: "Iterable[object]") -> tuple[object, ...]:
     result: list[object] = []
     for item in items:
         if _is_grouped_metadata(item):
-            # Ignore: duck-typed detection can't be tracked by type system
+            # Duck-typed GroupedMetadata is iterable but pyright can't track this
             result.extend(item)  # pyright: ignore[reportArgumentType]
         else:
             result.append(item)
     return tuple(result)
+
+
+def _ensure_runtime_checkable(protocol: type) -> None:
+    """Validate that a type is a @runtime_checkable Protocol.
+
+    Args:
+        protocol: The type to validate.
+
+    Raises:
+        TypeError: If the type is not a Protocol.
+        ProtocolNotRuntimeCheckableError: If the protocol lacks @runtime_checkable.
+    """
+    if not getattr(protocol, "_is_protocol", False):
+        msg = f"{protocol.__name__} is not a Protocol"
+        raise TypeError(msg)
+    if not getattr(protocol, "_is_runtime_protocol", False):
+        raise ProtocolNotRuntimeCheckableError(protocol)
 
 
 class SupportsLessThan(Protocol):
@@ -304,7 +322,7 @@ class MetadataCollection:
             >>> bool(MetadataCollection(_items=(1,)))
             True
         """
-        return len(self._items) > 0
+        return bool(self._items)
 
     @override
     def __eq__(self, other: object) -> bool:
@@ -428,22 +446,24 @@ class MetadataCollection:
             >>> MetadataCollection(_items=(1, 2)).is_empty
             False
         """
-        return len(self._items) == 0
+        return not self._items
 
     def find(self, type_: type[T]) -> T | None:
         """Return the first item that is an instance of the given type.
 
-        Uses ``isinstance`` semantics, matching subclasses.
+        Uses ``isinstance`` semantics, so subclasses match. For example,
+        ``find(int)`` will match ``bool`` values since ``bool`` is a
+        subclass of ``int``.
 
         Args:
-            type_: The type to search for.
+            type_: The type to search for (including subclasses).
 
         Returns:
             The first matching item, or None if no match is found.
 
         Examples:
             >>> coll = MetadataCollection(_items=("doc", 42, True))
-            >>> coll.find(int)
+            >>> coll.find(int)  # Returns 42, not True (first match)
             42
             >>> coll.find(str)
             'doc'
@@ -545,10 +565,13 @@ class MetadataCollection:
     def find_all(self, *types: type) -> "MetadataCollection":
         """Return all items that are instances of any of the given types.
 
+        Uses ``isinstance`` semantics, so subclasses match. For example,
+        ``find_all(int)`` will match both ``int`` and ``bool`` values.
+
         If called with no arguments, returns a copy of the entire collection.
 
         Args:
-            *types: Zero or more types to filter by.
+            *types: Zero or more types to filter by (including subclasses).
 
         Returns:
             A new MetadataCollection containing matching items,
@@ -647,47 +670,157 @@ class MetadataCollection:
             return result
         raise MetadataNotFoundError(type_, self)
 
-    def find_subclass(self, base: type[T]) -> T | None:
-        """Return the first item whose type is a subclass of the given base.
-
-        This method uses ``isinstance`` semantics, which matches both exact
-        types and subclasses. It is semantically equivalent to ``find()``.
+    def filter(self, predicate: "Callable[[object], bool]") -> "MetadataCollection":
+        """Return items for which predicate returns True.
 
         Args:
-            base: The base type to search for.
+            predicate: Callable taking an item, returning True if it should be included.
 
         Returns:
-            The first matching item, or None if no match is found.
+            New MetadataCollection with matching items, or EMPTY if none match.
 
-        Examples:
-            >>> coll = MetadataCollection(_items=(True, 42, "doc"))
-            >>> coll.find_subclass(int)  # bool is a subclass of int
-            True
-            >>> coll.find_subclass(float) is None
-            True
+        Security:
+            Predicates execute arbitrary code. Use only trusted sources.
         """
-        return self.find(base)
+        matches = tuple(item for item in self._items if predicate(item))
+        if not matches:
+            return MetadataCollection.EMPTY
+        return MetadataCollection(_items=matches)
 
-    def find_all_subclass(self, base: type[T]) -> "MetadataCollection":
-        """Return all items whose types are subclasses of the given base.
+    def filter_by_type(
+        self, type_: type[T], predicate: "Callable[[T], bool]"
+    ) -> "MetadataCollection":
+        """Return items of given type for which predicate returns True.
 
-        This method uses ``isinstance`` semantics, which matches both exact
-        types and subclasses. It is semantically equivalent to ``find_all()``.
+        Provides type-safe filtering - predicate receives typed items.
 
         Args:
-            base: The base type to search for.
+            type_: Type to filter by.
+            predicate: Callable taking typed item, returning True to include.
 
         Returns:
-            A new MetadataCollection containing all matching items.
+            New MetadataCollection with matching items, or EMPTY if none match.
 
-        Examples:
-            >>> coll = MetadataCollection(_items=(True, 42, "doc", False))
-            >>> list(coll.find_all_subclass(int))  # bool is a subclass of int
-            [True, 42, False]
-            >>> coll.find_all_subclass(float) is MetadataCollection.EMPTY
-            True
+        Security:
+            Predicates execute arbitrary code. Use only trusted sources.
         """
-        return self.find_all(base)
+        matches = tuple(
+            item for item in self._items if isinstance(item, type_) and predicate(item)
+        )
+        if not matches:
+            return MetadataCollection.EMPTY
+        return MetadataCollection(_items=matches)
+
+    def first(self, predicate: "Callable[[object], bool]") -> object | None:
+        """Return first item for which predicate returns True.
+
+        Args:
+            predicate: Callable taking an item, returning True if it matches.
+
+        Returns:
+            First matching item, or None if no match.
+
+        Security:
+            Predicates execute arbitrary code. Use only trusted sources.
+        """
+        for item in self._items:
+            if predicate(item):
+                return item
+        return None
+
+    def first_of_type(
+        self, type_: type[T], predicate: "Callable[[T], bool] | None" = None
+    ) -> T | None:
+        """Return first item of type matching optional predicate.
+
+        Args:
+            type_: Type to search for.
+            predicate: Optional callable to filter typed items.
+
+        Returns:
+            First matching item, or None if no match.
+
+        Security:
+            Predicates execute arbitrary code. Use only trusted sources.
+        """
+        for item in self._items:
+            if isinstance(item, type_) and (predicate is None or predicate(item)):
+                return item
+        return None
+
+    def any(self, predicate: "Callable[[object], bool]") -> bool:
+        """Return True if predicate returns True for any item.
+
+        Args:
+            predicate: Callable taking an item, returning bool.
+
+        Returns:
+            True if any item satisfies predicate, False otherwise.
+
+        Security:
+            Predicates execute arbitrary code. Use only trusted sources.
+        """
+        return builtins.any(predicate(item) for item in self._items)
+
+    def find_protocol(self, protocol: type) -> "MetadataCollection":
+        """Return items that satisfy the given protocol.
+
+        Args:
+            protocol: A @runtime_checkable Protocol type.
+
+        Returns:
+            New MetadataCollection with matching items, or EMPTY if none match.
+
+        Raises:
+            TypeError: If protocol is not a Protocol.
+            ProtocolNotRuntimeCheckableError: If protocol lacks @runtime_checkable.
+
+        Security:
+            Protocol types may have custom __subclasshook__. Use trusted sources.
+        """
+        _ensure_runtime_checkable(protocol)
+        matches = tuple(item for item in self._items if isinstance(item, protocol))
+        if not matches:
+            return MetadataCollection.EMPTY
+        return MetadataCollection(_items=matches)
+
+    def has_protocol(self, protocol: type) -> bool:
+        """Return True if any item satisfies the given protocol.
+
+        Args:
+            protocol: A @runtime_checkable Protocol type.
+
+        Returns:
+            True if any item satisfies the protocol.
+
+        Raises:
+            TypeError: If protocol is not a Protocol.
+            ProtocolNotRuntimeCheckableError: If protocol lacks @runtime_checkable.
+
+        Security:
+            See find_protocol() for security considerations.
+        """
+        _ensure_runtime_checkable(protocol)
+        return builtins.any(isinstance(item, protocol) for item in self._items)
+
+    def count_protocol(self, protocol: type) -> int:
+        """Return count of items satisfying the given protocol.
+
+        Args:
+            protocol: A @runtime_checkable Protocol type.
+
+        Returns:
+            Number of items satisfying the protocol.
+
+        Raises:
+            TypeError: If protocol is not a Protocol.
+            ProtocolNotRuntimeCheckableError: If protocol lacks @runtime_checkable.
+
+        Security:
+            See find_protocol() for security considerations.
+        """
+        _ensure_runtime_checkable(protocol)
+        return sum(1 for item in self._items if isinstance(item, protocol))
 
     @classmethod
     def of(

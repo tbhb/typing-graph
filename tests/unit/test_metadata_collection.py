@@ -1,6 +1,7 @@
 # ruff: noqa: SLF001
 
-from typing import TYPE_CHECKING, Annotated, Protocol, final
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Annotated, Protocol, final, runtime_checkable
 from typing_extensions import override
 
 import pytest
@@ -15,6 +16,29 @@ from typing_graph._metadata import (
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+
+
+# Helper protocols for protocol-based filtering tests
+@runtime_checkable
+class HasValue(Protocol):
+    value: int
+
+
+class NotRuntimeCheckable(Protocol):
+    value: int
+
+
+class NotAProtocol:
+    value: int
+
+    def __init__(self, value: int) -> None:
+        self.value = value
+
+
+# Helper dataclass for typed predicate tests
+@dataclass
+class ItemWithValue:
+    value: int
 
 
 class TestEmptyConstructionAndSingleton:
@@ -362,8 +386,8 @@ class TestOfFactoryMethod:
         interval2 = Interval(ge=20, le=30)
         items = [interval1, interval2]
         coll = MetadataCollection.of(items)
-        # Both intervals should be flattened
-        assert len(coll) == 4
+        # Both intervals should be flattened: Ge(0), Le(10), Ge(20), Le(30)
+        assert list(coll) == [Ge(ge=0), Le(le=10), Ge(ge=20), Le(le=30)]
 
     def test_of_preserves_grouped_metadata_when_disabled(self) -> None:
         interval = Interval(ge=0, le=100)
@@ -650,9 +674,10 @@ class TestFindAllMethod:
         result = coll.find_all(Ge)
         assert result is MetadataCollection.EMPTY
 
-    @pytest.mark.xfail(reason="exclude() not implemented until Stage 4")
+    @pytest.mark.xfail(reason="exclude() not yet implemented")
     def test_find_all_enables_chaining(self) -> None:
         coll = MetadataCollection(_items=(Ge(ge=0), Le(le=100), Ge(ge=10)))
+        # Ignores: exclude() not yet implemented, types unknown in xfail test
         result = coll.find_all(Ge, Le).exclude(Le)  # pyright: ignore[reportAttributeAccessIssue, reportUnknownVariableType, reportUnknownMemberType]
         assert list(result) == [Ge(ge=0), Ge(ge=10)]  # pyright: ignore[reportUnknownArgumentType]
 
@@ -774,48 +799,6 @@ class TestGetRequiredMethod:
         assert "find()" in str(error)
 
 
-class TestFindSubclassMethod:
-    def test_find_subclass_returns_first_subclass_match(self) -> None:
-        dog = Dog("Fido")
-        cat = Cat("Whiskers")
-        coll = MetadataCollection(_items=("doc", dog, cat, 42))
-        result = coll.find_subclass(Animal)
-        assert result is dog
-
-    def test_find_subclass_returns_none_when_no_subclass_match(self) -> None:
-        coll = MetadataCollection(_items=("doc", 42, True))
-        result = coll.find_subclass(Animal)
-        assert result is None
-
-    def test_find_subclass_matches_exact_type(self) -> None:
-        dog = Dog("Fido")
-        coll = MetadataCollection(_items=("doc", dog))
-        result = coll.find_subclass(Dog)
-        assert result is dog
-
-
-class TestFindAllSubclassMethod:
-    def test_find_all_subclass_returns_all_subclass_matches(self) -> None:
-        dog = Dog("Fido")
-        cat = Cat("Whiskers")
-        coll = MetadataCollection(_items=(dog, "doc", cat, 42))
-        result = coll.find_all_subclass(Animal)
-        assert list(result) == [dog, cat]
-
-    def test_find_all_subclass_returns_empty_when_no_match(self) -> None:
-        coll = MetadataCollection(_items=("doc", 42, True))
-        result = coll.find_all_subclass(Animal)
-        assert result is MetadataCollection.EMPTY
-
-    def test_find_all_subclass_preserves_order(self) -> None:
-        dog1 = Dog("Fido")
-        cat = Cat("Whiskers")
-        dog2 = Dog("Rex")
-        coll = MetadataCollection(_items=(dog1, "doc", cat, 42, dog2))
-        result = coll.find_all_subclass(Animal)
-        assert list(result) == [dog1, cat, dog2]
-
-
 class TestIsEmptyProperty:
     def test_is_empty_returns_true_for_empty(self) -> None:
         assert MetadataCollection.EMPTY.is_empty is True
@@ -906,3 +889,277 @@ class TestFlattenDeepMethod:
         coll = MetadataCollection.of([empty_grouped], auto_flatten=False)
         deep_flat = coll.flatten_deep()
         assert deep_flat is MetadataCollection.EMPTY
+
+
+class TestFindProtocol:
+    def test_find_protocol_returns_matching_items(self) -> None:
+        item1 = ItemWithValue(value=10)
+        item2 = ItemWithValue(value=20)
+        coll = MetadataCollection(_items=("doc", item1, 42, item2))
+        result = coll.find_protocol(HasValue)
+        assert list(result) == [item1, item2]
+
+    def test_find_protocol_enables_chaining(self) -> None:
+        item1 = ItemWithValue(value=5)
+        item2 = ItemWithValue(value=15)
+        item3 = ItemWithValue(value=25)
+        coll = MetadataCollection(_items=(item1, item2, item3))
+        # Ignore: lambda operates on heterogeneous collection items
+        result = coll.find_protocol(HasValue).filter(
+            lambda x: x.value > 10  # pyright: ignore[reportAttributeAccessIssue,reportUnknownLambdaType,reportUnknownMemberType]
+        )
+        assert list(result) == [item2, item3]
+
+    def test_find_protocol_raises_for_non_runtime_checkable(self) -> None:
+        coll = MetadataCollection(_items=("doc", 42))
+        with pytest.raises(ProtocolNotRuntimeCheckableError) as exc_info:
+            _ = coll.find_protocol(NotRuntimeCheckable)
+        assert exc_info.value.protocol is NotRuntimeCheckable
+
+    def test_find_protocol_raises_for_non_protocol(self) -> None:
+        coll = MetadataCollection(_items=("doc", 42))
+        with pytest.raises(TypeError, match="NotAProtocol is not a Protocol"):
+            _ = coll.find_protocol(NotAProtocol)
+
+    def test_find_protocol_returns_empty_when_no_match(self) -> None:
+        coll = MetadataCollection(_items=("doc", 42, True))
+        result = coll.find_protocol(HasValue)
+        assert result is MetadataCollection.EMPTY
+
+    def test_find_protocol_on_empty_collection(self) -> None:
+        coll = MetadataCollection.EMPTY
+        result = coll.find_protocol(HasValue)
+        assert result is MetadataCollection.EMPTY
+
+
+class TestHasProtocol:
+    def test_has_protocol_returns_true_when_match_exists(self) -> None:
+        item = ItemWithValue(value=42)
+        coll = MetadataCollection(_items=("doc", item, 100))
+        assert coll.has_protocol(HasValue) is True
+
+    def test_has_protocol_returns_false_when_no_match(self) -> None:
+        coll = MetadataCollection(_items=("doc", 42, True))
+        assert coll.has_protocol(HasValue) is False
+
+    def test_has_protocol_raises_for_non_runtime_checkable(self) -> None:
+        coll = MetadataCollection(_items=("doc", 42))
+        with pytest.raises(ProtocolNotRuntimeCheckableError) as exc_info:
+            _ = coll.has_protocol(NotRuntimeCheckable)
+        assert exc_info.value.protocol is NotRuntimeCheckable
+
+    def test_has_protocol_raises_for_non_protocol(self) -> None:
+        coll = MetadataCollection(_items=("doc", 42))
+        with pytest.raises(TypeError, match="NotAProtocol is not a Protocol"):
+            _ = coll.has_protocol(NotAProtocol)
+
+    def test_has_protocol_on_empty_collection(self) -> None:
+        coll = MetadataCollection.EMPTY
+        assert coll.has_protocol(HasValue) is False
+
+
+class TestCountProtocol:
+    def test_count_protocol_returns_matching_count(self) -> None:
+        item1 = ItemWithValue(value=10)
+        item2 = ItemWithValue(value=20)
+        item3 = ItemWithValue(value=30)
+        coll = MetadataCollection(_items=("doc", item1, 42, item2, "end", item3))
+        assert coll.count_protocol(HasValue) == 3
+
+    def test_count_protocol_raises_for_non_runtime_checkable(self) -> None:
+        coll = MetadataCollection(_items=("doc", 42))
+        with pytest.raises(ProtocolNotRuntimeCheckableError) as exc_info:
+            _ = coll.count_protocol(NotRuntimeCheckable)
+        assert exc_info.value.protocol is NotRuntimeCheckable
+
+    def test_count_protocol_raises_for_non_protocol(self) -> None:
+        coll = MetadataCollection(_items=("doc", 42))
+        with pytest.raises(TypeError, match="NotAProtocol is not a Protocol"):
+            _ = coll.count_protocol(NotAProtocol)
+
+    def test_count_protocol_returns_zero_when_no_match(self) -> None:
+        coll = MetadataCollection(_items=("doc", 42, True))
+        assert coll.count_protocol(HasValue) == 0
+
+    def test_count_protocol_on_empty_collection(self) -> None:
+        coll = MetadataCollection.EMPTY
+        assert coll.count_protocol(HasValue) == 0
+
+
+class TestFilter:
+    def test_filter_returns_matching_items(self) -> None:
+        coll = MetadataCollection(_items=(1, 2, 3, 4, 5))
+        # Ignore: lambda operates on object type, not narrowed int
+        result = coll.filter(lambda x: x > 2)  # pyright: ignore[reportOperatorIssue,reportUnknownLambdaType]
+        assert list(result) == [3, 4, 5]
+
+    def test_filter_preserves_order(self) -> None:
+        coll = MetadataCollection(_items=("a", "bb", "c", "ddd", "ee"))
+        # Ignore: lambda operates on object type, not narrowed str
+        result = coll.filter(lambda x: len(x) > 1)  # pyright: ignore[reportArgumentType]
+        assert list(result) == ["bb", "ddd", "ee"]
+
+    def test_filter_returns_empty_when_none_match(self) -> None:
+        coll = MetadataCollection(_items=(1, 2, 3))
+        # Ignore: lambda operates on object type, not narrowed int
+        result = coll.filter(lambda x: x > 100)  # pyright: ignore[reportOperatorIssue,reportUnknownLambdaType]
+        assert result is MetadataCollection.EMPTY
+
+    def test_filter_on_empty_collection(self) -> None:
+        coll = MetadataCollection.EMPTY
+        result = coll.filter(lambda _: True)
+        assert result is MetadataCollection.EMPTY
+
+    def test_filter_returns_collection_type(self) -> None:
+        coll = MetadataCollection(_items=(1, 2, 3))
+        # Ignore: lambda operates on object type, not narrowed int
+        result = coll.filter(lambda x: x > 0)  # pyright: ignore[reportOperatorIssue,reportUnknownLambdaType]
+        assert isinstance(result, MetadataCollection)
+
+    def test_filter_with_type_check_predicate(self) -> None:
+        coll = MetadataCollection(_items=("doc", 42, True, "end"))
+        result = coll.filter(lambda x: isinstance(x, str))
+        assert list(result) == ["doc", "end"]
+
+
+class TestFilterByType:
+    def test_filter_by_type_filters_with_typed_predicate(self) -> None:
+        item1 = ItemWithValue(value=5)
+        item2 = ItemWithValue(value=15)
+        item3 = ItemWithValue(value=25)
+        coll = MetadataCollection(_items=(item1, "doc", item2, 42, item3))
+        result = coll.filter_by_type(ItemWithValue, lambda x: x.value > 10)
+        assert list(result) == [item2, item3]
+
+    def test_filter_by_type_only_considers_matching_type(self) -> None:
+        item1 = ItemWithValue(value=100)
+        coll = MetadataCollection(_items=("doc", 42, item1, True))
+        # Predicate only receives ItemWithValue instances
+        result = coll.filter_by_type(ItemWithValue, lambda x: x.value > 50)
+        assert list(result) == [item1]
+
+    def test_filter_by_type_returns_empty_when_no_type_match(self) -> None:
+        coll = MetadataCollection(_items=("doc", 42, True))
+        result = coll.filter_by_type(ItemWithValue, lambda _: True)
+        assert result is MetadataCollection.EMPTY
+
+    def test_filter_by_type_returns_empty_when_predicate_rejects_all(self) -> None:
+        item1 = ItemWithValue(value=5)
+        item2 = ItemWithValue(value=10)
+        coll = MetadataCollection(_items=(item1, item2))
+        result = coll.filter_by_type(ItemWithValue, lambda x: x.value > 100)
+        assert result is MetadataCollection.EMPTY
+
+    def test_filter_by_type_on_empty_collection(self) -> None:
+        coll = MetadataCollection.EMPTY
+        result = coll.filter_by_type(int, lambda _: True)
+        assert result is MetadataCollection.EMPTY
+
+
+class TestFirst:
+    def test_first_returns_first_matching_item(self) -> None:
+        coll = MetadataCollection(_items=(1, 2, 3, 4, 5))
+        # Ignore: lambda operates on object type, not narrowed int
+        result = coll.first(lambda x: x > 2)  # pyright: ignore[reportOperatorIssue,reportUnknownLambdaType]
+        assert result == 3
+
+    def test_first_returns_none_when_no_match(self) -> None:
+        coll = MetadataCollection(_items=(1, 2, 3))
+        # Ignore: lambda operates on object type, not narrowed int
+        result = coll.first(lambda x: x > 100)  # pyright: ignore[reportOperatorIssue,reportUnknownLambdaType]
+        assert result is None
+
+    def test_first_on_empty_collection(self) -> None:
+        coll = MetadataCollection.EMPTY
+        result = coll.first(lambda _: True)
+        assert result is None
+
+    def test_first_stops_at_first_match(self) -> None:
+        checked: list[object] = []
+
+        def predicate(x: object) -> bool:
+            checked.append(x)
+            return x == 3
+
+        coll = MetadataCollection(_items=(1, 2, 3, 4, 5))
+        result = coll.first(predicate)
+        assert result == 3
+        # Should have checked 1, 2, 3 but not 4, 5
+        assert checked == [1, 2, 3]
+
+
+class TestFirstOfType:
+    def test_first_of_type_without_predicate_returns_first_of_type(self) -> None:
+        item1 = ItemWithValue(value=10)
+        item2 = ItemWithValue(value=20)
+        coll = MetadataCollection(_items=("doc", item1, 42, item2))
+        result = coll.first_of_type(ItemWithValue)
+        assert result is item1
+
+    def test_first_of_type_with_predicate_filters_typed_items(self) -> None:
+        item1 = ItemWithValue(value=5)
+        item2 = ItemWithValue(value=15)
+        item3 = ItemWithValue(value=25)
+        coll = MetadataCollection(_items=(item1, item2, item3))
+        result = coll.first_of_type(ItemWithValue, lambda x: x.value > 10)
+        assert result is item2
+
+    def test_first_of_type_returns_none_when_no_type_match(self) -> None:
+        coll = MetadataCollection(_items=("doc", 42, True))
+        result = coll.first_of_type(ItemWithValue)
+        assert result is None
+
+    def test_first_of_type_returns_none_when_predicate_rejects_all(self) -> None:
+        item1 = ItemWithValue(value=5)
+        item2 = ItemWithValue(value=10)
+        coll = MetadataCollection(_items=(item1, item2))
+        result = coll.first_of_type(ItemWithValue, lambda x: x.value > 100)
+        assert result is None
+
+    def test_first_of_type_on_empty_collection(self) -> None:
+        coll = MetadataCollection.EMPTY
+        result = coll.first_of_type(int)
+        assert result is None
+
+    def test_first_of_type_with_none_predicate_same_as_find(self) -> None:
+        coll = MetadataCollection(_items=(Ge(ge=0), Le(le=100), Ge(ge=10)))
+        result_first_of_type = coll.first_of_type(Ge, None)
+        result_find = coll.find(Ge)
+        assert result_first_of_type == result_find
+
+
+class TestAny:
+    def test_any_returns_true_when_predicate_matches(self) -> None:
+        coll = MetadataCollection(_items=(1, 2, 3, 4, 5))
+        # Ignore: lambda operates on object type, not narrowed int
+        result = coll.any(lambda x: x > 4)  # pyright: ignore[reportOperatorIssue,reportUnknownLambdaType]
+        assert result is True
+
+    def test_any_returns_false_when_no_match(self) -> None:
+        coll = MetadataCollection(_items=(1, 2, 3))
+        # Ignore: lambda operates on object type, not narrowed int
+        result = coll.any(lambda x: x > 100)  # pyright: ignore[reportOperatorIssue,reportUnknownLambdaType]
+        assert result is False
+
+    def test_any_on_empty_collection(self) -> None:
+        coll = MetadataCollection.EMPTY
+        result = coll.any(lambda _: True)
+        assert result is False
+
+    def test_any_with_type_check(self) -> None:
+        coll = MetadataCollection(_items=("doc", 42, True))
+        assert coll.any(lambda x: isinstance(x, int)) is True
+        assert coll.any(lambda x: isinstance(x, float)) is False
+
+    def test_any_short_circuits_on_first_match(self) -> None:
+        checked: list[object] = []
+
+        def predicate(x: object) -> bool:
+            checked.append(x)
+            return x == 2
+
+        coll = MetadataCollection(_items=(1, 2, 3, 4, 5))
+        result = coll.any(predicate)
+        assert result is True
+        # Should have checked 1, 2 but not 3, 4, 5
+        assert checked == [1, 2]
