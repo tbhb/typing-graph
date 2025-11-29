@@ -2,6 +2,7 @@
 
 import builtins
 from dataclasses import dataclass, field
+from types import MappingProxyType
 from typing import (
     TYPE_CHECKING,
     Annotated,
@@ -16,7 +17,7 @@ from typing import (
 from typing_extensions import Self, override
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable, Iterator
+    from collections.abc import Callable, Iterable, Iterator, Mapping
 
 # Type variables for generic query operations
 T = TypeVar("T")
@@ -63,6 +64,11 @@ def _flatten_items(items: "Iterable[object]") -> tuple[object, ...]:
         else:
             result.append(item)
     return tuple(result)
+
+
+def _default_sort_key(item: object) -> tuple[str, str]:
+    """Default sort key: (type_name, repr) for stable heterogeneous sorting."""
+    return (type(item).__name__, repr(item))
 
 
 def _ensure_runtime_checkable(protocol: type) -> None:
@@ -665,9 +671,10 @@ class MetadataCollection:
                 ...
             MetadataNotFoundError: No metadata of type 'float' found...
         """
-        result = self.find(type_)
-        if result is not None:
-            return result
+        # Iterate directly to correctly handle falsy values like 0, False, ""
+        for item in self._items:
+            if isinstance(item, type_):
+                return item
         raise MetadataNotFoundError(type_, self)
 
     def filter(self, predicate: "Callable[[object], bool]") -> "MetadataCollection":
@@ -976,6 +983,291 @@ class MetadataCollection:
         if not current:
             return MetadataCollection.EMPTY
         return MetadataCollection(_items=current)
+
+    def __add__(self, other: object) -> "MetadataCollection":
+        """Concatenate two collections.
+
+        Returns a new collection containing items from both collections,
+        with self's items first followed by other's items.
+
+        Args:
+            other: Another MetadataCollection to concatenate.
+
+        Returns:
+            New MetadataCollection with concatenated items, or EMPTY if
+            both collections are empty. Returns NotImplemented if other
+            is not a MetadataCollection.
+
+        Examples:
+            >>> a = MetadataCollection(_items=(1, 2))
+            >>> b = MetadataCollection(_items=(3, 4))
+            >>> list(a + b)
+            [1, 2, 3, 4]
+            >>> empty = MetadataCollection.EMPTY
+            >>> (empty + empty) is MetadataCollection.EMPTY
+            True
+        """
+        if not isinstance(other, MetadataCollection):
+            return NotImplemented
+        combined = self._items + other._items
+        if not combined:
+            return MetadataCollection.EMPTY
+        return MetadataCollection(_items=combined)
+
+    def __or__(self, other: object) -> "MetadataCollection":
+        """Concatenate two collections using the | operator.
+
+        This is an alias for __add__, providing an alternative syntax
+        for collection concatenation.
+
+        Args:
+            other: Another MetadataCollection to concatenate.
+
+        Returns:
+            New MetadataCollection with concatenated items.
+
+        Examples:
+            >>> a = MetadataCollection(_items=(1, 2))
+            >>> b = MetadataCollection(_items=(3, 4))
+            >>> list(a | b)
+            [1, 2, 3, 4]
+        """
+        return self.__add__(other)
+
+    def exclude(self, *types: type) -> "MetadataCollection":
+        """Return items that are NOT instances of any of the given types.
+
+        This is the inverse of find_all() - it excludes rather than includes
+        items matching the specified types.
+
+        Args:
+            *types: One or more types to exclude.
+
+        Returns:
+            New MetadataCollection with non-matching items, or EMPTY if
+            all items match. Returns self if no types are provided.
+
+        Examples:
+            >>> coll = MetadataCollection(_items=("a", 1, "b", 2))
+            >>> list(coll.exclude(int))
+            ['a', 'b']
+            >>> list(coll.exclude(str, int))
+            []
+            >>> coll.exclude() is coll
+            True
+        """
+        if not types:
+            return self
+        matches = tuple(item for item in self._items if not isinstance(item, types))
+        if not matches:
+            return MetadataCollection.EMPTY
+        return MetadataCollection(_items=matches)
+
+    def unique(self) -> "MetadataCollection":
+        """Return collection with duplicate items removed.
+
+        Preserves first occurrence order. Uses set-based deduplication
+        for hashable items (O(n)), falling back to list-based comparison
+        for unhashable items (O(n^2)).
+
+        Returns:
+            New MetadataCollection with unique items, or self if already unique.
+
+        Examples:
+            >>> coll = MetadataCollection(_items=(1, 2, 1, 3, 2))
+            >>> list(coll.unique())
+            [1, 2, 3]
+            >>> # Unhashable items are handled
+            >>> coll = MetadataCollection(_items=([1], [2], [1]))
+            >>> list(coll.unique())
+            [[1], [2]]
+        """
+        if not self._items:
+            return MetadataCollection.EMPTY
+
+        # Try set-based deduplication (O(n))
+        try:
+            seen: set[object] = set()
+            result: list[object] = []
+            for item in self._items:
+                if item not in seen:
+                    seen.add(item)
+                    result.append(item)
+        except TypeError:
+            # Fall back to list-based comparison for unhashable items (O(n^2))
+            result = []
+            for item in self._items:
+                if item not in result:
+                    result.append(item)
+
+        result_tuple = tuple(result)
+        if result_tuple == self._items:
+            return self
+        if not result_tuple:
+            return MetadataCollection.EMPTY
+        return MetadataCollection(_items=result_tuple)
+
+    def sorted(
+        self, *, key: "Callable[[object], SupportsLessThan] | None" = None
+    ) -> "MetadataCollection":
+        """Return collection with items sorted.
+
+        Uses the provided key function for comparison. If no key is provided,
+        uses a default key of (type_name, repr) for stable heterogeneous sorting.
+
+        Args:
+            key: Optional callable that extracts a comparison key from each item.
+                The key must return a value supporting the < operator.
+
+        Returns:
+            New MetadataCollection with sorted items, or EMPTY if empty.
+
+        Security:
+            Key functions execute arbitrary code. Use only trusted sources.
+
+        Examples:
+            >>> coll = MetadataCollection(_items=(3, 1, 2))
+            >>> list(coll.sorted())
+            [1, 2, 3]
+            >>> coll = MetadataCollection(_items=("b", "a", "c"))
+            >>> list(coll.sorted())
+            ['a', 'b', 'c']
+            >>> # Custom key function
+            >>> coll = MetadataCollection(_items=("bb", "a", "ccc"))
+            >>> list(coll.sorted(key=len))
+            ['a', 'bb', 'ccc']
+        """
+        if not self._items:
+            return MetadataCollection.EMPTY
+        sort_key = key if key is not None else _default_sort_key
+        sorted_items = tuple(builtins.sorted(self._items, key=sort_key))
+        return MetadataCollection(_items=sorted_items)
+
+    def reversed(self) -> "MetadataCollection":
+        """Return collection with items in reverse order.
+
+        Returns:
+            New MetadataCollection with reversed items, or EMPTY if empty.
+
+        Examples:
+            >>> coll = MetadataCollection(_items=(1, 2, 3))
+            >>> list(coll.reversed())
+            [3, 2, 1]
+            >>> MetadataCollection.EMPTY.reversed() is MetadataCollection.EMPTY
+            True
+        """
+        if not self._items:
+            return MetadataCollection.EMPTY
+        return MetadataCollection(_items=self._items[::-1])
+
+    def map(self, func: "Callable[[object], T]") -> tuple[T, ...]:
+        """Apply a function to each item and return results as a tuple.
+
+        This is a terminal operation - it returns a tuple, not a
+        MetadataCollection, because the transformed values may not be
+        valid metadata items.
+
+        Args:
+            func: Callable to apply to each item.
+
+        Returns:
+            Tuple containing the results of applying func to each item.
+
+        Security:
+            Functions execute arbitrary code. Use only trusted sources.
+
+        Examples:
+            >>> coll = MetadataCollection(_items=(1, 2, 3))
+            >>> coll.map(lambda x: x * 2)
+            (2, 4, 6)
+            >>> coll = MetadataCollection(_items=("a", "bb", "ccc"))
+            >>> coll.map(len)
+            (1, 2, 3)
+        """
+        return tuple(func(item) for item in self._items)
+
+    def partition(
+        self, predicate: "Callable[[object], bool]"
+    ) -> tuple["MetadataCollection", "MetadataCollection"]:
+        """Split collection into matching and non-matching items.
+
+        Args:
+            predicate: Callable taking an item, returning True if it should
+                be in the first partition.
+
+        Returns:
+            Tuple of (matching, non_matching) MetadataCollections.
+
+        Security:
+            Predicates execute arbitrary code. Use only trusted sources.
+
+        Examples:
+            >>> coll = MetadataCollection(_items=(1, 2, 3, 4, 5))
+            >>> matching, non_matching = coll.partition(lambda x: x % 2 == 0)
+            >>> list(matching)
+            [2, 4]
+            >>> list(non_matching)
+            [1, 3, 5]
+        """
+        matching: list[object] = []
+        non_matching: list[object] = []
+        for item in self._items:
+            if predicate(item):
+                matching.append(item)
+            else:
+                non_matching.append(item)
+
+        matching_coll = (
+            MetadataCollection(_items=tuple(matching))
+            if matching
+            else MetadataCollection.EMPTY
+        )
+        non_matching_coll = (
+            MetadataCollection(_items=tuple(non_matching))
+            if non_matching
+            else MetadataCollection.EMPTY
+        )
+        return (matching_coll, non_matching_coll)
+
+    def types(self) -> frozenset[type]:
+        """Return the set of unique types in the collection.
+
+        Returns:
+            Frozenset containing the type of each unique item type.
+
+        Examples:
+            >>> coll = MetadataCollection(_items=("a", 1, "b", 2.0))
+            >>> sorted(t.__name__ for t in coll.types())
+            ['float', 'int', 'str']
+        """
+        return frozenset(type(item) for item in self._items)
+
+    def by_type(self) -> "Mapping[type, tuple[object, ...]]":
+        """Group items by their type.
+
+        Returns:
+            Immutable mapping from type to tuple of items of that type.
+            Order within each group matches original insertion order.
+
+        Examples:
+            >>> coll = MetadataCollection(_items=("a", 1, "b", 2))
+            >>> grouped = coll.by_type()
+            >>> list(grouped[str])
+            ['a', 'b']
+            >>> list(grouped[int])
+            [1, 2]
+        """
+        groups: dict[type, list[object]] = {}
+        for item in self._items:
+            item_type = type(item)
+            if item_type not in groups:
+                groups[item_type] = []
+            groups[item_type].append(item)
+        # Convert lists to tuples for immutability
+        result: dict[type, tuple[object, ...]] = {
+            k: tuple(v) for k, v in groups.items()
+        }
+        return MappingProxyType(result)
 
 
 # Initialize the EMPTY singleton after class definition

@@ -92,7 +92,7 @@ reportPrivateUsage = "none"
 
 [tool.codespell]
 skip = "uv.lock,htmlcov,tmp,pnpm-lock.yaml,docs,site"
-ignore-words-list = "typing_graph"
+ignore-words-list = "typing_graph,hashability,subclasshook,unhashable"
 
 [tool.pytest.ini_options]
 addopts = [

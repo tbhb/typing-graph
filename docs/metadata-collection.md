@@ -642,35 +642,6 @@ except MetadataNotFoundError as e:
     print(e.collection)      # MetadataCollection([...])
 ```
 
-### Finding subclasses
-
-Use `find_subclass()` and `find_all_subclass()` when you want to explicitly match by inheritance:
-
-```python
-from typing_graph._metadata import MetadataCollection
-
-class Constraint:
-    pass
-
-class MinValue(Constraint):
-    def __init__(self, value: int) -> None:
-        self.value = value
-
-class MaxValue(Constraint):
-    def __init__(self, value: int) -> None:
-        self.value = value
-
-coll = MetadataCollection(_items=(MinValue(0), MaxValue(100), "doc"))
-
-# Find first subclass match
-result = coll.find_subclass(Constraint)
-print(type(result).__name__)  # MinValue
-
-# Find all subclass matches
-all_constraints = coll.find_all_subclass(Constraint)
-print(len(all_constraints))  # 2
-```
-
 ### Checking emptiness
 
 Use the `is_empty` property for readable empty checks:
@@ -689,30 +660,188 @@ if coll.is_empty:
     print("No metadata")
 ```
 
+## Filtering methods
+
+### Predicate-based filtering
+
+Use `filter()` to filter items by a predicate function:
+
+```python
+from typing_graph._metadata import MetadataCollection
+
+coll = MetadataCollection(_items=(1, 2, 3, 4, 5))
+evens = coll.filter(lambda x: x % 2 == 0)
+print(list(evens))  # [2, 4]
+```
+
+Use `filter_by_type()` for type-safe filtering with a typed predicate:
+
+```python
+from dataclasses import dataclass
+from typing_graph._metadata import MetadataCollection
+
+@dataclass(frozen=True)
+class Gt:
+    value: int
+
+coll = MetadataCollection(_items=(Gt(0), Gt(10), Gt(5), "doc"))
+large = coll.filter_by_type(Gt, lambda x: x.value > 5)
+print(list(large))  # [Gt(value=10)]
+```
+
+### Protocol-based filtering
+
+Use `find_protocol()` to find items matching a `@runtime_checkable` protocol:
+
+```python
+from typing import Protocol, runtime_checkable
+from typing_graph._metadata import MetadataCollection
+
+@runtime_checkable
+class HasValue(Protocol):
+    value: int
+
+@dataclass(frozen=True)
+class Constraint:
+    value: int
+
+coll = MetadataCollection(_items=(Constraint(0), "doc"))
+matches = coll.find_protocol(HasValue)
+print(list(matches))  # [Constraint(value=0)]
+```
+
+## Transformation methods
+
+### Combining collections
+
+Use `+` or `|` to combine collections:
+
+```python
+from typing_graph._metadata import MetadataCollection
+
+a = MetadataCollection(_items=(1, 2))
+b = MetadataCollection(_items=(3, 4))
+
+combined = a + b
+print(list(combined))  # [1, 2, 3, 4]
+
+# | operator works the same way
+combined = a | b
+print(list(combined))  # [1, 2, 3, 4]
+```
+
+### Excluding types
+
+Use `exclude()` to remove items of specific types:
+
+```python
+from typing_graph._metadata import MetadataCollection
+
+coll = MetadataCollection(_items=("a", 1, "b", 2))
+no_strings = coll.exclude(str)
+print(list(no_strings))  # [1, 2]
+```
+
+### Removing duplicates
+
+Use `unique()` to remove duplicate items:
+
+```python
+from typing_graph._metadata import MetadataCollection
+
+coll = MetadataCollection(_items=(1, 2, 1, 3, 2))
+unique = coll.unique()
+print(list(unique))  # [1, 2, 3]
+```
+
+The method preserves first occurrence order and handles unhashable items.
+
+### Sorting
+
+Use `sorted()` to sort items:
+
+```python
+from typing_graph._metadata import MetadataCollection
+
+coll = MetadataCollection(_items=(3, 1, 2))
+sorted_coll = coll.sorted()
+print(list(sorted_coll))  # [1, 2, 3]
+
+# With custom key function
+coll = MetadataCollection(_items=("bb", "a", "ccc"))
+by_len = coll.sorted(key=len)
+print(list(by_len))  # ['a', 'bb', 'ccc']
+```
+
+### Reversing
+
+Use `reversed()` to reverse the order:
+
+```python
+from typing_graph._metadata import MetadataCollection
+
+coll = MetadataCollection(_items=(1, 2, 3))
+rev = coll.reversed()
+print(list(rev))  # [3, 2, 1]
+```
+
+### Mapping
+
+Use `map()` to transform items. This is a terminal operation that returns a tuple:
+
+```python
+from typing_graph._metadata import MetadataCollection
+
+coll = MetadataCollection(_items=(1, 2, 3))
+doubled = coll.map(lambda x: x * 2)
+print(doubled)  # (2, 4, 6)
+```
+
+### Partitioning
+
+Use `partition()` to split a collection by a predicate:
+
+```python
+from typing_graph._metadata import MetadataCollection
+
+coll = MetadataCollection(_items=(1, 2, 3, 4, 5))
+evens, odds = coll.partition(lambda x: x % 2 == 0)
+print(list(evens))  # [2, 4]
+print(list(odds))   # [1, 3, 5]
+```
+
+## Introspection methods
+
+### Getting unique types
+
+Use `types()` to get the unique types in a collection:
+
+```python
+from typing_graph._metadata import MetadataCollection
+
+coll = MetadataCollection(_items=("a", 1, "b", 2.0))
+types = coll.types()
+print(sorted(t.__name__ for t in types))  # ['float', 'int', 'str']
+```
+
+### Grouping by type
+
+Use `by_type()` to group items by their type:
+
+```python
+from typing_graph._metadata import MetadataCollection
+
+coll = MetadataCollection(_items=("a", 1, "b", 2))
+grouped = coll.by_type()
+print(list(grouped[str]))  # ['a', 'b']
+print(list(grouped[int]))  # [1, 2]
+```
+
+The returned mapping is immutable.
+
 ## Coming soon
 
-The following features are planned for future stages of the MetadataCollection implementation.
-
-### Filtering methods (Stage 3)
-
-- `filter(predicate)` - Filter by predicate
-- `filter_by_type(type, predicate)` - Type-safe filtering
-- `find_protocol(protocol)` - Find items matching a protocol
-- `exclude(*types)` - Remove items of given types
-
-### Transformation methods (Stage 4)
-
-- `__add__` and `__or__` - Combine collections
-- `unique()` - Remove duplicates
-- `sorted(key)` - Sort with optional key function
-- `reversed()` - Reverse order
-- `map(func)` - Transform items
-- `partition(predicate)` - Split into two collections
-- `flatten()` - Expand GroupedMetadata items
-- `types()` - Get unique types in collection
-- `by_type()` - Group items by type
-
-### TypeNode integration (Stage 5)
+### TypeNode integration
 
 Integration with the type graph for seamless metadata access on all type nodes.
 

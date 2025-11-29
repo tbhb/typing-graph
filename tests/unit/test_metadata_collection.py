@@ -674,12 +674,10 @@ class TestFindAllMethod:
         result = coll.find_all(Ge)
         assert result is MetadataCollection.EMPTY
 
-    @pytest.mark.xfail(reason="exclude() not yet implemented")
     def test_find_all_enables_chaining(self) -> None:
         coll = MetadataCollection(_items=(Ge(ge=0), Le(le=100), Ge(ge=10)))
-        # Ignores: exclude() not yet implemented, types unknown in xfail test
-        result = coll.find_all(Ge, Le).exclude(Le)  # pyright: ignore[reportAttributeAccessIssue, reportUnknownVariableType, reportUnknownMemberType]
-        assert list(result) == [Ge(ge=0), Ge(ge=10)]  # pyright: ignore[reportUnknownArgumentType]
+        result = coll.find_all(Ge, Le).exclude(Le)
+        assert list(result) == [Ge(ge=0), Ge(ge=10)]
 
 
 class TestHasMethod:
@@ -1163,3 +1161,214 @@ class TestAny:
         assert result is True
         # Should have checked 1, 2 but not 3, 4, 5
         assert checked == [1, 2]
+
+
+class TestAdd:
+    def test_add_concatenates_collections(self) -> None:
+        a = MetadataCollection(_items=("x",))
+        b = MetadataCollection(_items=("y",))
+        result = a + b
+        assert isinstance(result, MetadataCollection)
+        assert list(result) == ["x", "y"]
+
+    def test_add_with_empty_collection(self) -> None:
+        a = MetadataCollection(_items=(1, 2))
+        empty = MetadataCollection.EMPTY
+        result = a + empty
+        assert list(result) == [1, 2]
+
+    def test_add_empty_plus_empty_returns_empty_singleton(self) -> None:
+        result = MetadataCollection.EMPTY + MetadataCollection.EMPTY
+        assert result is MetadataCollection.EMPTY
+
+    def test_add_returns_not_implemented_for_non_collection(self) -> None:
+        coll = MetadataCollection(_items=(1, 2))
+        result = coll.__add__([3, 4])
+        assert result is NotImplemented
+
+
+class TestOr:
+    def test_or_concatenates_collections(self) -> None:
+        a = MetadataCollection(_items=(Ge(ge=0),))
+        b = MetadataCollection(_items=(Le(le=100),))
+        result = a | b
+        assert isinstance(result, MetadataCollection)
+        assert list(result) == [Ge(ge=0), Le(le=100)]
+
+    def test_or_behaves_like_add(self) -> None:
+        a = MetadataCollection(_items=("x", "y"))
+        b = MetadataCollection(_items=("z", "w"))
+        add_result = a + b
+        or_result = a | b
+        assert add_result == or_result
+        assert list(add_result) == list(or_result)
+
+
+class TestExclude:
+    def test_exclude_removes_matching_types(self) -> None:
+        coll = MetadataCollection(_items=(Ge(ge=0), "doc", Le(le=100)))
+        result = coll.exclude(str)
+        assert list(result) == [Ge(ge=0), Le(le=100)]
+
+    def test_exclude_multiple_types(self) -> None:
+        coll = MetadataCollection(_items=(Ge(ge=0), "doc", Le(le=100), 42))
+        result = coll.exclude(str, int)
+        assert list(result) == [Ge(ge=0), Le(le=100)]
+
+    def test_exclude_all_types_returns_empty(self) -> None:
+        coll = MetadataCollection(_items=("a", "b"))
+        result = coll.exclude(str)
+        assert result is MetadataCollection.EMPTY
+
+    def test_exclude_no_types_returns_self(self) -> None:
+        coll = MetadataCollection(_items=(1, 2, 3))
+        result = coll.exclude()
+        assert result is coll
+
+
+class TestUnique:
+    def test_unique_removes_duplicates(self) -> None:
+        coll = MetadataCollection(_items=(Ge(ge=0), Ge(ge=0), Le(le=100)))
+        result = coll.unique()
+        assert list(result) == [Ge(ge=0), Le(le=100)]
+
+    def test_unique_preserves_first_occurrence_order(self) -> None:
+        coll = MetadataCollection(_items=(Ge(ge=0), Le(le=100), Ge(ge=0)))
+        result = coll.unique()
+        assert list(result) == [Ge(ge=0), Le(le=100)]
+
+    def test_unique_handles_unhashable_items(self) -> None:
+        coll = MetadataCollection(_items=({"a": 1}, {"a": 1}, {"b": 2}))
+        result = coll.unique()
+        assert list(result) == [{"a": 1}, {"b": 2}]
+
+    def test_unique_no_duplicates_returns_self(self) -> None:
+        coll = MetadataCollection(_items=(1, 2, 3))
+        result = coll.unique()
+        assert result is coll
+
+    def test_unique_empty_returns_empty_singleton(self) -> None:
+        result = MetadataCollection.EMPTY.unique()
+        assert result is MetadataCollection.EMPTY
+
+
+class TestSorted:
+    def test_sorted_with_default_key(self) -> None:
+        coll = MetadataCollection(_items=(3, 1, 2))
+        result = coll.sorted()
+        assert isinstance(result, MetadataCollection)
+        # Default key is (type_name, repr), so ints sorted by repr
+        assert list(result) == [1, 2, 3]
+
+    def test_sorted_with_custom_key(self) -> None:
+        coll = MetadataCollection(_items=("bb", "a", "ccc"))
+        # Ignore: lambda operates on object type
+        result = coll.sorted(key=lambda x: len(x))  # pyright: ignore[reportArgumentType]
+        assert list(result) == ["a", "bb", "ccc"]
+
+    def test_sorted_heterogeneous_with_default_key(self) -> None:
+        coll = MetadataCollection(_items=(Ge(ge=0), "doc", Le(le=100)))
+        result = coll.sorted()
+        # Default key groups by type name, so 'Ge' < 'Le' < 'str'
+        type_names = [type(item).__name__ for item in result]
+        assert type_names == sorted(type_names)
+
+    def test_sorted_empty_returns_empty_singleton(self) -> None:
+        result = MetadataCollection.EMPTY.sorted()
+        assert result is MetadataCollection.EMPTY
+
+
+class TestReversed:
+    def test_reversed_returns_items_in_reverse_order(self) -> None:
+        coll = MetadataCollection(_items=("a", "b", "c"))
+        result = coll.reversed()
+        assert isinstance(result, MetadataCollection)
+        assert list(result) == ["c", "b", "a"]
+
+    def test_reversed_single_item(self) -> None:
+        coll = MetadataCollection(_items=(1,))
+        result = coll.reversed()
+        assert list(result) == [1]
+
+    def test_reversed_empty_returns_empty_singleton(self) -> None:
+        result = MetadataCollection.EMPTY.reversed()
+        assert result is MetadataCollection.EMPTY
+
+
+class TestMap:
+    def test_map_applies_function_to_all_items(self) -> None:
+        coll = MetadataCollection(_items=(1, 2, 3))
+        # Ignore: lambda operates on object type
+        result: tuple[object, ...] = coll.map(  # pyright: ignore[reportUnknownVariableType]
+            lambda x: x * 2  # pyright: ignore[reportOperatorIssue,reportUnknownLambdaType]
+        )
+        assert result == (2, 4, 6)
+
+    def test_map_returns_tuple_not_collection(self) -> None:
+        coll = MetadataCollection(_items=(1, 2, 3))
+        result = coll.map(str)
+        assert isinstance(result, tuple)
+        assert not isinstance(result, MetadataCollection)
+        assert result == ("1", "2", "3")
+
+    def test_map_empty_returns_empty_tuple(self) -> None:
+        result = MetadataCollection.EMPTY.map(str)
+        assert result == ()
+
+
+class TestPartition:
+    def test_partition_splits_by_predicate(self) -> None:
+        coll = MetadataCollection(_items=(Ge(ge=0), "doc", Le(le=100), "note"))
+        matching, non_matching = coll.partition(lambda x: isinstance(x, str))
+        assert list(matching) == ["doc", "note"]
+        assert list(non_matching) == [Ge(ge=0), Le(le=100)]
+
+    def test_partition_returns_two_collections(self) -> None:
+        coll = MetadataCollection(_items=(1, 2, 3, 4, 5))
+        # Ignore: lambda operates on object type
+        matching, non_matching = coll.partition(lambda x: x % 2 == 0)  # pyright: ignore[reportOperatorIssue,reportUnknownLambdaType]
+        assert isinstance(matching, MetadataCollection)
+        assert isinstance(non_matching, MetadataCollection)
+
+    def test_partition_all_match_returns_empty_non_matching(self) -> None:
+        coll = MetadataCollection(_items=(1, 2, 3))
+        matching, non_matching = coll.partition(lambda _: True)
+        assert list(matching) == [1, 2, 3]
+        assert non_matching is MetadataCollection.EMPTY
+
+    def test_partition_none_match_returns_empty_matching(self) -> None:
+        coll = MetadataCollection(_items=(1, 2, 3))
+        matching, non_matching = coll.partition(lambda _: False)
+        assert matching is MetadataCollection.EMPTY
+        assert list(non_matching) == [1, 2, 3]
+
+
+class TestTypes:
+    def test_types_returns_unique_types(self) -> None:
+        coll = MetadataCollection(_items=(Ge(ge=0), Ge(ge=10), "doc"))
+        result = coll.types()
+        assert isinstance(result, frozenset)
+        assert result == frozenset({type(Ge(ge=0)), str})
+
+    def test_types_empty_returns_empty_frozenset(self) -> None:
+        result = MetadataCollection.EMPTY.types()
+        assert result == frozenset()
+
+
+class TestByType:
+    def test_by_type_groups_items_by_type(self) -> None:
+        coll = MetadataCollection(_items=(Ge(ge=0), "a", Ge(ge=10), "b"))
+        result = coll.by_type()
+        assert result[type(Ge(ge=0))] == (Ge(ge=0), Ge(ge=10))
+        assert result[str] == ("a", "b")
+
+    def test_by_type_returns_immutable_mapping(self) -> None:
+        coll = MetadataCollection(_items=(1, 2, "a"))
+        result = coll.by_type()
+        # MappingProxyType doesn't support item assignment
+        with pytest.raises(TypeError):
+            result[int] = (3, 4)  # pyright: ignore[reportIndexIssue]
+
+    def test_by_type_empty_returns_empty_mapping(self) -> None:
+        result = MetadataCollection.EMPTY.by_type()
+        assert len(result) == 0
