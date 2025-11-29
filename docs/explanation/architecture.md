@@ -69,7 +69,7 @@ flowchart TD
 When the library encounters `Annotated[T, meta1, meta2]`, it can either:
 
 - **Hoist metadata** (default): Create a node for `T` with `metadata=(meta1, meta2)`
-- **Preserve wrapper**: Create an `AnnotatedType` node containing the base and annotations
+- **Preserve wrapper**: Create an `AnnotatedNode` node containing the base and annotations
 
 Hoisting simplifies working with annotated types since you get the underlying type directly with metadata attached.
 
@@ -77,12 +77,12 @@ Hoisting simplifies working with annotated types since you get the underlying ty
 # snippet - illustrative pseudocode
 # With hoisting (default)
 node = inspect_type(Annotated[str, MaxLen(100)])
-# Returns: ConcreteType(cls=str, metadata=(MaxLen(100),))
+# Returns: ConcreteNode(cls=str, metadata=(MaxLen(100),))
 
 # Without hoisting
 config = InspectConfig(hoist_metadata=False)
 node = inspect_type(Annotated[str, MaxLen(100)], config=config)
-# Returns: AnnotatedType(base=ConcreteType(cls=str), annotations=(MaxLen(100),))
+# Returns: AnnotatedNode(base=ConcreteNode(cls=str), annotations=(MaxLen(100),))
 ```
 
 ## The node layer
@@ -93,16 +93,16 @@ All type representations inherit from [`TypeNode`][typing_graph.TypeNode], which
 
 ```mermaid
 classDiagram
-    TypeNode <|-- ConcreteType
+    TypeNode <|-- ConcreteNode
     TypeNode <|-- GenericTypeNode
-    TypeNode <|-- SubscriptedGeneric
+    TypeNode <|-- SubscriptedGenericNode
     TypeNode <|-- UnionNode
-    TypeNode <|-- TupleType
-    TypeNode <|-- CallableType
+    TypeNode <|-- TupleNode
+    TypeNode <|-- CallableNode
     TypeNode <|-- TypeVarNode
-    TypeNode <|-- ForwardRef
-    TypeNode <|-- AnyType
-    TypeNode <|-- NeverType
+    TypeNode <|-- ForwardRefNode
+    TypeNode <|-- AnyNode
+    TypeNode <|-- NeverNode
     TypeNode <|-- LiteralNode
 
     class TypeNode {
@@ -112,11 +112,11 @@ classDiagram
         +children() Sequence
     }
 
-    class ConcreteType {
+    class ConcreteNode {
         +cls: type
     }
 
-    class SubscriptedGeneric {
+    class SubscriptedGenericNode {
         +origin: GenericTypeNode
         +args: tuple
     }
@@ -132,25 +132,25 @@ Nodes fall into these categories based on what they represent:
 
 **Concrete types** represent non-generic nominal types:
 
-- [`ConcreteType`][typing_graph.ConcreteType] - Simple types like `int`, `str`, custom classes
+- [`ConcreteNode`][typing_graph.ConcreteNode] - Simple types like `int`, `str`, custom classes
 
 **Generic types** represent parameterized types:
 
 - [`GenericTypeNode`][typing_graph.GenericTypeNode] - Unsubscripted generics like `list`, `Dict`
-- [`SubscriptedGeneric`][typing_graph.SubscriptedGeneric] - Applied generics like `list[int]`
-- [`GenericAlias`][typing_graph.GenericAlias] - Generic class aliases
+- [`SubscriptedGenericNode`][typing_graph.SubscriptedGenericNode] - Applied generics like `list[int]`
+- [`GenericAliasNode`][typing_graph.GenericAliasNode] - Generic class aliases
 
 **Composite types** combine other types:
 
 - [`UnionNode`][typing_graph.UnionNode] - Union types (`A | B`, `Union[A, B]`)
-- [`TupleType`][typing_graph.TupleType] - Tuple types (heterogeneous and homogeneous)
-- [`CallableType`][typing_graph.CallableType] - Callable signatures
+- [`TupleNode`][typing_graph.TupleNode] - Tuple types (heterogeneous and homogeneous)
+- [`CallableNode`][typing_graph.CallableNode] - Callable signatures
 
 **Special forms** represent typing system constructs:
 
-- [`AnyType`][typing_graph.AnyType] - `typing.Any`
-- [`NeverType`][typing_graph.NeverType] - `typing.Never`
-- [`SelfType`][typing_graph.SelfType] - `typing.Self`
+- [`AnyNode`][typing_graph.AnyNode] - `typing.Any`
+- [`NeverNode`][typing_graph.NeverNode] - `typing.Never`
+- [`SelfNode`][typing_graph.SelfNode] - `typing.Self`
 - [`LiteralNode`][typing_graph.LiteralNode] - `Literal[...]` values
 
 **Type parameters** represent generic placeholders:
@@ -161,11 +161,11 @@ Nodes fall into these categories based on what they represent:
 
 **Structured types** represent classes with fields:
 
-- [`DataclassType`][typing_graph.DataclassType] - Dataclasses
-- [`TypedDictType`][typing_graph.TypedDictType] - TypedDict classes
-- [`NamedTupleType`][typing_graph.NamedTupleType] - NamedTuple classes
-- [`ProtocolType`][typing_graph.ProtocolType] - Protocol definitions
-- [`EnumType`][typing_graph.EnumType] - Enum classes
+- [`DataclassNode`][typing_graph.DataclassNode] - Dataclasses
+- [`TypedDictNode`][typing_graph.TypedDictNode] - TypedDict classes
+- [`NamedTupleNode`][typing_graph.NamedTupleNode] - NamedTuple classes
+- [`ProtocolNode`][typing_graph.ProtocolNode] - Protocol definitions
+- [`EnumNode`][typing_graph.EnumNode] - Enum classes
 
 ### Memory efficiency and immutability
 
@@ -186,7 +186,7 @@ Every node implements `children()` to enable graph traversal:
 ```python
 # snippet - simplified internal implementation
 @dataclass(slots=True, frozen=True)
-class SubscriptedGeneric(TypeNode):
+class SubscriptedGenericNode(TypeNode):
     origin: GenericTypeNode
     args: tuple[TypeNode, ...]
 
@@ -196,10 +196,10 @@ class SubscriptedGeneric(TypeNode):
 
 What counts as "children" depends on the node type:
 
-- `SubscriptedGeneric` → type arguments
-- `UnionType` → union members
-- `DataclassType` → field types
-- `ConcreteType` → empty (leaf node)
+- `SubscriptedGenericNode` → type arguments
+- `UnionNode` → union members
+- `DataclassNode` → field types
+- `ConcreteNode` → empty (leaf node)
 
 ## The configuration layer
 
@@ -226,7 +226,7 @@ The `eval_mode` option controls how the library handles forward references:
 | Mode | Behavior |
 | ---- | -------- |
 | `EAGER` | Resolve immediately, fail on errors |
-| `DEFERRED` | Create `ForwardRef` nodes for unresolvable references |
+| `DEFERRED` | Create `ForwardRefNode` nodes for unresolvable references |
 | `STRINGIFIED` | Keep as strings, resolve lazily |
 
 `DEFERRED` (the default) provides the best balance: resolution when possible, graceful handling when not.
@@ -288,4 +288,4 @@ The library uses lazy evaluation where possible:
 
 ### Type safety
 
-The library is fully typed and passes strict basedpyright checking. Type guard functions (`is_concrete_type()`, `is_union_type_node()`, etc.) enable type-safe node discrimination.
+The library is fully typed and passes strict basedpyright checking. Type guard functions (`is_concrete_node()`, `is_union_type_node()`, etc.) enable type-safe node discrimination.

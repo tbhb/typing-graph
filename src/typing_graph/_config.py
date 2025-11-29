@@ -29,7 +29,7 @@ EVAL_MODE_TO_FORMAT: Final[dict[EvalMode, Format]] = {
 }
 
 
-@dataclass(slots=True)
+@dataclass(slots=True, frozen=True)
 class InspectConfig:
     """Configuration for type introspection.
 

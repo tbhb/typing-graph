@@ -10,15 +10,15 @@ This guide shows how to traverse the type graph recursively using the `children(
 
 Every [`TypeNode`][typing_graph.TypeNode] has a `children()` method that returns an iterable of its child nodes. What counts as a "child" depends on the node type:
 
-| Node type                                                | Children                        |
-| -------------------------------------------------------- | ------------------------------- |
-| [`ConcreteType`][typing_graph.ConcreteType]              | None (leaf node)                |
-| [`SubscriptedGeneric`][typing_graph.SubscriptedGeneric]  | Type arguments                  |
-| [`UnionNode`][typing_graph.UnionNode]                    | Union members                   |
-| [`TupleType`][typing_graph.TupleType]                    | Element types                   |
-| [`CallableType`][typing_graph.CallableType]              | Parameter types and return type |
-| [`DataclassType`][typing_graph.DataclassType]            | Field types                     |
-| [`TypedDictType`][typing_graph.TypedDictType]            | Field types                     |
+| Node type                                                        | Children                        |
+| ---------------------------------------------------------------- | ------------------------------- |
+| [`ConcreteNode`][typing_graph.ConcreteNode]                      | None (leaf node)                |
+| [`SubscriptedGenericNode`][typing_graph.SubscriptedGenericNode]  | Type arguments                  |
+| [`UnionNode`][typing_graph.UnionNode]                            | Union members                   |
+| [`TupleNode`][typing_graph.TupleNode]                            | Element types                   |
+| [`CallableNode`][typing_graph.CallableNode]                      | Parameter types and return type |
+| [`DataclassNode`][typing_graph.DataclassNode]                    | Field types                     |
+| [`TypedDictNode`][typing_graph.TypedDictNode]                    | Field types                     |
 
 ```python
 from typing_graph import inspect_type
@@ -55,10 +55,10 @@ traverse(node)
 Output:
 
 ```text
-Visiting: SubscriptedGeneric
-Visiting: ConcreteType
-Visiting: SubscriptedGeneric
-Visiting: ConcreteType
+Visiting: SubscriptedGenericNode
+Visiting: ConcreteNode
+Visiting: SubscriptedGenericNode
+Visiting: ConcreteNode
 ```
 
 ## Handling different node types
@@ -69,7 +69,7 @@ Use the library's type guard functions to handle different node types. These pro
 from typing_graph import (
     TypeNode,
     inspect_type,
-    is_concrete_type,
+    is_concrete_node,
     is_subscripted_generic_node,
     is_union_type_node,
     is_literal_node,
@@ -79,7 +79,7 @@ def describe_type(node: TypeNode, indent: int = 0) -> None:
     """Describe a type and its structure."""
     prefix = "  " * indent
 
-    if is_concrete_type(node):
+    if is_concrete_node(node):
         print(f"{prefix}Concrete: {node.cls.__name__}")
 
     elif is_subscripted_generic_node(node):
@@ -124,15 +124,15 @@ from typing_graph import (
     TypeNode,
     inspect_type,
     inspect_dataclass,
-    is_concrete_type,
+    is_concrete_node,
     is_subscripted_generic_node,
-    is_dataclass_type_node,
+    is_dataclass_node,
 )
 
 def traverse_with_path(node: TypeNode, path: str = "root") -> None:
     """Traverse and print the path to each node."""
     # Report this node
-    if is_concrete_type(node):
+    if is_concrete_node(node):
         print(f"{path} -> {node.cls.__name__}")
     else:
         print(f"{path} -> {type(node).__name__}")
@@ -142,7 +142,7 @@ def traverse_with_path(node: TypeNode, path: str = "root") -> None:
         for i, child in enumerate(node.args):
             traverse_with_path(child, f"{path}[{i}]")
 
-    elif is_dataclass_type_node(node):
+    elif is_dataclass_node(node):
         for field in node.fields:
             traverse_with_path(field.type, f"{path}.{field.name}")
 
@@ -166,9 +166,9 @@ traverse_with_path(node)
 Output:
 
 ```text
-root -> DataclassType
+root -> DataclassNode
 root.name -> str
-root.emails -> SubscriptedGeneric
+root.emails -> SubscriptedGenericNode
 root.emails[0] -> str
 ```
 
@@ -202,9 +202,9 @@ traverse_limited(node, max_depth=2)
 Output:
 
 ```text
-SubscriptedGeneric
-  ConcreteType
-  SubscriptedGeneric
+SubscriptedGenericNode
+  ConcreteNode
+  SubscriptedGenericNode
     ... (max depth reached)
 ```
 
@@ -213,14 +213,14 @@ SubscriptedGeneric
 Here's a complete example that collects all concrete types in a graph:
 
 ```python
-from typing_graph import TypeNode, inspect_type, is_concrete_type
+from typing_graph import TypeNode, inspect_type, is_concrete_node
 
 def collect_concrete_types(node: TypeNode) -> set[type]:
     """Collect all concrete types in a type graph."""
     types: set[type] = set()
 
     def walk(n: TypeNode) -> None:
-        if is_concrete_type(n):
+        if is_concrete_node(n):
             types.add(n.cls)
         for child in n.children():
             walk(child)

@@ -7,7 +7,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
-from ._node import SourceLocation, is_annotated_type_node
+from ._node import SourceLocation, is_annotated_node
 
 if TYPE_CHECKING:
     from ._config import InspectConfig
@@ -69,7 +69,7 @@ def extract_field_metadata(type_node: "TypeNode") -> tuple[object, ...]:
     Returns:
         A tuple of metadata objects, empty if no metadata found.
     """
-    if is_annotated_type_node(type_node):
+    if is_annotated_node(type_node):
         return type_node.annotations
     return type_node.metadata
 

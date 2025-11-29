@@ -16,8 +16,8 @@ from typing_graph import (
     inspect_type,
 )
 from typing_graph._node import (
-    is_concrete_type,
-    is_dataclass_type_node,
+    is_concrete_node,
+    is_dataclass_node,
     is_forward_ref_node,
     is_ref_state_resolved,
     is_subscripted_generic_node,
@@ -42,7 +42,7 @@ class TestTopLevelConstraints:
     def test_direct_field_gt_constraint(self) -> None:
         result = inspect_dataclass(OrderItem)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         quantity_field = next(f for f in result.fields if f.name == "quantity")
 
         gt = find_metadata_of_type(quantity_field.metadata, Gt)
@@ -52,7 +52,7 @@ class TestTopLevelConstraints:
     def test_direct_field_pattern_constraint(self) -> None:
         result = inspect_dataclass(OrderItem)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         product_field = next(f for f in result.fields if f.name == "product_id")
 
         pattern = find_metadata_of_type(product_field.metadata, Pattern)
@@ -62,7 +62,7 @@ class TestTopLevelConstraints:
     def test_direct_field_multiple_constraints(self) -> None:
         result = inspect_dataclass(Address)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         street_field = next(f for f in result.fields if f.name == "street")
 
         # Should have both MinLen and MaxLen
@@ -78,7 +78,7 @@ class TestTopLevelConstraints:
     def test_all_constraints_on_field_extracted(self) -> None:
         result = inspect_dataclass(Customer)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         name_field = next(f for f in result.fields if f.name == "name")
 
         # name has MinLen(1), MaxLen(100), doc("Customer full name")
@@ -95,15 +95,15 @@ class TestNestedFieldConstraints:
     def test_nested_dataclass_field_constraint(self) -> None:
         # Order -> Customer -> name has MinLen constraint
         order_result = inspect_dataclass(Order)
-        assert is_dataclass_type_node(order_result)
+        assert is_dataclass_node(order_result)
 
         customer_field = next(f for f in order_result.fields if f.name == "customer")
-        assert is_concrete_type(customer_field.type)
+        assert is_concrete_node(customer_field.type)
         assert customer_field.type.cls is Customer
 
         # Now inspect Customer to get name constraints
         customer_result = inspect_dataclass(Customer)
-        assert is_dataclass_type_node(customer_result)
+        assert is_dataclass_node(customer_result)
 
         name_field = next(f for f in customer_result.fields if f.name == "name")
         minlen = find_metadata_of_type(name_field.metadata, MinLen)
@@ -113,7 +113,7 @@ class TestNestedFieldConstraints:
     def test_deeply_nested_constraint(self) -> None:
         # Order -> Customer -> Address -> zip_code has Pattern
         customer_result = inspect_dataclass(Customer)
-        assert is_dataclass_type_node(customer_result)
+        assert is_dataclass_node(customer_result)
 
         address_field = next(f for f in customer_result.fields if f.name == "address")
         # address is Address | None
@@ -122,7 +122,7 @@ class TestNestedFieldConstraints:
         # Find Address type
         address_type = None
         for member in address_field.type.members:
-            if is_concrete_type(member) and member.cls is Address:
+            if is_concrete_node(member) and member.cls is Address:
                 address_type = member
                 break
 
@@ -130,7 +130,7 @@ class TestNestedFieldConstraints:
 
         # Inspect Address
         address_result = inspect_dataclass(Address)
-        assert is_dataclass_type_node(address_result)
+        assert is_dataclass_node(address_result)
 
         zip_field = next(f for f in address_result.fields if f.name == "zip_code")
         pattern = find_metadata_of_type(zip_field.metadata, Pattern)
@@ -158,7 +158,7 @@ class TestCollectionElementConstraints:
     def test_list_has_container_constraint(self) -> None:
         result = inspect_dataclass(Order)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         items_field = next(f for f in result.fields if f.name == "items")
 
         # The list has MinLen(1) on the field metadata
@@ -171,13 +171,13 @@ class TestCollectionElementConstraints:
         # OrderItem.quantity has Gt(0)
         result = inspect_dataclass(Order)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         items_field = next(f for f in result.fields if f.name == "items")
 
         assert is_subscripted_generic_node(items_field.type)
         element = items_field.type.args[0]
 
-        assert is_concrete_type(element)
+        assert is_concrete_node(element)
         assert element.cls is OrderItem
 
         # Inspect OrderItem
@@ -194,7 +194,7 @@ class TestCollectionElementConstraints:
         assert is_subscripted_generic_node(result)
         element = result.args[0]
 
-        assert is_concrete_type(element)
+        assert is_concrete_node(element)
         gt = find_metadata_of_type(element.metadata, Gt)
         assert gt is not None
         assert gt.gt == 0
@@ -211,7 +211,7 @@ class TestCollectionElementConstraints:
 
         # Element level
         element = result.args[0]
-        assert is_concrete_type(element)
+        assert is_concrete_node(element)
         element_maxlen = find_metadata_of_type(element.metadata, MaxLen)
         assert element_maxlen is not None
         assert element_maxlen.max_length == 100
@@ -221,7 +221,7 @@ class TestUnionMemberConstraints:
     def test_optional_field_inner_type_accessible(self) -> None:
         result = inspect_dataclass(Customer)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         address_field = next(f for f in result.fields if f.name == "address")
 
         assert is_union_type_node(address_field.type)
@@ -229,7 +229,7 @@ class TestUnionMemberConstraints:
         # Should be able to find Address member
         address_member = None
         for member in address_field.type.members:
-            if is_concrete_type(member) and member.cls is Address:
+            if is_concrete_node(member) and member.cls is Address:
                 address_member = member
                 break
 
@@ -259,7 +259,7 @@ class TestUnionMemberConstraints:
         # Find the int member
         int_member = None
         for member in members:
-            if is_concrete_type(member) and member.cls is int:
+            if is_concrete_node(member) and member.cls is int:
                 int_member = member
                 break
 
@@ -272,7 +272,7 @@ class TestRecursiveTypeConstraints:
     def test_tree_node_value_constraint(self) -> None:
         result = inspect_dataclass(TreeNode)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         value_field = next(f for f in result.fields if f.name == "value")
 
         minlen = find_metadata_of_type(value_field.metadata, MinLen)
@@ -287,7 +287,7 @@ class TestRecursiveTypeConstraints:
         config = InspectConfig(globalns=dict(vars(conftest)))
         result = inspect_dataclass(TreeNode, config=config)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         children_field = next(f for f in result.fields if f.name == "children")
 
         # The type is a resolved ForwardRef - access .state.node
@@ -299,7 +299,7 @@ class TestRecursiveTypeConstraints:
         element = field_type.args[0]
 
         # Element is TreeNode itself
-        assert is_concrete_type(element)
+        assert is_concrete_node(element)
         assert element.cls is TreeNode
 
     def test_recursive_type_constraint_accessible(self) -> None:
@@ -323,7 +323,7 @@ class TestRecursiveTypeConstraints:
 
         # The element is TreeNode - if we inspect it, same constraints
         child_result = inspect_dataclass(TreeNode)
-        assert is_dataclass_type_node(child_result)
+        assert is_dataclass_node(child_result)
 
         value_field = next(f for f in child_result.fields if f.name == "value")
         minlen = find_metadata_of_type(value_field.metadata, MinLen)
@@ -334,7 +334,7 @@ class TestConstraintCounting:
     def test_count_constraints_on_dataclass(self) -> None:
         result = inspect_dataclass(Address)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
 
         total_constraints = 0
         for field_def in result.fields:
@@ -357,7 +357,7 @@ class TestConstraintCounting:
     def test_find_all_gt_constraints(self) -> None:
         result = inspect_dataclass(OrderItem)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
 
         gt_constraints: list[Gt] = []
         for field_def in result.fields:
@@ -375,7 +375,7 @@ class TestDynamicTypeConstraints:
             name: Annotated[str, MinLen(1), MaxLen(50)]
 
         result = inspect_dataclass(DynamicData)
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
 
         value_field = next(f for f in result.fields if f.name == "value")
         gt = find_metadata_of_type(value_field.metadata, Gt)
@@ -392,7 +392,7 @@ class TestDynamicTypeConstraints:
             items: Annotated[list[Annotated[int, Gt(0)]], MinLen(1)]
 
         result = inspect_dataclass(Container)
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
 
         items_field = next(f for f in result.fields if f.name == "items")
 

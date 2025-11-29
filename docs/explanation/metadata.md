@@ -75,28 +75,28 @@ print(int_node.metadata)  # (Ge(0),)
 
 ## Metadata hoisting
 
-By default, typing-graph **hoists** metadata from `Annotated` wrappers to the underlying type. This simplifies working with annotated types because you get the actual type directly—a [`ConcreteType`][typing_graph.ConcreteType] or [`SubscriptedGeneric`][typing_graph.SubscriptedGeneric]—with metadata attached:
+By default, typing-graph **hoists** metadata from `Annotated` wrappers to the underlying type. This simplifies working with annotated types because you get the actual type directly—a [`ConcreteNode`][typing_graph.ConcreteNode] or [`SubscriptedGenericNode`][typing_graph.SubscriptedGenericNode]—with metadata attached:
 
 ```python
 from typing import Annotated
-from typing_graph import inspect_type, ConcreteType
+from typing_graph import inspect_type, ConcreteNode
 
 node = inspect_type(Annotated[str, "some metadata"])
 
-# With hoisting (default), you get ConcreteType directly
-print(type(node).__name__)  # ConcreteType
+# With hoisting (default), you get ConcreteNode directly
+print(type(node).__name__)  # ConcreteNode
 print(node.cls)             # <class 'str'>
 print(node.metadata)        # ('some metadata',)
 ```
 
 ### The annotated type node
 
-typing-graph provides an [`AnnotatedType`][typing_graph.AnnotatedType] node type for representing the structure of `Annotated` types when needed. This is primarily useful when building your own type processing that needs to explicitly track Annotated wrappers:
+typing-graph provides an [`AnnotatedNode`][typing_graph.AnnotatedNode] node type for representing the structure of `Annotated` types when needed. This is primarily useful when building your own type processing that needs to explicitly track Annotated wrappers:
 
 ```python
-from typing_graph import AnnotatedType
+from typing_graph import AnnotatedNode
 
-# AnnotatedType has base and annotations attributes
+# AnnotatedNode has base and annotations attributes
 # base: the underlying TypeNode
 # annotations: the raw Annotated metadata tuple
 ```
@@ -138,7 +138,7 @@ node = inspect_type(nested)
 
 # Metadata from both levels is combined
 print(node.metadata)  # ('inner', 'outer')
-print(type(node).__name__)  # ConcreteType
+print(type(node).__name__)  # ConcreteNode
 ```
 
 The metadata tuple preserves order: inner metadata appears before outer metadata.
@@ -147,8 +147,8 @@ The metadata tuple preserves order: inner metadata appears before outer metadata
 
 ```mermaid
 flowchart TD
-    A["Annotated[list[Annotated[int, Ge(0)]], MaxLen(100)]"] --> B["SubscriptedGeneric<br/>origin=list<br/>metadata=(MaxLen(100),)"]
-    B --> C["ConcreteType<br/>cls=int<br/>metadata=(Ge(0),)"]
+    A["Annotated[list[Annotated[int, Ge(0)]], MaxLen(100)]"] --> B["SubscriptedGenericNode<br/>origin=list<br/>metadata=(MaxLen(100),)"]
+    B --> C["ConcreteNode<br/>cls=int<br/>metadata=(Ge(0),)"]
 ```
 
 The library hoists metadata at each level—the outer `MaxLen(100)` attaches to the list node, while the inner `Ge(0)` attaches to the int node. This keeps the graph flat while making metadata directly accessible on each node.

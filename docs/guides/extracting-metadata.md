@@ -13,7 +13,7 @@ When you use `Annotated[T, meta1, meta2]`, the metadata (`meta1`, `meta2`) gets 
 ```python
 from typing import Annotated
 from dataclasses import dataclass
-from typing_graph import inspect_type, ConcreteType
+from typing_graph import inspect_type, ConcreteNode
 
 @dataclass(frozen=True)
 class MaxLen:
@@ -25,15 +25,15 @@ Username = Annotated[str, MaxLen(50)]
 # Inspect it
 node = inspect_type(Username)
 
-# You get a ConcreteType (for str), not an AnnotatedType
-print(type(node))  # <class 'typing_graph.ConcreteType'>
+# You get a ConcreteNode (for str), not an AnnotatedNode
+print(type(node))  # <class 'typing_graph.ConcreteNode'>
 print(node.cls)    # <class 'str'>
 
 # The metadata is hoisted to this node
 print(node.metadata)  # (MaxLen(value=50),)
 ```
 
-This design means you get a [`ConcreteType`][typing_graph.ConcreteType] (or other appropriate node type) with metadata attached, allowing you to work with the actual type while still having access to its metadata.
+This design means you get a [`ConcreteNode`][typing_graph.ConcreteNode] (or other appropriate node type) with metadata attached, allowing you to work with the actual type while still having access to its metadata.
 
 ## Accessing the metadata tuple
 

@@ -47,7 +47,7 @@ T = TypeVar('T', bound=int)
 node = inspect_type(T)
 
 print(node.name)        # T
-print(node.bound)       # ConcreteType(cls=int)
+print(node.bound)       # ConcreteNode(cls=int)
 print(node.constraints) # ()
 print(node.variance)    # Variance.INVARIANT
 ```
@@ -115,10 +115,10 @@ A generic type can appear in two forms:
 1. **Unsubscripted**: The generic without type arguments (`list`, `Dict`)
 2. **Subscripted**: The generic with type arguments applied (`list[int]`, `Dict[str, Any]`)
 
-typing-graph represents these as [`GenericTypeNode`][typing_graph.GenericTypeNode] and [`SubscriptedGeneric`][typing_graph.SubscriptedGeneric] respectively:
+typing-graph represents these as [`GenericTypeNode`][typing_graph.GenericTypeNode] and [`SubscriptedGenericNode`][typing_graph.SubscriptedGenericNode] respectively:
 
 ```python
-from typing_graph import inspect_type, GenericTypeNode, SubscriptedGeneric
+from typing_graph import inspect_type, GenericTypeNode, SubscriptedGenericNode
 
 # Unsubscripted generic
 node = inspect_type(list)
@@ -127,9 +127,9 @@ print(node.cls)             # <class 'list'>
 
 # Subscripted generic
 node = inspect_type(list[int])
-print(type(node).__name__)  # SubscriptedGeneric
+print(type(node).__name__)  # SubscriptedGenericNode
 print(node.origin)          # GenericTypeNode for list
-print(node.args)            # (ConcreteType(cls=int),)
+print(node.args)            # (ConcreteNode(cls=int),)
 ```
 
 ### Nested generics
@@ -142,11 +142,11 @@ from typing_graph import inspect_type
 # dict[str, list[int]]
 node = inspect_type(dict[str, list[int]])
 
-print(type(node).__name__)    # SubscriptedGeneric
+print(type(node).__name__)    # SubscriptedGenericNode
 print(len(node.args))         # 2
 
-key_node = node.args[0]       # ConcreteType(cls=str)
-value_node = node.args[1]     # SubscriptedGeneric for list[int]
+key_node = node.args[0]       # ConcreteNode(cls=str)
+value_node = node.args[1]     # SubscriptedGenericNode for list[int]
 ```
 
 ## Variance
@@ -264,7 +264,7 @@ from typing_graph import inspect_type
 T = TypeVar('T', bound=int)
 node = inspect_type(T)
 
-print(node.bound)  # ConcreteType(cls=int)
+print(node.bound)  # ConcreteNode(cls=int)
 ```
 
 ### Constraints
@@ -287,7 +287,7 @@ from typing_graph import inspect_type
 T = TypeVar('T', str, bytes)
 node = inspect_type(T)
 
-print(node.constraints)  # (ConcreteType(cls=str), ConcreteType(cls=bytes))
+print(node.constraints)  # (ConcreteNode(cls=str), ConcreteNode(cls=bytes))
 ```
 
 ## Type parameter defaults (PEP 696)
@@ -321,7 +321,7 @@ print(type_var_node.default)  # TypeNode or None
 | Parameter spec | `ParamSpecNode` | `name`, `default` |
 | Variadic type | `TypeVarTupleNode` | `name`, `default` |
 | Unsubscripted generic | `GenericTypeNode` | `cls`, `type_params` |
-| Subscripted generic | `SubscriptedGeneric` | `origin`, `args` |
+| Subscripted generic | `SubscriptedGenericNode` | `origin`, `args` |
 
 ## See also
 

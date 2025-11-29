@@ -1279,5 +1279,4 @@ __all__ = [
     "MetadataCollection",
     "MetadataNotFoundError",
     "ProtocolNotRuntimeCheckableError",
-    "SupportsLessThan",
 ]

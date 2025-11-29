@@ -14,7 +14,7 @@ Python has two different runtime representations for union types:
 typing-graph represents these differently:
 
 - `types.UnionType` → [`UnionNode`][typing_graph.UnionNode]
-- `typing.Union` → [`SubscriptedGeneric`][typing_graph.SubscriptedGeneric] with `origin.cls=typing.Union`
+- `typing.Union` → [`SubscriptedGenericNode`][typing_graph.SubscriptedGenericNode] with `origin.cls=typing.Union`
 
 ## The `|` operator quirk
 
@@ -58,11 +58,11 @@ from typing_graph import inspect_type
 # types.UnionType → UnionNode
 node1 = inspect_type(int | str)
 print(type(node1).__name__)  # UnionNode
-print(node1.members)         # (ConcreteType(cls=int), ConcreteType(cls=str))
+print(node1.members)         # (ConcreteNode(cls=int), ConcreteNode(cls=str))
 
-# typing.Union → SubscriptedGeneric
+# typing.Union → SubscriptedGenericNode
 node2 = inspect_type(Literal['a'] | Literal['b'])
-print(type(node2).__name__)  # SubscriptedGeneric
+print(type(node2).__name__)  # SubscriptedGenericNode
 print(node2.origin.cls)      # typing.Union
 print(node2.args)            # (LiteralNode(...), LiteralNode(...))
 ```
@@ -99,7 +99,7 @@ print(is_union_node(node1))  # True
 print(is_union_node(node2))  # True
 
 # get_union_members() extracts members from either form
-print(get_union_members(node1))  # (ConcreteType(cls=int), ConcreteType(cls=str))
+print(get_union_members(node1))  # (ConcreteNode(cls=int), ConcreteNode(cls=str))
 print(get_union_members(node2))  # (LiteralNode(...), LiteralNode(...))
 ```
 
@@ -116,7 +116,7 @@ typing-graph reflects what Python gives it rather than normalizing union forms. 
 This distinction rarely matters in practice because static type checkers treat both union forms equivalently. However, if you're doing runtime introspection on Python < 3.14, be aware that:
 
 - `int | str` produces `UnionNode` with a `members` attribute
-- `Literal[1] | Literal[2]` produces `SubscriptedGeneric` with `origin.cls=typing.Union` and `args`
+- `Literal[1] | Literal[2]` produces `SubscriptedGenericNode` with `origin.cls=typing.Union` and `args`
 
 On Python 3.14+, both forms produce `UnionNode`, so you only need to handle one case.
 

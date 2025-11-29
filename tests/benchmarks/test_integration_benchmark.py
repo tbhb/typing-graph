@@ -12,14 +12,14 @@ from typing_graph import (
     inspect_type,
 )
 from typing_graph._node import (
-    DataclassType,
-    is_dataclass_type_node,
-    is_enum_type_node,
+    DataclassNode,
+    is_dataclass_node,
+    is_enum_node,
     is_function_node,
-    is_named_tuple_type_node,
-    is_protocol_type_node,
+    is_named_tuple_node,
+    is_protocol_node,
     is_subscripted_generic_node,
-    is_typed_dict_type_node,
+    is_typed_dict_node,
 )
 
 from .conftest import (
@@ -49,7 +49,7 @@ class TestDataclassInspectionBenchmarks:
     ) -> None:
         result = benchmark(inspect_dataclass, simple_dataclass_type)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         assert len(result.fields) == 3
 
     def test_benchmark_large_dataclass(
@@ -57,7 +57,7 @@ class TestDataclassInspectionBenchmarks:
     ) -> None:
         result = benchmark(inspect_dataclass, large_dataclass_type)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         assert len(result.fields) >= 15
 
     def test_benchmark_nested_dataclass(
@@ -67,7 +67,7 @@ class TestDataclassInspectionBenchmarks:
     ) -> None:
         result = benchmark(inspect_dataclass, nested_dataclass_type)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         assert len(result.fields) >= 3
 
     def test_benchmark_dataclass_frozen_slots(
@@ -75,7 +75,7 @@ class TestDataclassInspectionBenchmarks:
     ) -> None:
         result = benchmark(inspect_dataclass, SimpleDataclass)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         assert result.frozen is True
         assert result.slots is True
 
@@ -88,7 +88,7 @@ class TestTypedDictInspectionBenchmarks:
     ) -> None:
         result = benchmark(inspect_class, sample_typed_dict_type)
 
-        assert is_typed_dict_type_node(result)
+        assert is_typed_dict_node(result)
         assert len(result.fields) == 3
 
 
@@ -100,7 +100,7 @@ class TestNamedTupleInspectionBenchmarks:
     ) -> None:
         result = benchmark(inspect_class, sample_named_tuple_type)
 
-        assert is_named_tuple_type_node(result)
+        assert is_named_tuple_node(result)
         assert len(result.fields) == 3
 
 
@@ -112,7 +112,7 @@ class TestProtocolInspectionBenchmarks:
     ) -> None:
         result = benchmark(inspect_class, sample_protocol_type)
 
-        assert is_protocol_type_node(result)
+        assert is_protocol_node(result)
         assert len(result.methods) >= 2
         assert result.is_runtime_checkable is True
 
@@ -123,7 +123,7 @@ class TestEnumInspectionBenchmarks:
     ) -> None:
         result = benchmark(inspect_enum, sample_enum_type)
 
-        assert is_enum_type_node(result)
+        assert is_enum_node(result)
         assert len(result.members) == 3
 
 
@@ -267,7 +267,7 @@ class TestRealisticWorkflowBenchmarks:
         assert len(results) == 4
 
     def test_benchmark_full_class_analysis(self, benchmark: "BenchmarkFixture") -> None:
-        def full_analysis() -> DataclassType:
+        def full_analysis() -> DataclassNode:
             result = inspect_dataclass(LargeDataclass)
             # Traverse all field types
             for field in result.fields:
@@ -276,7 +276,7 @@ class TestRealisticWorkflowBenchmarks:
 
         result = benchmark(full_analysis)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
 
 
 class TestInspectClassDispatchBenchmarks:
@@ -285,33 +285,33 @@ class TestInspectClassDispatchBenchmarks:
     ) -> None:
         result = benchmark(inspect_class, SimpleDataclass)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
 
     def test_benchmark_dispatch_to_typeddict(
         self, benchmark: "BenchmarkFixture"
     ) -> None:
         result = benchmark(inspect_class, SampleTypedDict)
 
-        assert is_typed_dict_type_node(result)
+        assert is_typed_dict_node(result)
 
     def test_benchmark_dispatch_to_namedtuple(
         self, benchmark: "BenchmarkFixture"
     ) -> None:
         result = benchmark(inspect_class, SampleNamedTuple)
 
-        assert is_named_tuple_type_node(result)
+        assert is_named_tuple_node(result)
 
     def test_benchmark_dispatch_to_protocol(
         self, benchmark: "BenchmarkFixture"
     ) -> None:
         result = benchmark(inspect_class, SampleProtocol)
 
-        assert is_protocol_type_node(result)
+        assert is_protocol_node(result)
 
     def test_benchmark_dispatch_to_enum(self, benchmark: "BenchmarkFixture") -> None:
         result = benchmark(inspect_class, SampleEnum)
 
-        assert is_enum_type_node(result)
+        assert is_enum_node(result)
 
     def test_benchmark_dispatch_to_regular_class(
         self, benchmark: "BenchmarkFixture"

@@ -3,26 +3,26 @@
 
 from typing_graph import TypeNode
 from typing_graph._node import (
-    CallableType,
+    CallableNode,
     ConcatenateNode,
-    ConcreteType,
-    ForwardRef,
-    GenericAlias,
+    ConcreteNode,
+    ForwardRefNode,
+    GenericAliasNode,
     GenericTypeNode,
     LiteralNode,
-    MetaType,
+    MetaNode,
     NewTypeNode,
     ParamSpecNode,
-    SubscriptedGeneric,
-    TupleType,
+    SubscriptedGenericNode,
+    TupleNode,
     TypeAliasNode,
-    TypeGuardType,
-    TypeIsType,
+    TypeGuardNode,
+    TypeIsNode,
     TypeVarNode,
     TypeVarTupleNode,
     UnionNode,
     UnpackNode,
-    is_ellipsis_type_node,
+    is_ellipsis_node,
 )
 
 
@@ -84,9 +84,9 @@ def _check_type_specific_attributes(  # noqa: PLR0911, PLR0912, PLR0915 - exhaus
     visited: set[tuple[int, int]],
 ) -> bool:
     """Check type-specific attributes for structural equality."""
-    # ConcreteType and GenericTypeNode have .cls
-    if isinstance(n1, ConcreteType):
-        assert isinstance(n2, ConcreteType)
+    # ConcreteNode and GenericTypeNode have .cls
+    if isinstance(n1, ConcreteNode):
+        assert isinstance(n2, ConcreteNode)
         if n1.cls is not n2.cls:
             return False
 
@@ -126,14 +126,14 @@ def _check_type_specific_attributes(  # noqa: PLR0911, PLR0912, PLR0915 - exhaus
         if n1.values != n2.values:
             return False
 
-    elif isinstance(n1, TupleType):
-        assert isinstance(n2, TupleType)
+    elif isinstance(n1, TupleNode):
+        assert isinstance(n2, TupleNode)
         if n1.homogeneous != n2.homogeneous:
             return False
         # elements are checked via children()
 
-    elif isinstance(n1, ForwardRef):
-        assert isinstance(n2, ForwardRef)
+    elif isinstance(n1, ForwardRefNode):
+        assert isinstance(n2, ForwardRefNode)
         if n1.ref != n2.ref:
             return False
         # state comparison is complex - check type of state
@@ -152,8 +152,8 @@ def _check_type_specific_attributes(  # noqa: PLR0911, PLR0912, PLR0915 - exhaus
             return False
         # value is checked via children()
 
-    elif isinstance(n1, GenericAlias):
-        assert isinstance(n2, GenericAlias)
+    elif isinstance(n1, GenericAliasNode):
+        assert isinstance(n2, GenericAliasNode)
         if n1.name != n2.name:
             return False
         # type_params and value are checked via children()
@@ -162,36 +162,36 @@ def _check_type_specific_attributes(  # noqa: PLR0911, PLR0912, PLR0915 - exhaus
         assert isinstance(n2, ConcatenateNode)
         # prefix and param_spec are checked via children()
 
-    elif isinstance(n1, CallableType):
-        assert isinstance(n2, CallableType)
+    elif isinstance(n1, CallableNode):
+        assert isinstance(n2, CallableNode)
         # Check params type
         if type(n1.params) is not type(n2.params):
             return False
         if isinstance(n1.params, tuple) and isinstance(n2.params, tuple):
             if len(n1.params) != len(n2.params):
                 return False
-        elif is_ellipsis_type_node(n1.params) and is_ellipsis_type_node(n2.params):
+        elif is_ellipsis_node(n1.params) and is_ellipsis_node(n2.params):
             pass  # Both ellipsis
         # params and returns are checked via children()
 
-    elif isinstance(n1, SubscriptedGeneric):
-        assert isinstance(n2, SubscriptedGeneric)
+    elif isinstance(n1, SubscriptedGenericNode):
+        assert isinstance(n2, SubscriptedGenericNode)
         # origin and args are checked via children()
 
     elif isinstance(n1, UnionNode):
         assert isinstance(n2, UnionNode)
         # members are checked via children()
 
-    elif isinstance(n1, MetaType):
-        assert isinstance(n2, MetaType)
+    elif isinstance(n1, MetaNode):
+        assert isinstance(n2, MetaNode)
         # of is checked via children()
 
-    elif isinstance(n1, TypeGuardType):
-        assert isinstance(n2, TypeGuardType)
+    elif isinstance(n1, TypeGuardNode):
+        assert isinstance(n2, TypeGuardNode)
         # narrows_to is checked via children()
 
-    elif isinstance(n1, TypeIsType):
-        assert isinstance(n2, TypeIsType)
+    elif isinstance(n1, TypeIsNode):
+        assert isinstance(n2, TypeIsNode)
         # narrows_to is checked via children()
 
     elif isinstance(n1, UnpackNode):

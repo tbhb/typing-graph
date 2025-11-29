@@ -15,7 +15,7 @@ from ._context import (
 )
 from ._inspect_type import _inspect_type  # pyright: ignore[reportPrivateUsage]
 from ._node import (
-    AnyType,
+    AnyNode,
     FunctionNode,
     Parameter,
     SignatureNode,
@@ -134,7 +134,7 @@ def _inspect_signature(
         # Can't get signature - return minimal node
         return SignatureNode(
             parameters=(),
-            returns=AnyType(),
+            returns=AnyNode(),
         )
 
     parameters: list[Parameter] = []

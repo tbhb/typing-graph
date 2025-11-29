@@ -30,16 +30,16 @@ from typing_graph._inspect_class import (
     inspect_named_tuple,
     inspect_protocol,
     inspect_typed_dict,
-    is_enum_type,
+    is_enum_class,
 )
 from typing_graph._node import (
     is_class_node,
-    is_concrete_type,
-    is_dataclass_type_node,
-    is_enum_type_node,
-    is_named_tuple_type_node,
-    is_protocol_type_node,
-    is_typed_dict_type_node,
+    is_concrete_node,
+    is_dataclass_node,
+    is_enum_node,
+    is_named_tuple_node,
+    is_protocol_node,
+    is_typed_dict_node,
     is_union_type_node,
 )
 
@@ -249,7 +249,7 @@ class TestDataclassType:
     def test_simple_dataclass_has_cls_and_fields(self) -> None:
         result = inspect_dataclass(SimpleDataclass)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         assert result.cls is SimpleDataclass
         assert len(result.fields) == 2
         assert result.fields[0].name == "x"
@@ -259,25 +259,25 @@ class TestDataclassType:
     def test_frozen_dataclass_sets_frozen_true(self) -> None:
         result = inspect_dataclass(FrozenDataclass)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         assert result.frozen is True
 
     def test_non_frozen_dataclass_sets_frozen_false(self) -> None:
         result = inspect_dataclass(SimpleDataclass)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         assert result.frozen is False
 
     def test_slots_dataclass_sets_slots_true(self) -> None:
         result = inspect_dataclass(SlottedDataclass)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         assert result.slots is True
 
     def test_non_slots_dataclass_sets_slots_false(self) -> None:
         result = inspect_dataclass(SimpleDataclass)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         assert result.slots is False
 
     def test_kw_only_dataclass_makes_all_fields_kw_only(self) -> None:
@@ -285,14 +285,14 @@ class TestDataclassType:
         # Note: result.kw_only is only available in Python 3.11+
         result = inspect_dataclass(KwOnlyDataclass)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         assert len(result.fields) == 1
         assert result.fields[0].kw_only is True
 
     def test_field_with_default_sets_required_false(self) -> None:
         result = inspect_dataclass(DataclassWithDefault)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         assert len(result.fields) == 1
         assert result.fields[0].required is False
         assert result.fields[0].default == 42
@@ -300,7 +300,7 @@ class TestDataclassType:
     def test_field_with_default_factory_sets_required_false(self) -> None:
         result = inspect_dataclass(DataclassWithFactory)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         assert len(result.fields) == 1
         assert result.fields[0].required is False
         assert result.fields[0].default_factory is True
@@ -308,38 +308,38 @@ class TestDataclassType:
     def test_field_init_false_is_captured(self) -> None:
         result = inspect_dataclass(DataclassWithInitFalse)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         assert result.fields[0].init is False
 
     def test_field_repr_false_is_captured(self) -> None:
         result = inspect_dataclass(DataclassWithReprFalse)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         assert result.fields[0].repr is False
 
     def test_field_compare_false_is_captured(self) -> None:
         result = inspect_dataclass(DataclassWithCompareFalse)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         assert result.fields[0].compare is False
 
     def test_field_kw_only_is_captured(self) -> None:
         result = inspect_dataclass(DataclassWithKwOnlyField)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         assert result.fields[0].kw_only is False
         assert result.fields[1].kw_only is True
 
     def test_field_hash_is_captured(self) -> None:
         result = inspect_dataclass(DataclassWithHashFalse)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         assert result.fields[0].hash is False
 
     def test_children_returns_field_types(self) -> None:
         result = inspect_dataclass(SimpleDataclass)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         children = result.children()
         assert len(children) == 2
 
@@ -352,7 +352,7 @@ class TestTypedDictType:
     def test_simple_typed_dict_has_name_and_fields(self) -> None:
         result = inspect_class(SimpleTypedDict)
 
-        assert is_typed_dict_type_node(result)
+        assert is_typed_dict_node(result)
         assert result.name == "SimpleTypedDict"
         assert len(result.fields) == 2
 
@@ -362,26 +362,26 @@ class TestTypedDictType:
     def test_total_true_by_default(self) -> None:
         result = inspect_class(SimpleTypedDict)
 
-        assert is_typed_dict_type_node(result)
+        assert is_typed_dict_node(result)
         assert result.total is True
 
     def test_total_false_when_specified(self) -> None:
         result = inspect_class(PartialTypedDict)
 
-        assert is_typed_dict_type_node(result)
+        assert is_typed_dict_node(result)
         assert result.total is False
 
     def test_required_keys_populates_field_required(self) -> None:
         result = inspect_class(MixedTypedDict)
 
-        assert is_typed_dict_type_node(result)
+        assert is_typed_dict_node(result)
         required_field = next(f for f in result.fields if f.name == "required_field")
         assert required_field.required is True
 
     def test_children_returns_field_types(self) -> None:
         result = inspect_class(SimpleTypedDict)
 
-        assert is_typed_dict_type_node(result)
+        assert is_typed_dict_node(result)
         children = result.children()
         assert len(children) == 2
 
@@ -390,7 +390,7 @@ class TestNamedTupleType:
     def test_simple_named_tuple_has_name_and_fields(self) -> None:
         result = inspect_class(SimpleNamedTuple)
 
-        assert is_named_tuple_type_node(result)
+        assert is_named_tuple_node(result)
         assert result.name == "SimpleNamedTuple"
         assert len(result.fields) == 2
 
@@ -400,26 +400,26 @@ class TestNamedTupleType:
     def test_field_types_are_concrete(self) -> None:
         result = inspect_class(SimpleNamedTuple)
 
-        assert is_named_tuple_type_node(result)
+        assert is_named_tuple_node(result)
         x_field = result.fields[0]
         y_field = result.fields[1]
 
-        assert is_concrete_type(x_field.type)
+        assert is_concrete_node(x_field.type)
         assert x_field.type.cls is int
-        assert is_concrete_type(y_field.type)
+        assert is_concrete_node(y_field.type)
         assert y_field.type.cls is str
 
     def test_field_without_default_is_required(self) -> None:
         result = inspect_class(SimpleNamedTuple)
 
-        assert is_named_tuple_type_node(result)
+        assert is_named_tuple_node(result)
         assert result.fields[0].required is True
         assert result.fields[1].required is True
 
     def test_field_with_default_is_not_required(self) -> None:
         result = inspect_class(NamedTupleWithDefaults)
 
-        assert is_named_tuple_type_node(result)
+        assert is_named_tuple_node(result)
         x_field = result.fields[0]
         y_field = result.fields[1]
 
@@ -431,7 +431,7 @@ class TestNamedTupleType:
     def test_children_returns_field_types(self) -> None:
         result = inspect_class(SimpleNamedTuple)
 
-        assert is_named_tuple_type_node(result)
+        assert is_named_tuple_node(result)
         children = result.children()
         assert len(children) == 2
 
@@ -440,7 +440,7 @@ class TestProtocolType:
     def test_simple_protocol_has_name_and_methods(self) -> None:
         result = inspect_class(SimpleProtocol)
 
-        assert is_protocol_type_node(result)
+        assert is_protocol_node(result)
         assert result.name == "SimpleProtocol"
         assert len(result.methods) >= 1
 
@@ -450,19 +450,19 @@ class TestProtocolType:
     def test_runtime_checkable_sets_flag_true(self) -> None:
         result = inspect_class(RuntimeCheckableProtocol)
 
-        assert is_protocol_type_node(result)
+        assert is_protocol_node(result)
         assert result.is_runtime_checkable is True
 
     def test_non_runtime_checkable_sets_flag_false(self) -> None:
         result = inspect_class(SimpleProtocol)
 
-        assert is_protocol_type_node(result)
+        assert is_protocol_node(result)
         assert result.is_runtime_checkable is False
 
     def test_protocol_with_attributes(self) -> None:
         result = inspect_class(ProtocolWithAttributes)
 
-        assert is_protocol_type_node(result)
+        assert is_protocol_node(result)
         assert len(result.attributes) == 2
 
         attr_names = {a.name for a in result.attributes}
@@ -471,7 +471,7 @@ class TestProtocolType:
     def test_protocol_method_classmethod_flag(self) -> None:
         result = inspect_class(ProtocolWithClassMethod)
 
-        assert is_protocol_type_node(result)
+        assert is_protocol_node(result)
         create_method = next((m for m in result.methods if m.name == "create"), None)
         assert create_method is not None
         assert create_method.is_classmethod is True
@@ -479,7 +479,7 @@ class TestProtocolType:
     def test_protocol_method_staticmethod_flag(self) -> None:
         result = inspect_class(ProtocolWithStaticMethod)
 
-        assert is_protocol_type_node(result)
+        assert is_protocol_node(result)
         helper_method = next((m for m in result.methods if m.name == "helper"), None)
         assert helper_method is not None
         assert helper_method.is_staticmethod is True
@@ -489,7 +489,7 @@ class TestEnumType:
     def test_simple_enum_has_cls_and_members(self) -> None:
         result = inspect_enum(SimpleEnum)
 
-        assert is_enum_type_node(result)
+        assert is_enum_node(result)
         assert result.cls is SimpleEnum
         assert len(result.members) == 3
 
@@ -499,20 +499,20 @@ class TestEnumType:
     def test_int_enum_value_type_is_int(self) -> None:
         result = inspect_enum(IntValueEnum)
 
-        assert is_enum_type_node(result)
+        assert is_enum_node(result)
         # value_type should represent int
         assert result.value_type is not None
 
     def test_str_enum_value_type_is_str(self) -> None:
         result = inspect_enum(StrValueEnum)
 
-        assert is_enum_type_node(result)
+        assert is_enum_node(result)
         assert result.value_type is not None
 
     def test_auto_enum_has_correct_values(self) -> None:
         result = inspect_enum(AutoValueEnum)
 
-        assert is_enum_type_node(result)
+        assert is_enum_node(result)
         member_dict = dict(result.members)
         assert "A" in member_dict
         assert "B" in member_dict
@@ -521,13 +521,13 @@ class TestEnumType:
     def test_mixed_value_types_produce_union_type(self) -> None:
         result = inspect_enum(MixedValueEnum)
 
-        assert is_enum_type_node(result)
+        assert is_enum_node(result)
         assert is_union_type_node(result.value_type)
 
     def test_children_returns_value_type(self) -> None:
         result = inspect_enum(SimpleEnum)
 
-        assert is_enum_type_node(result)
+        assert is_enum_node(result)
         children = result.children()
         assert len(children) == 1
         assert children[0] is result.value_type
@@ -618,22 +618,22 @@ class TestInspectClassDispatch:
     def test_dispatches_dataclass_to_dataclass_type(self) -> None:
         result = inspect_class(SimpleDataclass)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
 
     def test_dispatches_typed_dict_to_typed_dict_type(self) -> None:
         result = inspect_class(SimpleTypedDict)
 
-        assert is_typed_dict_type_node(result)
+        assert is_typed_dict_node(result)
 
     def test_dispatches_protocol_to_protocol_type(self) -> None:
         result = inspect_class(SimpleProtocol)
 
-        assert is_protocol_type_node(result)
+        assert is_protocol_node(result)
 
     def test_dispatches_enum_to_enum_type(self) -> None:
         result = inspect_class(SimpleEnum)
 
-        assert is_enum_type_node(result)
+        assert is_enum_node(result)
 
     def test_dispatches_regular_class_to_class_node(self) -> None:
         result = inspect_class(PlainClass)
@@ -645,7 +645,7 @@ class TestDedicatedInspectionFunctions:
     def test_inspect_typed_dict_function(self) -> None:
         result = inspect_typed_dict(SimpleTypedDict)
 
-        assert is_typed_dict_type_node(result)
+        assert is_typed_dict_node(result)
         assert result.name == "SimpleTypedDict"
 
     def test_inspect_typed_dict_raises_for_non_typed_dict(self) -> None:
@@ -655,7 +655,7 @@ class TestDedicatedInspectionFunctions:
     def test_inspect_named_tuple_function(self) -> None:
         result = inspect_named_tuple(SimpleNamedTuple)
 
-        assert is_named_tuple_type_node(result)
+        assert is_named_tuple_node(result)
         assert result.name == "SimpleNamedTuple"
 
     def test_inspect_named_tuple_raises_for_non_named_tuple(self) -> None:
@@ -665,7 +665,7 @@ class TestDedicatedInspectionFunctions:
     def test_inspect_protocol_function(self) -> None:
         result = inspect_protocol(SimpleProtocol)
 
-        assert is_protocol_type_node(result)
+        assert is_protocol_node(result)
         assert result.name == "SimpleProtocol"
 
     def test_inspect_protocol_raises_for_non_protocol(self) -> None:
@@ -708,19 +708,19 @@ class TestPrivateFieldFiltering:
         config = InspectConfig(include_private=False)
         result = inspect_class(TypedDictWithPrivateField, config=config)
 
-        assert is_typed_dict_type_node(result)
+        assert is_typed_dict_node(result)
         field_names = {f.name for f in result.fields}
         assert "public" in field_names
         assert "_private" not in field_names
 
 
 class TestIsEnumTypeErrorHandling:
-    def test_is_enum_type_returns_false_for_non_class(self) -> None:
+    def test_is_enum_class_returns_false_for_non_class(self) -> None:
         # Intentionally pass non-class values to verify graceful handling
-        result = is_enum_type(42)  # type: ignore[arg-type] # pyright: ignore[reportArgumentType]
+        result = is_enum_class(42)  # type: ignore[arg-type] # pyright: ignore[reportArgumentType]
         assert result is False
 
-        result = is_enum_type("not a class")  # type: ignore[arg-type] # pyright: ignore[reportArgumentType]
+        result = is_enum_class("not a class")  # type: ignore[arg-type] # pyright: ignore[reportArgumentType]
         assert result is False
 
 
@@ -790,7 +790,7 @@ class TestTypedDictQualifierFiltering:
 
         result = inspect_class(TypedDictWithQualifiers)
 
-        assert is_typed_dict_type_node(result)
+        assert is_typed_dict_node(result)
         required_field = next(f for f in result.fields if f.name == "required_field")
         optional_field = next(f for f in result.fields if f.name == "optional_field")
 
@@ -813,7 +813,7 @@ class TestNamedTuplePrivateFieldHandling:
         config = InspectConfig(include_private=False)
         result = inspect_class(NormalNamedTuple, config=config)
 
-        assert is_named_tuple_type_node(result)
+        assert is_named_tuple_node(result)
         assert len(result.fields) == 2
 
 
@@ -827,7 +827,7 @@ class TestProtocolPrivateMemberHandling:
         config = InspectConfig(include_private=False)
         result = inspect_class(ProtocolWithPrivate, config=config)
 
-        assert is_protocol_type_node(result)
+        assert is_protocol_node(result)
         method_names = {m.name for m in result.methods}
         assert "public_method" in method_names
         assert "_private_method" not in method_names
@@ -841,7 +841,7 @@ class TestProtocolPrivateMemberHandling:
         config = InspectConfig(include_private=True)
         result = inspect_class(ProtocolWithPrivate, config=config)
 
-        assert is_protocol_type_node(result)
+        assert is_protocol_node(result)
         method_names = {m.name for m in result.methods}
         assert "public_method" in method_names
         assert "_private_method" in method_names
@@ -940,7 +940,7 @@ class TestProtocolNonMethodNonAttribute:
 
         result = inspect_class(ProtocolWithClassVar)
 
-        assert is_protocol_type_node(result)
+        assert is_protocol_node(result)
         # Method should be captured
         method_names = {m.name for m in result.methods}
         assert "method" in method_names
@@ -958,7 +958,7 @@ class TestProtocolNonMethodNonAttribute:
 
         result = inspect_class(ProtocolWithConstant)
 
-        assert is_protocol_type_node(result)
+        assert is_protocol_node(result)
         # Method should be captured
         method_names = {m.name for m in result.methods}
         assert "method" in method_names
@@ -977,7 +977,7 @@ class TestNamedTupleFieldTypes:
 
         result = inspect_class(ModernNamedTuple)
 
-        assert is_named_tuple_type_node(result)
+        assert is_named_tuple_node(result)
         assert len(result.fields) == 2
         field_names = {f.name for f in result.fields}
         assert "x" in field_names

@@ -47,9 +47,9 @@ Requires Python 3.10 or later. See [Installation](install.md) for package manage
 >>> # Inspect the type graph
 >>> node = inspect_type(Urls)
 >>> node  # doctest: +SKIP
-SubscriptedGeneric(metadata=(MinLen(value=1),), origin=GenericTypeNode(cls=list), args=(ConcreteType(metadata=(Pattern(regex='^https?://'),), cls=str),))
+SubscriptedGenericNode(metadata=(MinLen(value=1),), origin=GenericTypeNode(cls=list), args=(ConcreteNode(metadata=(Pattern(regex='^https?://'),), cls=str),))
 
->>> # The outer node is a SubscriptedGeneric (list) with container-level metadata
+>>> # The outer node is a SubscriptedGenericNode (list) with container-level metadata
 >>> node.origin.cls
 <class 'list'>
 >>> node.metadata

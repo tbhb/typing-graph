@@ -36,27 +36,29 @@ from ._config import (
 )
 from ._context import InspectContext, get_source_location
 from ._node import (
-    AnyType,
-    CallableType,
+    AnyNode,
+    CallableNode,
     ConcatenateNode,
-    ConcreteType,
-    EllipsisType,
-    ForwardRef,
-    GenericAlias,
+    ConcreteNode,
+    EllipsisNode,
+    ForwardRefNode,
+    GenericAliasNode,
     GenericTypeNode,
     LiteralNode,
-    LiteralStringType,
-    MetaType,
-    NeverType,
+    LiteralStringNode,
+    MetaNode,
+    NeverNode,
     NewTypeNode,
     ParamSpecNode,
-    RefState,
-    SelfType,
-    SubscriptedGeneric,
-    TupleType,
+    RefFailed,
+    RefResolved,
+    RefUnresolved,
+    SelfNode,
+    SubscriptedGenericNode,
+    TupleNode,
     TypeAliasNode,
-    TypeGuardType,
-    TypeIsType,
+    TypeGuardNode,
+    TypeIsNode,
     TypeNode,
     TypeParamNode,
     TypeVarNode,
@@ -64,21 +66,21 @@ from ._node import (
     UnionNode,
     UnpackNode,
     Variance,
-    is_any_type_node,
-    is_callable_type_node,
+    is_any_node,
+    is_callable_node,
     is_concatenate_node,
-    is_concrete_type,
-    is_ellipsis_type_node,
+    is_concrete_node,
+    is_ellipsis_node,
     is_forward_ref_node,
-    is_generic_type,
+    is_generic_node,
     is_literal_node,
-    is_meta_type_node,
-    is_never_type_node,
+    is_meta_node,
+    is_never_node,
     is_param_spec_node,
     is_ref_state_resolved,
-    is_self_type_node,
+    is_self_node,
     is_subscripted_generic_node,
-    is_tuple_type_node,
+    is_tuple_node,
     is_type_param_node,
     is_type_var_node,
     is_type_var_tuple_node,
@@ -264,7 +266,7 @@ def _register_type_inspectors() -> None:
     The registration order is:
         1. None type - very specific singleton
         2. String annotations (forward refs)
-        3. ForwardRef objects
+        3. ForwardRefNode objects
         4. Special forms (Any, Never, Self, LiteralString)
         5. Union types (X | Y syntax only)
         6. Literal types
@@ -335,7 +337,7 @@ def reset_type_inspectors() -> None:
 
 def _inspect_none_type(annotation: Any, _ctx: InspectContext) -> TypeNode | None:
     if annotation is None or annotation is type(None):
-        return ConcreteType(cls=type(None))
+        return ConcreteNode(cls=type(None))
     return None
 
 
@@ -351,7 +353,7 @@ def _inspect_string_annotation_handler(
 def _inspect_forward_ref_handler(
     annotation: Any, ctx: InspectContext
 ) -> TypeNode | None:
-    """Handle typing.ForwardRef objects."""
+    """Handle typing.ForwardRefNode objects."""
     if isinstance(annotation, TypingForwardRef):
         return _inspect_forward_ref(annotation, ctx)
     return None
@@ -359,7 +361,7 @@ def _inspect_forward_ref_handler(
 
 def _inspect_any_type(annotation: Any, _ctx: InspectContext) -> TypeNode | None:
     if annotation is Any:
-        return AnyType()
+        return AnyNode()
     return None
 
 
@@ -367,14 +369,14 @@ def _inspect_never_type(annotation: Any, _ctx: InspectContext) -> TypeNode | Non
     """Handle typing.Never and typing.NoReturn."""
     # NoReturn and Never are semantically equivalent "bottom" types
     if typing_objects.is_never(annotation) or typing_objects.is_noreturn(annotation):
-        return NeverType()
+        return NeverNode()
     return None
 
 
 def _inspect_self_type(annotation: Any, _ctx: InspectContext) -> TypeNode | None:
     """Handle typing.Self."""
     if annotation is Self:
-        return SelfType()
+        return SelfNode()
     return None
 
 
@@ -383,7 +385,7 @@ def _inspect_literal_string_type(
 ) -> TypeNode | None:
     """Handle typing.LiteralString (PEP 675)."""
     if typing_objects.is_literalstring(annotation):
-        return LiteralStringType()
+        return LiteralStringNode()
     return None
 
 
@@ -476,7 +478,7 @@ def _dispatch_meta_type(
 ) -> TypeNode:
     """Dispatch handler for Type[T] / type[T]."""
     inner = _inspect_type(args[0] if args else Any, ctx.child())
-    return MetaType(of=inner)
+    return MetaNode(of=inner)
 
 
 def _dispatch_tuple(
@@ -491,7 +493,7 @@ def _dispatch_typeguard(
 ) -> TypeNode:
     """Dispatch handler for TypeGuard[T]."""
     inner = _inspect_type(args[0] if args else Any, ctx.child())
-    return TypeGuardType(narrows_to=inner)
+    return TypeGuardNode(narrows_to=inner)
 
 
 def _dispatch_typeis(
@@ -499,7 +501,7 @@ def _dispatch_typeis(
 ) -> TypeNode:
     """Dispatch handler for TypeIs[T]."""
     inner = _inspect_type(args[0] if args else Any, ctx.child())
-    return TypeIsType(narrows_to=inner)
+    return TypeIsNode(narrows_to=inner)
 
 
 def _dispatch_concatenate(
@@ -653,7 +655,7 @@ def inspect_type(
     - Type variables (TypeVar, ParamSpec, TypeVarTuple)
     - Callable types
     - Annotated types
-    - Forward references (strings or ForwardRef objects)
+    - Forward references (strings or ForwardRefNode objects)
 
     Args:
         annotation: Any valid type annotation.
@@ -704,9 +706,9 @@ def _inspect_type(annotation: Any, ctx: InspectContext) -> TypeNode:
     _register_type_inspectors()
 
     if not ctx.check_max_depth_exceeded():
-        return ForwardRef(
+        return ForwardRefNode(
             ref=str(annotation),
-            state=RefState.Failed("Max depth exceeded"),
+            state=RefFailed("Max depth exceeded"),
         )
 
     ann_id = id(annotation)
@@ -727,7 +729,7 @@ def _inspect_type(annotation: Any, ctx: InspectContext) -> TypeNode:
 
     # Handle UNKNOWN sentinel (bare qualifiers like `x: Final`)
     if unwrapped_type is UNKNOWN:
-        result = AnyType(qualifiers=qualifiers, metadata=metadata)
+        result = AnyNode(qualifiers=qualifiers, metadata=metadata)
         ctx.seen[ann_id] = result
         return result
 
@@ -746,9 +748,9 @@ def _inspect_type(annotation: Any, ctx: InspectContext) -> TypeNode:
         ctx.seen[ann_id] = result
         return result
 
-    return ForwardRef(
+    return ForwardRefNode(
         ref=str(annotation),
-        state=RefState.Failed(f"Unknown annotation type: {type(annotation)}"),
+        state=RefFailed(f"Unknown annotation type: {type(annotation)}"),
         qualifiers=qualifiers,
         metadata=metadata,
     )
@@ -757,11 +759,11 @@ def _inspect_type(annotation: Any, ctx: InspectContext) -> TypeNode:
 def _inspect_string_annotation(ref: str, ctx: InspectContext) -> TypeNode:
     """Handle string annotations."""
     if ctx.config.eval_mode == EvalMode.STRINGIFIED:
-        return ForwardRef(ref=ref, state=RefState.Unresolved())
+        return ForwardRefNode(ref=ref, state=RefUnresolved())
 
     if ref in ctx.resolving:
         # Recursive reference - return unresolved to break cycle
-        return ForwardRef(ref=ref, state=RefState.Unresolved())
+        return ForwardRefNode(ref=ref, state=RefUnresolved())
 
     ctx.resolving.add(ref)
     try:
@@ -771,25 +773,25 @@ def _inspect_string_annotation(ref: str, ctx: InspectContext) -> TypeNode:
         try:
             resolved = eval(ref, globalns, localns)  # noqa: S307
             resolved_node = _inspect_type(resolved, ctx.child())
-            return ForwardRef(ref=ref, state=RefState.Resolved(node=resolved_node))
+            return ForwardRefNode(ref=ref, state=RefResolved(node=resolved_node))
         except Exception as e:
             if ctx.config.eval_mode == EvalMode.EAGER:
                 msg = f"Cannot resolve forward reference '{ref}': {e}"
                 raise NameError(msg) from e
-            return ForwardRef(ref=ref, state=RefState.Failed(str(e)))
+            return ForwardRefNode(ref=ref, state=RefFailed(str(e)))
     finally:
         ctx.resolving.discard(ref)
 
 
 def _inspect_forward_ref(ref: TypingForwardRef, ctx: InspectContext) -> TypeNode:
-    """Handle typing.ForwardRef objects."""
+    """Handle typing.ForwardRefNode objects."""
     ref_str = ref.__forward_arg__
 
     if ctx.config.eval_mode == EvalMode.STRINGIFIED:
-        return ForwardRef(ref=ref_str, state=RefState.Unresolved())
+        return ForwardRefNode(ref=ref_str, state=RefUnresolved())
 
     if ref_str in ctx.resolving:
-        return ForwardRef(ref=ref_str, state=RefState.Unresolved())
+        return ForwardRefNode(ref=ref_str, state=RefUnresolved())
 
     ctx.resolving.add(ref_str)
     try:
@@ -797,7 +799,7 @@ def _inspect_forward_ref(ref: TypingForwardRef, ctx: InspectContext) -> TypeNode
         localns = ctx.config.localns or {}
 
         try:
-            # Try to evaluate the ForwardRef
+            # Try to evaluate the ForwardRefNode
             # The API changed across Python versions:
             # - 3.14+: _evaluate deprecated, use evaluate_forward_ref
             # - 3.13: _evaluate requires type_params + recursive_guard kwargs
@@ -822,12 +824,13 @@ def _inspect_forward_ref(ref: TypingForwardRef, ctx: InspectContext) -> TypeNode
 
             # _evaluate returns the resolved type or raises; it never returns None
             resolved_node = _inspect_type(resolved, ctx.child())
-            return ForwardRef(ref=ref_str, state=RefState.Resolved(node=resolved_node))
+            state = RefResolved(node=resolved_node)
+            return ForwardRefNode(ref=ref_str, state=state)
         except Exception as e:
             if ctx.config.eval_mode == EvalMode.EAGER:
                 msg = f"Cannot resolve forward reference '{ref_str}': {e}"
                 raise NameError(msg) from e
-            return ForwardRef(ref=ref_str, state=RefState.Failed(str(e)))
+            return ForwardRefNode(ref=ref_str, state=RefFailed(str(e)))
     finally:
         ctx.resolving.discard(ref_str)
 
@@ -842,21 +845,21 @@ def _inspect_callable(args: tuple[Any, ...], ctx: InspectContext) -> TypeNode:
     """Handle Callable types."""
     if not args:
         # Bare Callable
-        return CallableType(params=(), returns=AnyType())
+        return CallableNode(params=(), returns=AnyNode())
 
     if len(args) == _CALLABLE_ARGS_COUNT:
         param_spec, return_type = args
 
         # Handle Callable[..., R]
         if param_spec is ...:
-            return CallableType(
-                params=EllipsisType(),
+            return CallableNode(
+                params=EllipsisNode(),
                 returns=_inspect_type(return_type, ctx.child()),
             )
 
         # Handle Callable[P, R] where P is ParamSpec
         if isinstance(param_spec, ParamSpec):
-            return CallableType(
+            return CallableNode(
                 params=_inspect_paramspec(param_spec, ctx),
                 returns=_inspect_type(return_type, ctx.child()),
             )
@@ -867,7 +870,7 @@ def _inspect_callable(args: tuple[Any, ...], ctx: InspectContext) -> TypeNode:
             concat_node = _inspect_type(param_spec, ctx.child())
             # pragma: no branch - Concatenate always produces ConcatenateNode
             if is_concatenate_node(concat_node):
-                return CallableType(
+                return CallableNode(
                     params=concat_node,
                     returns=_inspect_type(return_type, ctx.child()),
                 )
@@ -877,12 +880,12 @@ def _inspect_callable(args: tuple[Any, ...], ctx: InspectContext) -> TypeNode:
             # param_spec narrowed from Unknown to list[Any] by isinstance check
             param_list: list[Any] = param_spec  # pyright: ignore[reportUnknownVariableType]
             params = tuple(_inspect_type(p, ctx.child()) for p in param_list)
-            return CallableType(
+            return CallableNode(
                 params=params,
                 returns=_inspect_type(return_type, ctx.child()),
             )
 
-    return CallableType(params=(), returns=AnyType())
+    return CallableNode(params=(), returns=AnyNode())
 
 
 def _inspect_tuple(
@@ -893,20 +896,20 @@ def _inspect_tuple(
     # We check this first because get_args(tuple[()]) returns () which
     # would otherwise be treated as an unparameterized tuple
     if not args and "tuple[()]" in str(annotation):
-        return TupleType(elements=(), homogeneous=False)
+        return TupleNode(elements=(), homogeneous=False)
 
     if not args:
         # tuple with no args means tuple[Any, ...]
-        return TupleType(elements=(AnyType(),), homogeneous=True)
+        return TupleNode(elements=(AnyNode(),), homogeneous=True)
 
     # Check for tuple[T, ...] - homogeneous
     if len(args) == _TUPLE_HOMOGENEOUS_ARGS_COUNT and args[1] is ...:
         elem_type = _inspect_type(args[0], ctx.child())
-        return TupleType(elements=(elem_type,), homogeneous=True)
+        return TupleNode(elements=(elem_type,), homogeneous=True)
 
     # Heterogeneous tuple
     elements = tuple(_inspect_type(arg, ctx.child()) for arg in args)
-    return TupleType(elements=elements, homogeneous=False)
+    return TupleNode(elements=elements, homogeneous=False)
 
 
 def _inspect_typevar(tv: TypeVar, ctx: InspectContext) -> TypeVarNode:
@@ -978,7 +981,7 @@ def _inspect_typevartuple(tvt: TypeVarTuple, ctx: InspectContext) -> TypeVarTupl
     return TypeVarTupleNode(name=tvt.__name__, default=default)
 
 
-def _inspect_type_alias_type(alias: Any, ctx: InspectContext) -> GenericAlias:
+def _inspect_type_alias_type(alias: Any, ctx: InspectContext) -> GenericAliasNode:
     """Handle PEP 695 TypeAliasType."""
     name = alias.__name__
 
@@ -995,7 +998,7 @@ def _inspect_type_alias_type(alias: Any, ctx: InspectContext) -> GenericAlias:
     # Get the aliased value
     value = _inspect_type(alias.__value__, ctx.child())
 
-    return GenericAlias(
+    return GenericAliasNode(
         name=name,
         type_params=tuple(type_params),
         value=value,
@@ -1025,7 +1028,7 @@ def _inspect_subscripted_generic(
 
     arg_nodes = tuple(_inspect_type(arg, ctx.child()) for arg in args)
 
-    return SubscriptedGeneric(
+    return SubscriptedGenericNode(
         origin=origin_node,
         args=arg_nodes,
         source=get_source_location(annotation, ctx.config),
@@ -1049,7 +1052,7 @@ def _inspect_plain_type(cls: type, ctx: InspectContext) -> TypeNode:
                 source=get_source_location(cls, ctx.config),
             )
 
-    return ConcreteType(
+    return ConcreteNode(
         cls=cls,
         source=get_source_location(cls, ctx.config),
     )
@@ -1115,7 +1118,7 @@ def inspect_type_alias(
     *,
     name: str | None = None,
     config: InspectConfig | None = None,
-) -> GenericAlias | TypeAliasNode:
+) -> GenericAliasNode | TypeAliasNode:
     """Inspect a type alias.
 
     Args:
@@ -1124,7 +1127,7 @@ def inspect_type_alias(
         config: Introspection configuration. Uses defaults if None.
 
     Returns:
-        A GenericAlias for PEP 695 TypeAliasType, or TypeAliasNode for
+        A GenericAliasNode for PEP 695 TypeAliasType, or TypeAliasNode for
         simple type aliases.
     """
     config = config if config is not None else DEFAULT_CONFIG
@@ -1158,7 +1161,7 @@ def resolve_forward_ref(
         as malicious forward references could execute arbitrary code.
 
     Args:
-        ref: A string or ForwardRef to resolve.
+        ref: A string or ForwardRefNode to resolve.
         globalns: Global namespace for resolution.
         localns: Local namespace for resolution.
 
@@ -1181,7 +1184,7 @@ def resolve_forward_ref(
     return _inspect_forward_ref(ref, ctx)
 
 
-def get_type_hints_for_node(  # noqa: PLR0912, PLR0915 - Inherently complex type dispatch
+def to_runtime_type(  # noqa: PLR0912, PLR0915 - Inherently complex type dispatch
     node: TypeNode,
     *,
     include_extras: bool = True,
@@ -1199,52 +1202,52 @@ def get_type_hints_for_node(  # noqa: PLR0912, PLR0915 - Inherently complex type
 
     Raises:
         TypeError: If the node is a TypeVarNode, ParamSpecNode,
-            TypeVarTupleNode, or a CallableType with ParamSpec parameters.
+            TypeVarTupleNode, or a CallableNode with ParamSpec parameters.
             These types cannot be reconstructed because the original
             TypeVar/ParamSpec objects are not preserved.
     """
     result: Any
 
-    if is_concrete_type(node) or is_generic_type(node):
+    if is_concrete_node(node) or is_generic_node(node):
         result = node.cls
-    elif is_any_type_node(node):
+    elif is_any_node(node):
         result = Any
-    elif is_never_type_node(node):
+    elif is_never_node(node):
         result = Never
-    elif is_self_type_node(node):
+    elif is_self_node(node):
         result = Self
-    elif is_meta_type_node(node):
-        inner = get_type_hints_for_node(node.of)
+    elif is_meta_node(node):
+        inner = to_runtime_type(node.of)
         result = type[inner]
     elif is_literal_node(node):
         result = Literal[node.values]
     elif is_union_type_node(node):
-        member_types = tuple(get_type_hints_for_node(m) for m in node.members)
+        member_types = tuple(to_runtime_type(m) for m in node.members)
         result = functools.reduce(operator.or_, member_types)
     elif is_subscripted_generic_node(node):
-        origin = get_type_hints_for_node(node.origin)
-        args = tuple(get_type_hints_for_node(a) for a in node.args)
+        origin = to_runtime_type(node.origin)
+        args = tuple(to_runtime_type(a) for a in node.args)
         result = origin[args] if args else origin
-    elif is_tuple_type_node(node):
+    elif is_tuple_node(node):
         if node.homogeneous:
-            elem = get_type_hints_for_node(node.elements[0])
+            elem = to_runtime_type(node.elements[0])
             # tuple[T, ...] for homogeneous
             result = tuple.__class_getitem__((elem, ...))
         elif not node.elements:
             # tuple[()] for empty tuple
             result = tuple.__class_getitem__(())
         else:
-            elems = tuple(get_type_hints_for_node(e) for e in node.elements)
+            elems = tuple(to_runtime_type(e) for e in node.elements)
             result = tuple.__class_getitem__(elems)
-    elif is_callable_type_node(node):
-        returns = get_type_hints_for_node(node.returns)
+    elif is_callable_node(node):
+        returns = to_runtime_type(node.returns)
         if isinstance(node.params, tuple):
-            params = [get_type_hints_for_node(p) for p in node.params]
+            params = [to_runtime_type(p) for p in node.params]
             # __class_getitem__ exists at runtime but isn't in type stubs;
             # using getattr avoids type errors (noqa: B009 - intentional)
             class_getitem = getattr(Callable, "__class_getitem__")  # noqa: B009
             result = class_getitem((params, returns))
-        elif is_ellipsis_type_node(node.params):
+        elif is_ellipsis_node(node.params):
             result = Callable[..., returns]
         else:
             # ParamSpec or Concatenate can't be recreated at runtime without the
@@ -1263,7 +1266,7 @@ def get_type_hints_for_node(  # noqa: PLR0912, PLR0915 - Inherently complex type
         raise TypeError(msg)
     elif is_forward_ref_node(node):
         if is_ref_state_resolved(node.state):
-            result = get_type_hints_for_node(node.state.node)
+            result = to_runtime_type(node.state.node)
         else:
             result = TypingForwardRef(node.ref)
     else:

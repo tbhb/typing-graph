@@ -42,15 +42,15 @@ Install typing-graph using your preferred package manager:
 The [`inspect_type()`][typing_graph.inspect_type] function is your primary entry point for type inspection. Pass any type and receive a structured node representation.
 
 ```python
-from typing_graph import inspect_type, ConcreteType
+from typing_graph import inspect_type, ConcreteNode
 
 # Inspect a simple type
 node = inspect_type(int)
-print(type(node))  # <class 'typing_graph.ConcreteType'>
+print(type(node))  # <class 'typing_graph.ConcreteNode'>
 print(node.cls)    # <class 'int'>
 ```
 
-Simple types like `int`, `str`, `float`, and custom classes return a [`ConcreteType`][typing_graph.ConcreteType] node. This node provides access to the underlying class through its `cls` attribute.
+Simple types like `int`, `str`, `float`, and custom classes return a [`ConcreteNode`][typing_graph.ConcreteNode] node. This node provides access to the underlying class through its `cls` attribute.
 
 ```python
 # Inspect a string type
@@ -67,21 +67,21 @@ print(user_node.cls)  # <class '__main__.User'>
 
 ## Inspecting generic types
 
-Generic types like `list[int]` or `dict[str, float]` return a [`SubscriptedGeneric`][typing_graph.SubscriptedGeneric] node. This node captures both the origin type (for example, `list`) and the type arguments (for example, `int`).
+Generic types like `list[int]` or `dict[str, float]` return a [`SubscriptedGenericNode`][typing_graph.SubscriptedGenericNode] node. This node captures both the origin type (for example, `list`) and the type arguments (for example, `int`).
 
 ```python
-from typing_graph import inspect_type, SubscriptedGeneric, GenericTypeNode
+from typing_graph import inspect_type, SubscriptedGenericNode, GenericTypeNode
 
 # Inspect a generic type
 node = inspect_type(list[int])
-print(type(node))  # SubscriptedGeneric
+print(type(node))  # SubscriptedGenericNode
 
 # Access the origin (the generic type itself)
 print(node.origin)      # GenericTypeNode for 'list'
 print(node.origin.cls)  # <class 'list'>
 
 # Access the type arguments
-print(node.args)        # (ConcreteType for 'int',)
+print(node.args)        # (ConcreteNode for 'int',)
 print(node.args[0].cls) # <class 'int'>
 ```
 
@@ -120,10 +120,10 @@ ValidatedString = Annotated[str, MinLen(1), MaxLen(100)]
 node = inspect_type(ValidatedString)
 ```
 
-By default, typing-graph "hoists" metadata from `Annotated` wrappers to the base type node. This means you get a `ConcreteType` for `str` with the metadata attached:
+By default, typing-graph "hoists" metadata from `Annotated` wrappers to the base type node. This means you get a `ConcreteNode` for `str` with the metadata attached:
 
 ```python
-print(type(node))   # ConcreteType
+print(type(node))   # ConcreteNode
 print(node.cls)     # <class 'str'>
 print(node.metadata)  # (MinLen(value=1), MaxLen(value=100))
 ```
@@ -170,7 +170,7 @@ print(element.metadata)  # (Description(text='A URL string'),)
 Every type node has a `children()` method that returns its child nodes. This enables recursive traversal of the type graph.
 
 ```python
-from typing_graph import inspect_type, ConcreteType, SubscriptedGeneric
+from typing_graph import inspect_type, ConcreteNode, SubscriptedGenericNode
 
 def print_type_tree(node, indent=0):
     """Recursively print a type tree."""
@@ -178,9 +178,9 @@ def print_type_tree(node, indent=0):
     node_name = type(node).__name__
 
     # Add details based on node type
-    if isinstance(node, ConcreteType):
+    if isinstance(node, ConcreteNode):
         print(f"{prefix}{node_name}: {node.cls.__name__}")
-    elif isinstance(node, SubscriptedGeneric):
+    elif isinstance(node, SubscriptedGenericNode):
         print(f"{prefix}{node_name}: {node.origin.cls.__name__}[...]")
     else:
         print(f"{prefix}{node_name}")
@@ -197,10 +197,10 @@ print_type_tree(node)
 Output:
 
 ```text
-SubscriptedGeneric: dict[...]
-  ConcreteType: str
-  SubscriptedGeneric: list[...]
-    ConcreteType: int
+SubscriptedGenericNode: dict[...]
+  ConcreteNode: str
+  SubscriptedGenericNode: list[...]
+    ConcreteNode: int
 ```
 
 ## Next steps

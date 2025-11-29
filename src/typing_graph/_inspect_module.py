@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
     from ._node import (
         FunctionNode,
-        GenericAlias,
+        GenericAliasNode,
         ParamSpecNode,
         TypeAliasNode,
         TypeNode,
@@ -53,7 +53,7 @@ class ModuleTypes:
 
     classes: dict[str, ClassInspectResult] = field(default_factory=dict)
     functions: dict[str, "FunctionNode"] = field(default_factory=dict)
-    type_aliases: dict[str, "GenericAlias | TypeAliasNode"] = field(
+    type_aliases: dict[str, "GenericAliasNode | TypeAliasNode"] = field(
         default_factory=dict
     )
     type_vars: dict[str, "TypeVarNode | ParamSpecNode | TypeVarTupleNode"] = field(

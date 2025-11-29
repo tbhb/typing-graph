@@ -36,13 +36,13 @@ from ._inspect_type import (
 from ._node import (
     ClassNode,
     DataclassFieldDef,
-    DataclassType,
-    EnumType,
+    DataclassNode,
+    EnumNode,
     FieldDef,
     MethodSig,
-    NamedTupleType,
-    ProtocolType,
-    TypedDictType,
+    NamedTupleNode,
+    ProtocolNode,
+    TypedDictNode,
     TypeNode,
     TypeParamNode,
     UnionNode,
@@ -51,36 +51,62 @@ from ._node import (
 
 # Wrapper functions for type detection.
 # These wrap stdlib/typing_extensions functions for consistent naming.
-# is_enum_type uses TypeIs for type narrowing to type[Enum].
+# is_enum_class uses TypeIs for type narrowing to type[Enum].
 
 
-def is_dataclass_type(cls: type[Any]) -> bool:
+def is_dataclass_class(cls: type[Any]) -> bool:
     """Check if cls is a dataclass.
 
     Checks that cls is both a dataclass and a type (not an instance).
+
+    Note:
+        Returns ``bool`` rather than ``TypeIs`` because dataclass inspection
+        functions work with the general ``type`` parameter.
     """
     return dataclasses.is_dataclass(cls)
 
 
-def is_typeddict_type(cls: type[Any]) -> bool:
-    """Check if cls is a TypedDict."""
+def is_typeddict_class(cls: type[Any]) -> bool:
+    """Check if cls is a TypedDict.
+
+    Note:
+        Returns ``bool`` rather than ``TypeIs`` because TypedDict inspection
+        functions work with the general ``type`` parameter.
+    """
     return _is_typeddict(cls)
 
 
-def is_namedtuple_type(cls: type[Any]) -> bool:
-    """Check if cls is a NamedTuple."""
+def is_namedtuple_class(cls: type[Any]) -> bool:
+    """Check if cls is a NamedTuple.
+
+    Note:
+        Returns ``bool`` rather than ``TypeIs`` because NamedTuple inspection
+        functions work with the general ``type`` parameter.
+    """
     return is_namedtuple(cls)
 
 
-def is_protocol_type(cls: type[Any]) -> bool:
-    """Check if cls is a Protocol."""
+def is_protocol_class(cls: type[Any]) -> bool:
+    """Check if cls is a Protocol.
+
+    Note:
+        Returns ``bool`` rather than ``TypeIs`` because Protocol inspection
+        functions work with the general ``type`` parameter.
+    """
     return is_protocol(cls)
 
 
-def is_enum_type(cls: type[Any]) -> TypeIs[type[Enum]]:
+def is_enum_class(cls: type[Any]) -> TypeIs[type[Enum]]:
     """Check if cls is an Enum subclass with TypeIs narrowing.
 
-    Uses TypeIs to narrow cls to type[Enum] for _inspect_enum.
+    Unlike the other ``is_*_class`` functions, this returns ``TypeIs[type[Enum]]``
+    rather than ``bool``. This provides type narrowing so that ``_inspect_enum``
+    receives ``type[Enum]`` as required by its signature.
+
+    Note:
+        The other class detection functions return ``bool`` because their
+        corresponding inspection functions accept the general ``type`` parameter.
+        Only ``_inspect_enum`` requires the narrowed ``type[Enum]`` type.
     """
     try:
         return issubclass(cls, Enum)
@@ -89,7 +115,7 @@ def is_enum_type(cls: type[Any]) -> TypeIs[type[Enum]]:
 
 
 ClassInspectResult = (
-    ClassNode | DataclassType | TypedDictType | NamedTupleType | ProtocolType | EnumType
+    ClassNode | DataclassNode | TypedDictNode | NamedTupleNode | ProtocolNode | EnumNode
 )
 """Type alias for possible class inspection results."""
 
@@ -102,11 +128,11 @@ def inspect_class(
     """Inspect a class and return the appropriate TypeNode.
 
     Automatically detects and returns specialized nodes for:
-    - dataclasses -> DataclassType
-    - TypedDict -> TypedDictType
-    - NamedTuple -> NamedTupleType
-    - Protocol -> ProtocolType
-    - Enum -> EnumType
+    - dataclasses -> DataclassNode
+    - TypedDict -> TypedDictNode
+    - NamedTuple -> NamedTupleNode
+    - Protocol -> ProtocolNode
+    - Enum -> EnumNode
     - Regular classes -> ClassNode
 
     Args:
@@ -120,15 +146,15 @@ def inspect_class(
     ctx = InspectContext(config=config)
 
     # Detect class type and dispatch using TypeIs wrappers for type narrowing
-    if is_dataclass_type(cls):
+    if is_dataclass_class(cls):
         return _inspect_dataclass(cls, ctx)
-    if is_typeddict_type(cls):
+    if is_typeddict_class(cls):
         return _inspect_typed_dict(cls, ctx)
-    if is_namedtuple_type(cls):
+    if is_namedtuple_class(cls):
         return _inspect_named_tuple(cls, ctx)
-    if is_protocol_type(cls):
+    if is_protocol_class(cls):
         return _inspect_protocol(cls, ctx)
-    if is_enum_type(cls):
+    if is_enum_class(cls):
         return _inspect_enum(cls, ctx)
 
     # cls type is narrowed to Unknown after exhaustive TypeIs checks above;
@@ -140,7 +166,7 @@ def inspect_dataclass(
     cls: type,
     *,
     config: InspectConfig | None = None,
-) -> DataclassType:
+) -> DataclassNode:
     """Inspect a dataclass specifically.
 
     Args:
@@ -148,12 +174,12 @@ def inspect_dataclass(
         config: Introspection configuration. Uses defaults if None.
 
     Returns:
-        A DataclassType node representing the dataclass.
+        A DataclassNode node representing the dataclass.
 
     Raises:
         TypeError: If cls is not a dataclass.
     """
-    if not is_dataclass_type(cls):
+    if not is_dataclass_class(cls):
         msg = f"{cls} is not a dataclass"
         raise TypeError(msg)
 
@@ -166,7 +192,7 @@ def inspect_typed_dict(
     cls: type,
     *,
     config: InspectConfig | None = None,
-) -> TypedDictType:
+) -> TypedDictNode:
     """Inspect a TypedDict specifically.
 
     Args:
@@ -174,12 +200,12 @@ def inspect_typed_dict(
         config: Introspection configuration. Uses defaults if None.
 
     Returns:
-        A TypedDictType node representing the TypedDict.
+        A TypedDictNode node representing the TypedDict.
 
     Raises:
         TypeError: If cls is not a TypedDict.
     """
-    if not is_typeddict_type(cls):
+    if not is_typeddict_class(cls):
         msg = f"{cls} is not a TypedDict"
         raise TypeError(msg)
 
@@ -192,7 +218,7 @@ def inspect_named_tuple(
     cls: type,
     *,
     config: InspectConfig | None = None,
-) -> NamedTupleType:
+) -> NamedTupleNode:
     """Inspect a NamedTuple specifically.
 
     Args:
@@ -200,12 +226,12 @@ def inspect_named_tuple(
         config: Introspection configuration. Uses defaults if None.
 
     Returns:
-        A NamedTupleType node representing the NamedTuple.
+        A NamedTupleNode node representing the NamedTuple.
 
     Raises:
         TypeError: If cls is not a NamedTuple.
     """
-    if not is_namedtuple_type(cls):
+    if not is_namedtuple_class(cls):
         msg = f"{cls} is not a NamedTuple"
         raise TypeError(msg)
 
@@ -218,7 +244,7 @@ def inspect_protocol(
     cls: type,
     *,
     config: InspectConfig | None = None,
-) -> ProtocolType:
+) -> ProtocolNode:
     """Inspect a Protocol specifically.
 
     Args:
@@ -226,12 +252,12 @@ def inspect_protocol(
         config: Introspection configuration. Uses defaults if None.
 
     Returns:
-        A ProtocolType node representing the Protocol.
+        A ProtocolNode node representing the Protocol.
 
     Raises:
         TypeError: If cls is not a Protocol.
     """
-    if not is_protocol_type(cls):
+    if not is_protocol_class(cls):
         msg = f"{cls} is not a Protocol"
         raise TypeError(msg)
 
@@ -244,7 +270,7 @@ def inspect_enum(
     cls: type,
     *,
     config: InspectConfig | None = None,
-) -> EnumType:
+) -> EnumNode:
     """Inspect an Enum specifically.
 
     Args:
@@ -252,12 +278,12 @@ def inspect_enum(
         config: Introspection configuration. Uses defaults if None.
 
     Returns:
-        An EnumType node representing the Enum.
+        An EnumNode node representing the Enum.
 
     Raises:
         TypeError: If cls is not an Enum.
     """
-    if not is_enum_type(cls):
+    if not is_enum_class(cls):
         msg = f"{cls} is not an Enum"
         raise TypeError(msg)
 
@@ -266,7 +292,7 @@ def inspect_enum(
     return _inspect_enum(cls, ctx)
 
 
-def _inspect_dataclass(cls: type, ctx: InspectContext) -> DataclassType:
+def _inspect_dataclass(cls: type, ctx: InspectContext) -> DataclassNode:
     """Inspect a dataclass using a pre-configured context.
 
     Called internally by `inspect_dataclass` and `inspect_class`.
@@ -313,7 +339,7 @@ def _inspect_dataclass(cls: type, ctx: InspectContext) -> DataclassType:
     # Get dataclass params - __dataclass_params__ is a dataclass instance, not a dict
     dc_params = getattr(cls, "__dataclass_params__", None)
 
-    return DataclassType(
+    return DataclassNode(
         cls=cls,
         fields=tuple(fields),
         frozen=getattr(dc_params, "frozen", False) if dc_params else False,
@@ -323,7 +349,7 @@ def _inspect_dataclass(cls: type, ctx: InspectContext) -> DataclassType:
     )
 
 
-def _inspect_typed_dict(cls: type, ctx: InspectContext) -> TypedDictType:
+def _inspect_typed_dict(cls: type, ctx: InspectContext) -> TypedDictNode:
     """Inspect a TypedDict using a pre-configured context.
 
     Called internally by `inspect_class`.
@@ -369,7 +395,7 @@ def _inspect_typed_dict(cls: type, ctx: InspectContext) -> TypedDictType:
             )
         )
 
-    return TypedDictType(
+    return TypedDictNode(
         name=cls.__name__,
         fields=tuple(fields),
         total=total,
@@ -378,7 +404,7 @@ def _inspect_typed_dict(cls: type, ctx: InspectContext) -> TypedDictType:
     )
 
 
-def _inspect_named_tuple(cls: type, ctx: InspectContext) -> NamedTupleType:
+def _inspect_named_tuple(cls: type, ctx: InspectContext) -> NamedTupleNode:
     """Inspect a NamedTuple using a pre-configured context.
 
     Called internally by `inspect_class`.
@@ -413,14 +439,14 @@ def _inspect_named_tuple(cls: type, ctx: InspectContext) -> NamedTupleType:
             )
         )
 
-    return NamedTupleType(
+    return NamedTupleNode(
         name=cls.__name__,
         fields=tuple(fields),
         source=get_source_location(cls, ctx.config),
     )
 
 
-def _inspect_protocol(cls: type, ctx: InspectContext) -> ProtocolType:
+def _inspect_protocol(cls: type, ctx: InspectContext) -> ProtocolNode:
     """Inspect a Protocol using a pre-configured context.
 
     Called internally by `inspect_class`.
@@ -483,7 +509,7 @@ def _inspect_protocol(cls: type, ctx: InspectContext) -> ProtocolType:
                 )
             )
 
-    return ProtocolType(
+    return ProtocolNode(
         name=cls.__name__,
         methods=tuple(methods),
         attributes=tuple(attributes),
@@ -492,7 +518,7 @@ def _inspect_protocol(cls: type, ctx: InspectContext) -> ProtocolType:
     )
 
 
-def _inspect_enum(cls: type[Enum], ctx: InspectContext) -> EnumType:
+def _inspect_enum(cls: type[Enum], ctx: InspectContext) -> EnumNode:
     """Inspect an Enum using a pre-configured context.
 
     Called internally by `inspect_enum` and `inspect_class`.
@@ -511,7 +537,7 @@ def _inspect_enum(cls: type[Enum], ctx: InspectContext) -> EnumType:
         (m.name, m.value) for m in enum_members
     )
 
-    return EnumType(
+    return EnumNode(
         cls=cls,
         value_type=value_type,
         members=members,

@@ -52,10 +52,10 @@ Use [`inspect_dataclass()`][typing_graph.inspect_dataclass] to analyze a datacla
 from typing_graph import inspect_dataclass
 
 node = inspect_dataclass(Order)
-print(type(node))  # <class 'typing_graph.DataclassType'>
+print(type(node))  # <class 'typing_graph.DataclassNode'>
 ```
 
-The [`DataclassType`][typing_graph.DataclassType] node provides access to dataclass-specific information:
+The [`DataclassNode`][typing_graph.DataclassNode] node provides access to dataclass-specific information:
 
 ```python
 print(node.cls)     # <class '__main__.Order'>
@@ -105,7 +105,7 @@ Field: notes
 Each field definition has a `type` attribute containing the inspected type node:
 
 ```python
-from typing_graph import ConcreteType, SubscriptedGeneric, UnionNode
+from typing_graph import ConcreteNode, SubscriptedGenericNode, UnionNode
 
 for field_def in node.fields:
     type_node = field_def.type
@@ -119,13 +119,13 @@ for field_def in node.fields:
 Output:
 
 ```text
-id: ConcreteType
+id: ConcreteNode
   Metadata: (MinLen(value=1), Doc(documentation='Unique order identifier'))
-customer_email: ConcreteType
+customer_email: ConcreteNode
   Metadata: (MinLen(value=5),)
-total: ConcreteType
+total: ConcreteNode
   Metadata: (Gt(value=0), Doc(documentation='Order total in dollars'))
-items: SubscriptedGeneric
+items: SubscriptedGenericNode
 notes: UnionType
 ```
 
@@ -147,7 +147,7 @@ notes_type = notes_field.type
 
 print(f"Union members: {len(notes_type.members)}")  # 2
 for member in notes_type.members:
-    if isinstance(member, ConcreteType):
+    if isinstance(member, ConcreteNode):
         print(f"  - {member.cls}")
 ```
 
@@ -169,11 +169,11 @@ class UserProfile(TypedDict, total=False):
     age: int
 
 node = inspect_typed_dict(UserProfile)
-print(type(node))  # <class 'typing_graph.TypedDictType'>
+print(type(node))  # <class 'typing_graph.TypedDictNode'>
 print(node.total)  # False
 ```
 
-The [`TypedDictType`][typing_graph.TypedDictType] node provides field information through its `fields` attribute:
+The [`TypedDictNode`][typing_graph.TypedDictNode] node provides field information through its `fields` attribute:
 
 ```python
 for field_def in node.fields:
@@ -194,15 +194,15 @@ age: required=False
 When you don't know the specific class kind, use [`inspect_class()`][typing_graph.inspect_class] for auto-detection:
 
 ```python
-from typing_graph import inspect_class, DataclassType, TypedDictType
+from typing_graph import inspect_class, DataclassNode, TypedDictNode
 
 # Works with dataclasses
 order_node = inspect_class(Order)
-print(isinstance(order_node, DataclassType))  # True
+print(isinstance(order_node, DataclassNode))  # True
 
 # Works with TypedDict
 profile_node = inspect_class(UserProfile)
-print(isinstance(profile_node, TypedDictType))  # True
+print(isinstance(profile_node, TypedDictNode))  # True
 ```
 
 This function returns the appropriate node type based on the input class.
@@ -221,13 +221,13 @@ class Point(NamedTuple):
     label: str = "origin"
 
 node = inspect_named_tuple(Point)
-print(type(node))  # <class 'typing_graph.NamedTupleType'>
+print(type(node))  # <class 'typing_graph.NamedTupleNode'>
 
 for field_def in node.fields:
     print(f"{field_def.name}: {field_def.type.cls.__name__}, required={field_def.required}")
 ```
 
-The [`NamedTupleType`][typing_graph.NamedTupleType] node provides field access through its `fields` attribute, just like dataclasses and TypedDict.
+The [`NamedTupleNode`][typing_graph.NamedTupleNode] node provides field access through its `fields` attribute, just like dataclasses and TypedDict.
 
 Output:
 

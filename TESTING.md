@@ -90,18 +90,18 @@ Unit tests focus on isolated behavior of individual functions and classes.
 
 ```python
 import pytest
-from typing_graph import inspect_type, ConcreteType
+from typing_graph import inspect_type, ConcreteNode
 
 
 class TestInspectType:
-    def test_returns_concrete_type_for_builtin_int(self):
+    def test_returns_concrete_node_for_builtin_int(self):
         result = inspect_type(int)
-        assert isinstance(result, ConcreteType)
+        assert isinstance(result, ConcreteNode)
         assert result.cls is int
 
-    def test_returns_concrete_type_for_builtin_str(self):
+    def test_returns_concrete_node_for_builtin_str(self):
         result = inspect_type(str)
-        assert isinstance(result, ConcreteType)
+        assert isinstance(result, ConcreteNode)
         assert result.cls is str
 ```
 
@@ -129,7 +129,7 @@ Integration tests verify that components work together correctly. These tests ex
 ```python
 from dataclasses import dataclass
 from typing import Annotated
-from typing_graph import inspect_class, inspect_type, DataclassType
+from typing_graph import inspect_class, inspect_type, DataclassNode
 
 
 class TestDataclassInspection:
@@ -141,7 +141,7 @@ class TestDataclassInspection:
 
         result = inspect_class(User)
 
-        assert isinstance(result, DataclassType)
+        assert isinstance(result, DataclassNode)
         assert result.frozen is True
         assert len(result.fields) == 2
 
@@ -262,9 +262,9 @@ from typing_graph import inspect_type
 
 
 @given(st.sampled_from([int, str, float, bool, bytes]))
-def test_inspect_builtin_types_returns_concrete_type(typ):
+def test_inspect_builtin_types_returns_concrete_node(typ):
     result = inspect_type(typ)
-    assert isinstance(result, ConcreteType)
+    assert isinstance(result, ConcreteNode)
     assert result.cls is typ
 
 

@@ -306,7 +306,7 @@ def inspect_configs(draw: "DrawFn") -> InspectConfig:
 
 
 def roundtrippable_annotations() -> st.SearchStrategy[Any]:
-    """Generate types that can round-trip through get_type_hints_for_node.
+    """Generate types that can round-trip through to_runtime_type.
 
     Excludes types that cannot be recreated at runtime without the original
     object:
@@ -466,7 +466,7 @@ def unpack_types(draw: "DrawFn") -> Any:
 def type_param_annotations() -> st.SearchStrategy[Any]:
     """Generate type parameter annotations (TypeVar, ParamSpec, TypeVarTuple).
 
-    These types are special - they cannot round-trip through get_type_hints_for_node
+    These types are special - they cannot round-trip through to_runtime_type
     because they require the original object to be preserved.
     """
     return st.one_of(
@@ -492,7 +492,7 @@ def extended_type_annotations() -> st.SearchStrategy[Any]:
     operator raises TypeError). They can only appear as leaf types or in specific
     contexts like generic class parameters.
 
-    Note: Many of these types cannot round-trip through get_type_hints_for_node.
+    Note: Many of these types cannot round-trip through to_runtime_type.
     """
     # Base types that can be used in unions
     unionable_base = st.one_of(

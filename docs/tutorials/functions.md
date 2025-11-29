@@ -100,7 +100,7 @@ The `kind` attribute indicates how to pass the parameter:
 Each parameter has a `type` attribute containing the inspected type node:
 
 ```python
-from typing_graph import ConcreteType, SubscriptedGeneric
+from typing_graph import ConcreteNode, SubscriptedGenericNode
 
 for param in sig.parameters:
     type_node = param.type
@@ -114,10 +114,10 @@ for param in sig.parameters:
 Output:
 
 ```text
-items: SubscriptedGeneric
-tax_rate: ConcreteType
+items: SubscriptedGenericNode
+tax_rate: ConcreteNode
   Metadata: (Positive(),)
-discount: ConcreteType
+discount: ConcreteNode
 ```
 
 ## Accessing the return type
@@ -126,7 +126,7 @@ The signature's `returns` attribute contains the return type node:
 
 ```python
 return_type = sig.returns
-print(type(return_type))  # <class 'typing_graph.ConcreteType'>
+print(type(return_type))  # <class 'typing_graph.ConcreteNode'>
 print(return_type.cls)    # <class 'float'>
 ```
 

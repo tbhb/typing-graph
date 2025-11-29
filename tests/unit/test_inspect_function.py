@@ -12,10 +12,10 @@ from typing_graph import (
     inspect_signature,
 )
 from typing_graph._node import (
-    is_any_type_node,
-    is_concrete_type,
+    is_any_node,
+    is_concrete_node,
     is_function_node,
-    is_generic_type,
+    is_generic_node,
     is_signature_node,
     is_subscripted_generic_node,
 )
@@ -184,23 +184,23 @@ class TestSignatureNode:
         result = inspect_signature(simple_function)
 
         assert is_signature_node(result)
-        assert is_concrete_type(result.parameters[0].type)
+        assert is_concrete_node(result.parameters[0].type)
         assert result.parameters[0].type.cls is int
-        assert is_concrete_type(result.parameters[1].type)
+        assert is_concrete_node(result.parameters[1].type)
         assert result.parameters[1].type.cls is str
 
     def test_return_type_is_concrete(self) -> None:
         result = inspect_signature(simple_function)
 
         assert is_signature_node(result)
-        assert is_concrete_type(result.returns)
+        assert is_concrete_node(result.returns)
         assert result.returns.cls is bool
 
     def test_none_return_type_inspected(self) -> None:
         result = inspect_signature(returns_none_explicit)
 
         assert is_signature_node(result)
-        assert is_concrete_type(result.returns)
+        assert is_concrete_node(result.returns)
         assert result.returns.cls is type(None)
 
     def test_generic_return_type_inspected(self) -> None:
@@ -208,7 +208,7 @@ class TestSignatureNode:
 
         assert is_signature_node(result)
         assert is_subscripted_generic_node(result.returns)
-        assert is_generic_type(result.returns.origin)
+        assert is_generic_node(result.returns.origin)
         assert result.returns.origin.cls is list
 
     def test_signature_children_includes_param_types_and_returns(self) -> None:
@@ -298,7 +298,7 @@ class TestParameterDetails:
 
         assert is_signature_node(result)
         args_param = result.parameters[0]
-        assert is_concrete_type(args_param.type)
+        assert is_concrete_node(args_param.type)
         assert args_param.type.cls is int
 
     def test_var_keyword_type_is_str(self) -> None:
@@ -306,7 +306,7 @@ class TestParameterDetails:
 
         assert is_signature_node(result)
         kwargs_param = result.parameters[1]
-        assert is_concrete_type(kwargs_param.type)
+        assert is_concrete_node(kwargs_param.type)
         assert kwargs_param.type.cls is str
 
 
@@ -315,14 +315,14 @@ class TestUnannotatedFunctions:
         result = inspect_signature(no_return_annotation)
 
         assert is_signature_node(result)
-        assert is_any_type_node(result.returns)
+        assert is_any_node(result.returns)
 
     def test_no_parameter_annotation_returns_any(self) -> None:
         result = inspect_signature(no_annotations)  # pyright: ignore[reportUnknownArgumentType]
 
         assert is_signature_node(result)
-        assert is_any_type_node(result.parameters[0].type)
-        assert is_any_type_node(result.parameters[1].type)
+        assert is_any_node(result.parameters[0].type)
+        assert is_any_node(result.parameters[1].type)
 
 
 class TestMethodInspection:
@@ -371,7 +371,7 @@ class TestAnnotatedParameters:
 
         assert is_signature_node(result)
         x_param = result.parameters[0]
-        assert is_concrete_type(x_param.type)
+        assert is_concrete_node(x_param.type)
         assert x_param.type.cls is int
         assert "metadata" in x_param.metadata
 
@@ -424,7 +424,7 @@ class TestSignatureExceptionHandling:
             # If we get here, check minimal structure
             assert is_signature_node(result)
             assert result.parameters == ()
-            assert is_any_type_node(result.returns)
+            assert is_any_node(result.returns)
         except (TypeError, ValueError):
             # Some Python versions may raise instead
             pass
@@ -543,5 +543,5 @@ class TestBrokenAnnotationsPropertyHandling:
         # Signature is captured but types are Any since annotations failed
         assert len(result.parameters) == 1
         assert result.parameters[0].name == "x"
-        assert is_any_type_node(result.parameters[0].type)
-        assert is_any_type_node(result.returns)
+        assert is_any_node(result.parameters[0].type)
+        assert is_any_node(result.returns)

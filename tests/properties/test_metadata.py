@@ -7,9 +7,9 @@ from hypothesis import HealthCheck, example, given, settings, strategies as st
 
 from typing_graph import inspect_type
 from typing_graph._node import (
-    is_concrete_type,
+    is_concrete_node,
     is_subscripted_generic_node,
-    is_tuple_type_node,
+    is_tuple_node,
 )
 
 from .strategies import annotated_types, nested_annotated_types, primitive_types
@@ -136,7 +136,7 @@ def test_classvar_unwraps_to_inner_type(inner_type: type) -> None:
     node = inspect_type(ann)
 
     # ClassVar should unwrap to inner type with qualifier set
-    assert is_concrete_type(node), f"Expected ConcreteType, got {type(node)}"
+    assert is_concrete_node(node), f"Expected ConcreteNode, got {type(node)}"
     assert node.cls is inner_type, f"Expected inner type {inner_type}, got {node.cls}"
     # Qualifier should be preserved after unwrapping
     assert "class_var" in node.qualifiers, (
@@ -154,7 +154,7 @@ def test_final_unwraps_to_inner_type(inner_type: type) -> None:
     node = inspect_type(ann)
 
     # Final should unwrap to inner type with qualifier set
-    assert is_concrete_type(node), f"Expected ConcreteType, got {type(node)}"
+    assert is_concrete_node(node), f"Expected ConcreteNode, got {type(node)}"
     assert node.cls is inner_type, f"Expected inner type {inner_type}, got {node.cls}"
     # Qualifier should be preserved after unwrapping
     assert "final" in node.qualifiers, (
@@ -202,10 +202,10 @@ def test_classvar_with_complex_type(inner_type: object) -> None:
     assert "class_var" in node.qualifiers, (
         f"ClassVar[{inner_type}] should have 'class_var' qualifier"
     )
-    # For complex types, the node should be a SubscriptedGeneric or TupleType
+    # For complex types, the node should be a SubscriptedGenericNode or TupleNode
     # (tuple[int, ...] produces TupleType, not SubscriptedGeneric)
-    assert is_subscripted_generic_node(node) or is_tuple_type_node(node), (
-        f"Expected SubscriptedGeneric or TupleType for ClassVar[{inner_type}], "
+    assert is_subscripted_generic_node(node) or is_tuple_node(node), (
+        f"Expected SubscriptedGenericNode or TupleNode for ClassVar[{inner_type}], "
         f"got {type(node)}"
     )
 
@@ -226,11 +226,11 @@ def test_metadata_with_complex_type(inner_type: object, metadata: str) -> None:
     assert metadata in node.metadata, (
         f"Missing metadata for Annotated[{inner_type}, {metadata!r}]"
     )
-    # For complex types, the node should be a SubscriptedGeneric or TupleType
-    # (tuple[int, ...] produces TupleType, not SubscriptedGeneric)
-    assert is_subscripted_generic_node(node) or is_tuple_type_node(node), (
-        f"Expected SubscriptedGeneric or TupleType for Annotated[{inner_type}, ...], "
-        f"got {type(node)}"
+    # For complex types, the node should be a SubscriptedGenericNode or TupleNode
+    # (tuple[int, ...] produces TupleNode, not SubscriptedGenericNode)
+    assert is_subscripted_generic_node(node) or is_tuple_node(node), (
+        f"Expected SubscriptedGenericNode or TupleNode for "
+        f"Annotated[{inner_type}, ...], got {type(node)}"
     )
 
 

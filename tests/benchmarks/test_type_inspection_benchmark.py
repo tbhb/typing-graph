@@ -5,13 +5,13 @@ import pytest
 
 from typing_graph import inspect_type
 from typing_graph._node import (
-    is_any_type_node,
-    is_callable_type_node,
-    is_concrete_type,
+    is_any_node,
+    is_callable_node,
+    is_concrete_node,
     is_literal_node,
     is_param_spec_node,
     is_subscripted_generic_node,
-    is_tuple_type_node,
+    is_tuple_node,
     is_type_var_node,
     is_union_type_node,
 )
@@ -26,43 +26,43 @@ class TestSimpleTypeBenchmarks:
     def test_benchmark_int(self, benchmark: "BenchmarkFixture") -> None:
         result = benchmark(inspect_type, int, use_cache=False)
 
-        assert is_concrete_type(result)
+        assert is_concrete_node(result)
         assert result.cls is int
 
     def test_benchmark_str(self, benchmark: "BenchmarkFixture") -> None:
         result = benchmark(inspect_type, str, use_cache=False)
 
-        assert is_concrete_type(result)
+        assert is_concrete_node(result)
         assert result.cls is str
 
     def test_benchmark_float(self, benchmark: "BenchmarkFixture") -> None:
         result = benchmark(inspect_type, float, use_cache=False)
 
-        assert is_concrete_type(result)
+        assert is_concrete_node(result)
         assert result.cls is float
 
     def test_benchmark_bool(self, benchmark: "BenchmarkFixture") -> None:
         result = benchmark(inspect_type, bool, use_cache=False)
 
-        assert is_concrete_type(result)
+        assert is_concrete_node(result)
         assert result.cls is bool
 
     def test_benchmark_bytes(self, benchmark: "BenchmarkFixture") -> None:
         result = benchmark(inspect_type, bytes, use_cache=False)
 
-        assert is_concrete_type(result)
+        assert is_concrete_node(result)
         assert result.cls is bytes
 
     def test_benchmark_none(self, benchmark: "BenchmarkFixture") -> None:
         result = benchmark(inspect_type, None, use_cache=False)
 
-        assert is_concrete_type(result)
+        assert is_concrete_node(result)
         assert result.cls is type(None)
 
     def test_benchmark_any(self, benchmark: "BenchmarkFixture") -> None:
         result = benchmark(inspect_type, Any, use_cache=False)
 
-        assert is_any_type_node(result)
+        assert is_any_node(result)
 
 
 class TestAnnotatedTypeBenchmarks:
@@ -73,7 +73,7 @@ class TestAnnotatedTypeBenchmarks:
 
         result = benchmark(inspect_type, annotated_type, use_cache=False)
 
-        assert is_concrete_type(result)
+        assert is_concrete_node(result)
         assert len(result.metadata) == 1
 
     def test_benchmark_annotated_3_metadata(
@@ -83,7 +83,7 @@ class TestAnnotatedTypeBenchmarks:
 
         result = benchmark(inspect_type, annotated_type, use_cache=False)
 
-        assert is_concrete_type(result)
+        assert is_concrete_node(result)
         assert len(result.metadata) == 3
 
     def test_benchmark_annotated_5_metadata(
@@ -93,7 +93,7 @@ class TestAnnotatedTypeBenchmarks:
 
         result = benchmark(inspect_type, annotated_type, use_cache=False)
 
-        assert is_concrete_type(result)
+        assert is_concrete_node(result)
         assert len(result.metadata) == 5
 
     def test_benchmark_annotated_10_metadata(
@@ -103,7 +103,7 @@ class TestAnnotatedTypeBenchmarks:
 
         result = benchmark(inspect_type, annotated_type, use_cache=False)
 
-        assert is_concrete_type(result)
+        assert is_concrete_node(result)
         assert len(result.metadata) == 10
 
 
@@ -187,7 +187,7 @@ class TestTupleTypeBenchmarks:
 
         result = benchmark(inspect_type, tuple_type, use_cache=False)
 
-        assert is_tuple_type_node(result)
+        assert is_tuple_node(result)
         assert result.homogeneous is True
 
     def test_benchmark_heterogeneous_tuple_2(
@@ -197,7 +197,7 @@ class TestTupleTypeBenchmarks:
 
         result = benchmark(inspect_type, tuple_type, use_cache=False)
 
-        assert is_tuple_type_node(result)
+        assert is_tuple_node(result)
         assert result.homogeneous is False
         assert len(result.elements) == 2
 
@@ -208,7 +208,7 @@ class TestTupleTypeBenchmarks:
 
         result = benchmark(inspect_type, tuple_type, use_cache=False)
 
-        assert is_tuple_type_node(result)
+        assert is_tuple_node(result)
         assert result.homogeneous is False
         assert len(result.elements) == 5
 
@@ -217,7 +217,7 @@ class TestTupleTypeBenchmarks:
 
         result = benchmark(inspect_type, tuple_type, use_cache=False)
 
-        assert is_tuple_type_node(result)
+        assert is_tuple_node(result)
         assert result.elements == ()
 
 
@@ -227,7 +227,7 @@ class TestCallableTypeBenchmarks:
 
         result = benchmark(inspect_type, callable_type, use_cache=False)
 
-        assert is_callable_type_node(result)
+        assert is_callable_node(result)
 
     def test_benchmark_multi_param_callable(
         self, benchmark: "BenchmarkFixture"
@@ -236,7 +236,7 @@ class TestCallableTypeBenchmarks:
 
         result = benchmark(inspect_type, callable_type, use_cache=False)
 
-        assert is_callable_type_node(result)
+        assert is_callable_node(result)
         assert isinstance(result.params, tuple)
         assert len(result.params) == 4
 
@@ -245,7 +245,7 @@ class TestCallableTypeBenchmarks:
 
         result = benchmark(inspect_type, callable_type, use_cache=False)
 
-        assert is_callable_type_node(result)
+        assert is_callable_node(result)
         assert isinstance(result.params, tuple)
         assert len(result.params) == 0
 
@@ -254,7 +254,7 @@ class TestCallableTypeBenchmarks:
 
         result = benchmark(inspect_type, callable_type, use_cache=False)
 
-        assert is_callable_type_node(result)
+        assert is_callable_node(result)
 
 
 class TestLiteralTypeBenchmarks:
@@ -322,7 +322,7 @@ class TestInspectorDispatchBenchmarks:
         # None is checked first in the inspector chain
         result = benchmark(inspect_type, None, use_cache=False)
 
-        assert is_concrete_type(result)
+        assert is_concrete_node(result)
         assert result.cls is type(None)
 
     def test_benchmark_late_dispatch_plain_class(
@@ -334,7 +334,7 @@ class TestInspectorDispatchBenchmarks:
 
         result = benchmark(inspect_type, CustomClass, use_cache=False)
 
-        assert is_concrete_type(result)
+        assert is_concrete_node(result)
         assert result.cls is CustomClass
 
     def test_benchmark_mid_dispatch_subscripted_generic(
@@ -361,7 +361,7 @@ class TestComplexTypeBenchmarks:
 
         result = benchmark(inspect_type, callback_type, use_cache=False)
 
-        assert is_callable_type_node(result)
+        assert is_callable_node(result)
 
     def test_benchmark_annotated_complex(self, benchmark: "BenchmarkFixture") -> None:
         # Annotated complex type

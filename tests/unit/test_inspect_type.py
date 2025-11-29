@@ -36,16 +36,16 @@ from typing_extensions import (
 import pytest
 
 from typing_graph import (
-    AnyType,
+    AnyNode,
     EvalMode,
     InspectConfig,
-    NeverType,
-    SelfType,
+    NeverNode,
+    SelfNode,
     Variance,
     cache_clear,
-    get_type_hints_for_node,
     inspect_type,
     inspect_type_alias,
+    to_runtime_type,
 )
 from typing_graph._config import DEFAULT_CONFIG
 from typing_graph._context import InspectContext
@@ -63,29 +63,29 @@ from typing_graph._inspect_type import (
 )
 from typing_graph._node import (
     TypeNode,
-    is_any_type_node,
-    is_callable_type_node,
+    is_any_node,
+    is_callable_node,
     is_concatenate_node,
-    is_concrete_type,
-    is_ellipsis_type_node,
+    is_concrete_node,
+    is_ellipsis_node,
     is_forward_ref_node,
     is_generic_alias_node,
-    is_generic_type,
+    is_generic_node,
     is_literal_node,
-    is_literal_string_type_node,
-    is_meta_type_node,
-    is_never_type_node,
+    is_literal_string_node,
+    is_meta_node,
+    is_never_node,
     is_new_type_node,
     is_param_spec_node,
     is_ref_state_failed,
     is_ref_state_resolved,
     is_ref_state_unresolved,
-    is_self_type_node,
+    is_self_node,
     is_subscripted_generic_node,
-    is_tuple_type_node,
+    is_tuple_node,
     is_type_alias_node,
-    is_type_guard_type_node,
-    is_type_is_type_node,
+    is_type_guard_node,
+    is_type_is_node,
     is_type_var_node,
     is_type_var_tuple_node,
     is_union_type_node,
@@ -104,7 +104,7 @@ class TestConcreteType:
     def test_int_sets_cls_to_int(self) -> None:
         result = inspect_type(int)
 
-        assert is_concrete_type(result)
+        assert is_concrete_node(result)
         assert result.cls is int
         assert result.metadata == ()
         assert result.qualifiers == frozenset()
@@ -112,37 +112,37 @@ class TestConcreteType:
     def test_str_sets_cls_to_str(self) -> None:
         result = inspect_type(str)
 
-        assert is_concrete_type(result)
+        assert is_concrete_node(result)
         assert result.cls is str
 
     def test_float_sets_cls_to_float(self) -> None:
         result = inspect_type(float)
 
-        assert is_concrete_type(result)
+        assert is_concrete_node(result)
         assert result.cls is float
 
     def test_bool_sets_cls_to_bool(self) -> None:
         result = inspect_type(bool)
 
-        assert is_concrete_type(result)
+        assert is_concrete_node(result)
         assert result.cls is bool
 
     def test_bytes_sets_cls_to_bytes(self) -> None:
         result = inspect_type(bytes)
 
-        assert is_concrete_type(result)
+        assert is_concrete_node(result)
         assert result.cls is bytes
 
     def test_none_literal_sets_cls_to_nonetype(self) -> None:
         result = inspect_type(None)
 
-        assert is_concrete_type(result)
+        assert is_concrete_node(result)
         assert result.cls is type(None)
 
     def test_nonetype_sets_cls_to_nonetype(self) -> None:
         result = inspect_type(type(None))
 
-        assert is_concrete_type(result)
+        assert is_concrete_node(result)
         assert result.cls is type(None)
 
     def test_custom_class_sets_cls_correctly(self) -> None:
@@ -151,36 +151,36 @@ class TestConcreteType:
 
         result = inspect_type(MyClass)
 
-        assert is_concrete_type(result)
+        assert is_concrete_node(result)
         assert result.cls is MyClass
 
 
-class TestAnyType:
+class TestAnyNode:
     def test_any_returns_anytype_node(self) -> None:
         result = inspect_type(Any)
 
-        assert is_any_type_node(result)
-        assert isinstance(result, AnyType)
+        assert is_any_node(result)
+        assert isinstance(result, AnyNode)
         assert result.metadata == ()
         assert result.qualifiers == frozenset()
 
 
-class TestSelfType:
+class TestSelfNode:
     def test_self_returns_selftype_node(self) -> None:
         result = inspect_type(Self)
 
-        assert is_self_type_node(result)
-        assert isinstance(result, SelfType)
+        assert is_self_node(result)
+        assert isinstance(result, SelfNode)
         assert result.metadata == ()
         assert result.qualifiers == frozenset()
 
 
-class TestNeverType:
+class TestNeverNode:
     def test_never_returns_nevertype_node(self) -> None:
         result = inspect_type(Never)
 
-        assert is_never_type_node(result)
-        assert isinstance(result, NeverType)
+        assert is_never_node(result)
+        assert isinstance(result, NeverNode)
         assert result.metadata == ()
         assert result.qualifiers == frozenset()
 
@@ -191,15 +191,15 @@ class TestNeverType:
     def test_noreturn_returns_nevertype_node(self) -> None:
         result = inspect_type(NoReturn)
 
-        assert is_never_type_node(result)
-        assert isinstance(result, NeverType)
+        assert is_never_node(result)
+        assert isinstance(result, NeverNode)
 
 
 class TestLiteralStringType:
     def test_literal_string_returns_literal_string_node(self) -> None:
         result = inspect_type(LiteralString)
 
-        assert is_literal_string_type_node(result)
+        assert is_literal_string_node(result)
         assert result.metadata == ()
         assert result.qualifiers == frozenset()
 
@@ -222,10 +222,10 @@ class TestUnionType:
         assert is_union_type_node(result)
         assert len(result.members) == 2
 
-        assert is_concrete_type(result.members[0])
+        assert is_concrete_node(result.members[0])
         assert result.members[0].cls is int
 
-        assert is_concrete_type(result.members[1])
+        assert is_concrete_node(result.members[1])
         assert result.members[1].cls is str
 
     def test_three_types_creates_union_with_three_members(self) -> None:
@@ -234,7 +234,7 @@ class TestUnionType:
         assert is_union_type_node(result)
         assert len(result.members) == 3
 
-        member_classes = {m.cls for m in result.members if is_concrete_type(m)}
+        member_classes = {m.cls for m in result.members if is_concrete_node(m)}
         assert member_classes == {int, str, float}
 
     def test_union_with_none_includes_nonetype(self) -> None:
@@ -243,7 +243,7 @@ class TestUnionType:
         assert is_union_type_node(result)
         assert len(result.members) == 2
 
-        member_classes = {m.cls for m in result.members if is_concrete_type(m)}
+        member_classes = {m.cls for m in result.members if is_concrete_node(m)}
         assert int in member_classes
         assert type(None) in member_classes
 
@@ -302,77 +302,77 @@ class TestSubscriptedGeneric:
         result = inspect_type(list[int])
 
         assert is_subscripted_generic_node(result)
-        assert is_generic_type(result.origin)
+        assert is_generic_node(result.origin)
         assert result.origin.cls is list
 
         assert len(result.args) == 1
-        assert is_concrete_type(result.args[0])
+        assert is_concrete_node(result.args[0])
         assert result.args[0].cls is int
 
     def test_dict_str_int_has_dict_origin_and_two_args(self) -> None:
         result = inspect_type(dict[str, int])
 
         assert is_subscripted_generic_node(result)
-        assert is_generic_type(result.origin)
+        assert is_generic_node(result.origin)
         assert result.origin.cls is dict
 
         assert len(result.args) == 2
-        assert is_concrete_type(result.args[0])
+        assert is_concrete_node(result.args[0])
         assert result.args[0].cls is str
-        assert is_concrete_type(result.args[1])
+        assert is_concrete_node(result.args[1])
         assert result.args[1].cls is int
 
     def test_set_str_has_set_origin_and_str_arg(self) -> None:
         result = inspect_type(set[str])
 
         assert is_subscripted_generic_node(result)
-        assert is_generic_type(result.origin)
+        assert is_generic_node(result.origin)
         assert result.origin.cls is set
 
         assert len(result.args) == 1
-        assert is_concrete_type(result.args[0])
+        assert is_concrete_node(result.args[0])
         assert result.args[0].cls is str
 
     def test_frozenset_int_has_frozenset_origin(self) -> None:
         result = inspect_type(frozenset[int])
 
         assert is_subscripted_generic_node(result)
-        assert is_generic_type(result.origin)
+        assert is_generic_node(result.origin)
         assert result.origin.cls is frozenset
 
     def test_nested_list_of_list_of_int(self) -> None:
         result = inspect_type(list[list[int]])
 
         assert is_subscripted_generic_node(result)
-        assert is_generic_type(result.origin)
+        assert is_generic_node(result.origin)
         assert result.origin.cls is list
 
         assert len(result.args) == 1
         inner = result.args[0]
         assert is_subscripted_generic_node(inner)
-        assert is_generic_type(inner.origin)
+        assert is_generic_node(inner.origin)
         assert inner.origin.cls is list
 
         assert len(inner.args) == 1
-        assert is_concrete_type(inner.args[0])
+        assert is_concrete_node(inner.args[0])
         assert inner.args[0].cls is int
 
     def test_nested_dict_with_list_value(self) -> None:
         result = inspect_type(dict[str, list[int]])
 
         assert is_subscripted_generic_node(result)
-        assert is_generic_type(result.origin)
+        assert is_generic_node(result.origin)
         assert result.origin.cls is dict
         assert len(result.args) == 2
 
-        assert is_concrete_type(result.args[0])
+        assert is_concrete_node(result.args[0])
         assert result.args[0].cls is str
 
         value_type = result.args[1]
         assert is_subscripted_generic_node(value_type)
-        assert is_generic_type(value_type.origin)
+        assert is_generic_node(value_type.origin)
         assert value_type.origin.cls is list
-        assert is_concrete_type(value_type.args[0])
+        assert is_concrete_node(value_type.args[0])
         assert value_type.args[0].cls is int
 
     def test_children_includes_origin_and_args(self) -> None:
@@ -397,56 +397,56 @@ class TestTupleType:
     def test_heterogeneous_tuple_has_elements_and_not_homogeneous(self) -> None:
         result = inspect_type(tuple[int, str])
 
-        assert is_tuple_type_node(result)
+        assert is_tuple_node(result)
         assert len(result.elements) == 2
         assert result.homogeneous is False
 
-        assert is_concrete_type(result.elements[0])
+        assert is_concrete_node(result.elements[0])
         assert result.elements[0].cls is int
-        assert is_concrete_type(result.elements[1])
+        assert is_concrete_node(result.elements[1])
         assert result.elements[1].cls is str
 
     def test_homogeneous_tuple_has_one_element_and_is_homogeneous(self) -> None:
         result = inspect_type(tuple[int, ...])
 
-        assert is_tuple_type_node(result)
+        assert is_tuple_node(result)
         assert len(result.elements) == 1
         assert result.homogeneous is True
 
-        assert is_concrete_type(result.elements[0])
+        assert is_concrete_node(result.elements[0])
         assert result.elements[0].cls is int
 
     def test_single_element_tuple_is_not_homogeneous(self) -> None:
         result = inspect_type(tuple[int])
 
-        assert is_tuple_type_node(result)
+        assert is_tuple_node(result)
         assert len(result.elements) == 1
         assert result.homogeneous is False
 
     def test_four_element_tuple(self) -> None:
         result = inspect_type(tuple[int, str, float, bool])
 
-        assert is_tuple_type_node(result)
+        assert is_tuple_node(result)
         assert len(result.elements) == 4
         assert result.homogeneous is False
 
         expected_types = [int, str, float, bool]
         for i, expected in enumerate(expected_types):
             element = result.elements[i]
-            assert is_concrete_type(element)
+            assert is_concrete_node(element)
             assert element.cls is expected
 
     def test_empty_tuple_has_no_elements(self) -> None:
         result = inspect_type(tuple[()])
 
-        assert is_tuple_type_node(result)
+        assert is_tuple_node(result)
         assert result.elements == ()
         assert result.homogeneous is False
 
     def test_children_returns_elements(self) -> None:
         result = inspect_type(tuple[int, str])
 
-        assert is_tuple_type_node(result)
+        assert is_tuple_node(result)
         children = result.children()
         assert len(children) == 2
         assert children == result.elements
@@ -454,7 +454,7 @@ class TestTupleType:
     def test_metadata_and_qualifiers_default_empty(self) -> None:
         result = inspect_type(tuple[int, str])
 
-        assert is_tuple_type_node(result)
+        assert is_tuple_node(result)
         assert result.metadata == ()
         assert result.qualifiers == frozenset()
 
@@ -463,49 +463,49 @@ class TestCallableType:
     def test_simple_callable_has_params_and_returns(self) -> None:
         result = inspect_type(Callable[[int], str])
 
-        assert is_callable_type_node(result)
+        assert is_callable_node(result)
         assert isinstance(result.params, tuple)
         assert len(result.params) == 1
 
-        assert is_concrete_type(result.params[0])
+        assert is_concrete_node(result.params[0])
         assert result.params[0].cls is int
 
-        assert is_concrete_type(result.returns)
+        assert is_concrete_node(result.returns)
         assert result.returns.cls is str
 
     def test_multiple_params_callable(self) -> None:
         result = inspect_type(Callable[[int, str, float], bool])
 
-        assert is_callable_type_node(result)
+        assert is_callable_node(result)
         assert isinstance(result.params, tuple)
         assert len(result.params) == 3
 
         expected_param_types = [int, str, float]
         for i, expected in enumerate(expected_param_types):
             param = result.params[i]
-            assert is_concrete_type(param)
+            assert is_concrete_node(param)
             assert param.cls is expected
 
-        assert is_concrete_type(result.returns)
+        assert is_concrete_node(result.returns)
         assert result.returns.cls is bool
 
     def test_no_params_callable(self) -> None:
         result = inspect_type(Callable[[], int])
 
-        assert is_callable_type_node(result)
+        assert is_callable_node(result)
         assert isinstance(result.params, tuple)
         assert len(result.params) == 0
 
-        assert is_concrete_type(result.returns)
+        assert is_concrete_node(result.returns)
         assert result.returns.cls is int
 
     def test_ellipsis_params_callable(self) -> None:
         result = inspect_type(Callable[..., int])
 
-        assert is_callable_type_node(result)
-        assert is_ellipsis_type_node(result.params)
+        assert is_callable_node(result)
+        assert is_ellipsis_node(result.params)
 
-        assert is_concrete_type(result.returns)
+        assert is_concrete_node(result.returns)
         assert result.returns.cls is int
 
     def test_paramspec_callable(self) -> None:
@@ -514,11 +514,11 @@ class TestCallableType:
         # ParamSpec in subscript
         result = inspect_type(Callable[P, int])  # pyright: ignore[reportGeneralTypeIssues]
 
-        assert is_callable_type_node(result)
+        assert is_callable_node(result)
         assert is_param_spec_node(result.params)
         assert result.params.name == "P"
 
-        assert is_concrete_type(result.returns)
+        assert is_concrete_node(result.returns)
         assert result.returns.cls is int
 
     def test_concatenate_params(self) -> None:
@@ -527,31 +527,31 @@ class TestCallableType:
         # subscript context
         result = inspect_type(Callable[Concatenate[int, P], str])  # pyright: ignore[reportGeneralTypeIssues]
 
-        assert is_callable_type_node(result)
+        assert is_callable_node(result)
         assert is_concatenate_node(result.params)
         assert len(result.params.prefix) == 1
-        assert is_concrete_type(result.params.prefix[0])
+        assert is_concrete_node(result.params.prefix[0])
         assert result.params.prefix[0].cls is int
         assert result.params.param_spec.name == "P"
 
     def test_children_includes_params_and_returns(self) -> None:
         result = inspect_type(Callable[[int, str], bool])
 
-        assert is_callable_type_node(result)
+        assert is_callable_node(result)
         children = result.children()
 
         assert len(children) == 3
-        assert is_concrete_type(children[0])
+        assert is_concrete_node(children[0])
         assert children[0].cls is int
-        assert is_concrete_type(children[1])
+        assert is_concrete_node(children[1])
         assert children[1].cls is str
-        assert is_concrete_type(children[2])
+        assert is_concrete_node(children[2])
         assert children[2].cls is bool
 
     def test_metadata_and_qualifiers_default_empty(self) -> None:
         result = inspect_type(Callable[[int], str])
 
-        assert is_callable_type_node(result)
+        assert is_callable_node(result)
         assert result.metadata == ()
         assert result.qualifiers == frozenset()
 
@@ -591,7 +591,7 @@ class TestTypeVarNode:
         assert is_type_var_node(result)
         assert result.name == "T"
         assert result.bound is not None
-        assert is_concrete_type(result.bound)
+        assert is_concrete_node(result.bound)
         assert result.bound.cls is int
 
     def test_constrained_typevar_has_constraints(self) -> None:
@@ -602,7 +602,7 @@ class TestTypeVarNode:
         assert result.name == "T"
         assert len(result.constraints) == 2
 
-        constraint_classes = {c.cls for c in result.constraints if is_concrete_type(c)}
+        constraint_classes = {c.cls for c in result.constraints if is_concrete_node(c)}
         assert constraint_classes == {int, str}
 
     def test_children_includes_bound_and_constraints(self) -> None:
@@ -644,21 +644,21 @@ class TestMetaType:
     def test_type_int_has_int_as_inner(self) -> None:
         result = inspect_type(type[int])
 
-        assert is_meta_type_node(result)
-        assert is_concrete_type(result.of)
+        assert is_meta_node(result)
+        assert is_concrete_node(result.of)
         assert result.of.cls is int
 
     def test_type_str_has_str_as_inner(self) -> None:
         result = inspect_type(type[str])
 
-        assert is_meta_type_node(result)
-        assert is_concrete_type(result.of)
+        assert is_meta_node(result)
+        assert is_concrete_node(result.of)
         assert result.of.cls is str
 
     def test_children_returns_inner_type(self) -> None:
         result = inspect_type(type[int])
 
-        assert is_meta_type_node(result)
+        assert is_meta_node(result)
         children = result.children()
         assert len(children) == 1
         assert children[0] is result.of
@@ -666,7 +666,7 @@ class TestMetaType:
     def test_metadata_and_qualifiers_default_empty(self) -> None:
         result = inspect_type(type[int])
 
-        assert is_meta_type_node(result)
+        assert is_meta_node(result)
         assert result.metadata == ()
         assert result.qualifiers == frozenset()
 
@@ -708,7 +708,7 @@ class TestNewTypeNode:
 
         assert is_new_type_node(result)
         assert result.name == "UserId"
-        assert is_concrete_type(result.supertype)
+        assert is_concrete_node(result.supertype)
         assert result.supertype.cls is int
 
     def test_newtype_with_str_supertype(self) -> None:
@@ -717,7 +717,7 @@ class TestNewTypeNode:
 
         assert is_new_type_node(result)
         assert result.name == "Name"
-        assert is_concrete_type(result.supertype)
+        assert is_concrete_node(result.supertype)
         assert result.supertype.cls is str
 
     def test_children_returns_supertype(self) -> None:
@@ -742,14 +742,14 @@ class TestTypeGuardType:
     def test_typeguard_has_narrows_to(self) -> None:
         result = inspect_type(TypeGuard[int])
 
-        assert is_type_guard_type_node(result)
-        assert is_concrete_type(result.narrows_to)
+        assert is_type_guard_node(result)
+        assert is_concrete_node(result.narrows_to)
         assert result.narrows_to.cls is int
 
     def test_children_returns_narrows_to(self) -> None:
         result = inspect_type(TypeGuard[str])
 
-        assert is_type_guard_type_node(result)
+        assert is_type_guard_node(result)
         children = result.children()
         assert len(children) == 1
         assert children[0] is result.narrows_to
@@ -757,7 +757,7 @@ class TestTypeGuardType:
     def test_metadata_and_qualifiers_default_empty(self) -> None:
         result = inspect_type(TypeGuard[int])
 
-        assert is_type_guard_type_node(result)
+        assert is_type_guard_node(result)
         assert result.metadata == ()
         assert result.qualifiers == frozenset()
 
@@ -766,14 +766,14 @@ class TestTypeIsType:
     def test_typeis_has_narrows_to(self) -> None:
         result = inspect_type(TypeIs[int])
 
-        assert is_type_is_type_node(result)
-        assert is_concrete_type(result.narrows_to)
+        assert is_type_is_node(result)
+        assert is_concrete_node(result.narrows_to)
         assert result.narrows_to.cls is int
 
     def test_children_returns_narrows_to(self) -> None:
         result = inspect_type(TypeIs[str])
 
-        assert is_type_is_type_node(result)
+        assert is_type_is_node(result)
         children = result.children()
         assert len(children) == 1
         assert children[0] is result.narrows_to
@@ -781,7 +781,7 @@ class TestTypeIsType:
     def test_metadata_and_qualifiers_default_empty(self) -> None:
         result = inspect_type(TypeIs[int])
 
-        assert is_type_is_type_node(result)
+        assert is_type_is_node(result)
         assert result.metadata == ()
         assert result.qualifiers == frozenset()
 
@@ -795,9 +795,9 @@ class TestConcatenateNode:
         assert is_concatenate_node(result)
         assert len(result.prefix) == 2
 
-        assert is_concrete_type(result.prefix[0])
+        assert is_concrete_node(result.prefix[0])
         assert result.prefix[0].cls is int
-        assert is_concrete_type(result.prefix[1])
+        assert is_concrete_node(result.prefix[1])
         assert result.prefix[1].cls is str
 
         assert result.param_spec.name == "P"
@@ -809,7 +809,7 @@ class TestConcatenateNode:
 
         assert is_concatenate_node(result)
         assert len(result.prefix) == 1
-        assert is_concrete_type(result.prefix[0])
+        assert is_concrete_node(result.prefix[0])
         assert result.prefix[0].cls is int
 
     def test_children_includes_prefix_and_paramspec(self) -> None:
@@ -826,14 +826,14 @@ class TestTypeQualifiers:
     def test_classvar_sets_class_var_qualifier(self) -> None:
         result = inspect_type(ClassVar[int])
 
-        assert is_concrete_type(result)
+        assert is_concrete_node(result)
         assert result.cls is int
         assert "class_var" in result.qualifiers
 
     def test_final_sets_final_qualifier(self) -> None:
         result = inspect_type(Final[int])
 
-        assert is_concrete_type(result)
+        assert is_concrete_node(result)
         assert result.cls is int
         assert "final" in result.qualifiers
 
@@ -841,7 +841,7 @@ class TestTypeQualifiers:
         result = inspect_type(ClassVar[list[int]])
 
         assert is_subscripted_generic_node(result)
-        assert is_generic_type(result.origin)
+        assert is_generic_node(result.origin)
         assert result.origin.cls is list
         assert "class_var" in result.qualifiers
 
@@ -850,14 +850,14 @@ class TestAnnotatedMetadata:
     def test_single_metadata_item(self) -> None:
         result = inspect_type(Annotated[int, "metadata"])
 
-        assert is_concrete_type(result)
+        assert is_concrete_node(result)
         assert result.cls is int
         assert "metadata" in result.metadata
 
     def test_multiple_metadata_items(self) -> None:
         result = inspect_type(Annotated[int, "meta1", "meta2"])
 
-        assert is_concrete_type(result)
+        assert is_concrete_node(result)
         assert result.cls is int
         assert "meta1" in result.metadata
         assert "meta2" in result.metadata
@@ -866,19 +866,19 @@ class TestAnnotatedMetadata:
         result = inspect_type(Annotated[list[int], "description"])
 
         assert is_subscripted_generic_node(result)
-        assert is_generic_type(result.origin)
+        assert is_generic_node(result.origin)
         assert result.origin.cls is list
         assert "description" in result.metadata
 
 
 class TestGenericTypeNode:
-    def test_unsubscripted_list_is_generic_type(self) -> None:
+    def test_unsubscripted_list_is_generic_node(self) -> None:
         result = inspect_type(list)
 
         # Bare list should be ConcreteType since it has no type params specified
         # until subscripted. Let's verify the actual behavior.
-        assert is_concrete_type(result) or is_generic_type(result)
-        if is_concrete_type(result):
+        assert is_concrete_node(result) or is_generic_node(result)
+        if is_concrete_node(result):
             assert result.cls is list
 
     def test_custom_generic_class(self) -> None:
@@ -890,19 +890,19 @@ class TestGenericTypeNode:
         result = inspect_type(Container)
 
         # Custom generic should be detected
-        assert is_concrete_type(result) or is_generic_type(result)
+        assert is_concrete_node(result) or is_generic_node(result)
 
 
 class TestEdgeCases:
     def test_none_vs_nonetype_vs_literal_none_distinctions(self) -> None:
         # None literal
         result_none = inspect_type(None)
-        assert is_concrete_type(result_none)
+        assert is_concrete_node(result_none)
         assert result_none.cls is type(None)
 
         # type(None)
         result_nonetype = inspect_type(type(None))
-        assert is_concrete_type(result_nonetype)
+        assert is_concrete_node(result_nonetype)
         assert result_nonetype.cls is type(None)
 
         # Literal[None] - intentionally testing Literal[None] vs bare None
@@ -914,18 +914,18 @@ class TestEdgeCases:
         result = inspect_type(dict[str, list[tuple[int, str] | None]])
 
         assert is_subscripted_generic_node(result)
-        assert is_generic_type(result.origin)
+        assert is_generic_node(result.origin)
         assert result.origin.cls is dict
         assert len(result.args) == 2
 
         # Key type
-        assert is_concrete_type(result.args[0])
+        assert is_concrete_node(result.args[0])
         assert result.args[0].cls is str
 
         # Value type is list
         value_type = result.args[1]
         assert is_subscripted_generic_node(value_type)
-        assert is_generic_type(value_type.origin)
+        assert is_generic_node(value_type.origin)
         assert value_type.origin.cls is list
 
         # Inside the list is the union
@@ -936,31 +936,31 @@ class TestEdgeCases:
 class TestGetTypeHintsForNode:
     def test_concrete_type_returns_cls(self) -> None:
         node = inspect_type(int)
-        result: object = get_type_hints_for_node(node)
+        result: object = to_runtime_type(node)
 
         assert result is int
 
     def test_any_type_returns_any(self) -> None:
         node = inspect_type(Any)
-        result: object = get_type_hints_for_node(node)
+        result: object = to_runtime_type(node)
 
         assert result is Any
 
     def test_never_type_returns_never(self) -> None:
         node = inspect_type(Never)
-        result: object = get_type_hints_for_node(node)
+        result: object = to_runtime_type(node)
 
         assert result is Never
 
     def test_self_type_returns_self(self) -> None:
         node = inspect_type(Self)
-        result: object = get_type_hints_for_node(node)
+        result: object = to_runtime_type(node)
 
         assert result is Self
 
     def test_literal_recreates_literal(self) -> None:
         node = inspect_type(Literal["a", "b"])
-        result: object = get_type_hints_for_node(node)
+        result: object = to_runtime_type(node)
 
         # Verify it's a Literal with correct values
         assert get_origin(result) is Literal
@@ -968,7 +968,7 @@ class TestGetTypeHintsForNode:
 
     def test_union_recreates_union(self) -> None:
         node = inspect_type(int | str)
-        result: object = get_type_hints_for_node(node)
+        result: object = to_runtime_type(node)
 
         # Verify union contains int and str
         assert get_origin(result) is UnionType
@@ -976,35 +976,35 @@ class TestGetTypeHintsForNode:
 
     def test_subscripted_generic_recreates_generic(self) -> None:
         node = inspect_type(list[int])
-        result: object = get_type_hints_for_node(node)
+        result: object = to_runtime_type(node)
 
         assert get_origin(result) is list
         assert get_args(result) == (int,)
 
     def test_tuple_homogeneous_recreates_tuple_ellipsis(self) -> None:
         node = inspect_type(tuple[int, ...])
-        result: object = get_type_hints_for_node(node)
+        result: object = to_runtime_type(node)
 
         assert get_origin(result) is tuple
         assert get_args(result) == (int, ...)
 
     def test_tuple_heterogeneous_recreates_tuple(self) -> None:
         node = inspect_type(tuple[int, str])
-        result: object = get_type_hints_for_node(node)
+        result: object = to_runtime_type(node)
 
         assert get_origin(result) is tuple
         assert get_args(result) == (int, str)
 
     def test_tuple_empty_recreates_empty_tuple(self) -> None:
         node = inspect_type(tuple[()])
-        result: object = get_type_hints_for_node(node)
+        result: object = to_runtime_type(node)
 
         assert get_origin(result) is tuple
         assert get_args(result) == ()
 
     def test_callable_with_params_recreates_callable(self) -> None:
         node = inspect_type(Callable[[int, str], bool])
-        result: object = get_type_hints_for_node(node)
+        result: object = to_runtime_type(node)
 
         # Callable types use collections.abc.Callable as origin
         assert get_origin(result) is Callable
@@ -1015,7 +1015,7 @@ class TestGetTypeHintsForNode:
 
     def test_callable_with_ellipsis_recreates_callable(self) -> None:
         node = inspect_type(Callable[..., int])
-        result: object = get_type_hints_for_node(node)
+        result: object = to_runtime_type(node)
 
         assert get_origin(result) is Callable
         assert get_args(result) == (..., int)
@@ -1026,25 +1026,25 @@ class TestGetTypeHintsForNode:
 
         # TypeVars can't be recreated without the original object
         with pytest.raises(TypeError, match="Cannot convert TypeVarNode"):
-            get_type_hints_for_node(node)
+            to_runtime_type(node)
 
     def test_forward_ref_unresolved_returns_typing_forwardref(self) -> None:
         node = inspect_type("UnknownClass")
-        result: object = get_type_hints_for_node(node)
+        result: object = to_runtime_type(node)
 
         assert isinstance(result, TypingForwardRef)
 
     def test_forward_ref_resolved_returns_resolved_type(self) -> None:
         config = InspectConfig(globalns={"MyInt": int})
         node = inspect_type("MyInt", config=config)
-        result: object = get_type_hints_for_node(node)
+        result: object = to_runtime_type(node)
 
         # Should resolve to int
         assert result is int
 
     def test_annotated_includes_metadata_by_default(self) -> None:
         node = inspect_type(Annotated[int, "metadata"])
-        result: object = get_type_hints_for_node(node)
+        result: object = to_runtime_type(node)
 
         assert get_origin(result) is Annotated
         # Use typing_extensions.get_args for Annotated to get metadata
@@ -1054,14 +1054,14 @@ class TestGetTypeHintsForNode:
 
     def test_annotated_excludes_metadata_when_disabled(self) -> None:
         node = inspect_type(Annotated[int, "metadata"])
-        result: object = get_type_hints_for_node(node, include_extras=False)
+        result: object = to_runtime_type(node, include_extras=False)
 
         # Should return just int without Annotated wrapper
         assert result is int
 
     def test_nested_generic_recreates_structure(self) -> None:
         node = inspect_type(dict[str, list[int]])
-        result: object = get_type_hints_for_node(node)
+        result: object = to_runtime_type(node)
 
         assert get_origin(result) is dict
         args = get_args(result)
@@ -1100,8 +1100,8 @@ class TestBareFinalAnnotation:
     def test_bare_final_returns_any_with_final_qualifier(self) -> None:
         result = inspect_type(Final)
 
-        # Bare Final becomes AnyType with 'final' qualifier
-        assert is_any_type_node(result)
+        # Bare Final becomes AnyNode with 'final' qualifier
+        assert is_any_node(result)
         assert "final" in result.qualifiers
 
 
@@ -1122,7 +1122,7 @@ class TestInspectTypeParam:
         assert is_type_var_node(result)
         assert result.name == "T"
         assert result.bound is not None
-        assert is_concrete_type(result.bound)
+        assert is_concrete_node(result.bound)
         assert result.bound.cls is int
 
     def test_inspect_paramspec(self) -> None:
@@ -1160,7 +1160,7 @@ class TestInspectTypeAlias:
 
         assert is_type_alias_node(result)
         assert result.name == "MyInt"
-        assert is_concrete_type(result.value)
+        assert is_concrete_node(result.value)
         assert result.value.cls is int
 
     def test_simple_type_alias_without_name(self) -> None:
@@ -1193,7 +1193,7 @@ class TestResolveForwardRef:
 
         assert is_forward_ref_node(result)
         assert is_ref_state_resolved(result.state)
-        assert is_concrete_type(result.state.node)
+        assert is_concrete_node(result.state.node)
         assert result.state.node.cls is int
 
     def test_resolve_typing_forward_ref(self) -> None:
@@ -1202,7 +1202,7 @@ class TestResolveForwardRef:
 
         assert is_forward_ref_node(result)
         assert is_ref_state_resolved(result.state)
-        assert is_concrete_type(result.state.node)
+        assert is_concrete_node(result.state.node)
         assert result.state.node.cls is str
 
     def test_resolve_forward_ref_raises_for_unknown(self) -> None:
@@ -1215,7 +1215,7 @@ class TestGetTypeHintsForNodeEdgeCases:
         callable_type = Callable[..., int]
         node = inspect_type(callable_type)
 
-        result = get_type_hints_for_node(node)
+        result = to_runtime_type(node)
 
         assert result is not None
         # The result should be a callable type
@@ -1234,7 +1234,7 @@ class TestGetTypeHintsForNodeEdgeCases:
                 return ()
 
         node = UnknownTypeNode()
-        result = get_type_hints_for_node(node)
+        result = to_runtime_type(node)
 
         assert result is Any
 
@@ -1258,7 +1258,7 @@ class TestForwardRefResolution:
         assert is_forward_ref_node(result)
         assert result.ref == "KnownType"
         assert is_ref_state_resolved(result.state)
-        assert is_concrete_type(result.state.node)
+        assert is_concrete_node(result.state.node)
         assert result.state.node.cls is str
 
     def test_eager_mode_raises_for_unknown_ref(self) -> None:
@@ -1273,7 +1273,7 @@ class TestForwardRefResolution:
 
         assert is_forward_ref_node(result)
         assert is_ref_state_resolved(result.state)
-        assert is_concrete_type(result.state.node)
+        assert is_concrete_node(result.state.node)
         assert result.state.node.cls is int
 
     def test_stringified_mode_keeps_ref_unresolved(self) -> None:
@@ -1303,7 +1303,7 @@ class TestForwardRefResolution:
         assert is_forward_ref_node(result)
         assert result.ref == "int"
         assert is_ref_state_resolved(result.state)
-        assert is_concrete_type(result.state.node)
+        assert is_concrete_node(result.state.node)
         assert result.state.node.cls is int
 
     def test_typing_forward_ref_stringified_stays_unresolved(self) -> None:
@@ -1329,7 +1329,7 @@ class TestForwardRefResolution:
 
         assert is_forward_ref_node(result)
         assert is_ref_state_resolved(result.state)
-        assert is_concrete_type(result.state.node)
+        assert is_concrete_node(result.state.node)
         assert result.state.node.cls is float
 
     def test_forward_ref_evaluation_error_in_eager_mode_raises(self) -> None:
@@ -1429,7 +1429,7 @@ class TestTypeVarWithDefault:
             assert is_type_var_node(result)
             assert result.name == "T"
             assert result.default is not None
-            assert is_concrete_type(result.default)
+            assert is_concrete_node(result.default)
             assert result.default.cls is int
         except TypeError:
             pytest.skip(
@@ -1484,12 +1484,12 @@ class TestGetTypeHintsForNodeCallable:
         callable_type = Callable[P, int]  # pyright: ignore[reportGeneralTypeIssues]
         node = inspect_type(callable_type)
 
-        assert is_callable_type_node(node)
+        assert is_callable_node(node)
         assert is_param_spec_node(node.params)
 
         # ParamSpec can't be recreated at runtime without the original object
         with pytest.raises(TypeError, match="Cannot convert"):
-            get_type_hints_for_node(node)
+            to_runtime_type(node)
 
     def test_callable_with_concatenate_raises_type_error(self) -> None:
         P = ParamSpec("P")  # noqa: N806
@@ -1497,12 +1497,12 @@ class TestGetTypeHintsForNodeCallable:
         callable_type = Callable[Concatenate[int, P], str]  # pyright: ignore[reportGeneralTypeIssues]
         node = inspect_type(callable_type)
 
-        assert is_callable_type_node(node)
+        assert is_callable_node(node)
         assert is_concatenate_node(node.params)
 
         # Concatenate can't be recreated at runtime without the original object
         with pytest.raises(TypeError, match="Cannot convert"):
-            get_type_hints_for_node(node)
+            to_runtime_type(node)
 
     def test_typevar_node_raises_type_error(self) -> None:
         T = TypeVar("T")
@@ -1511,7 +1511,7 @@ class TestGetTypeHintsForNodeCallable:
         assert is_type_var_node(node)
 
         with pytest.raises(TypeError, match="Cannot convert TypeVarNode"):
-            get_type_hints_for_node(node)
+            to_runtime_type(node)
 
     def test_paramspec_node_raises_type_error(self) -> None:
         P = ParamSpec("P")  # noqa: N806
@@ -1520,7 +1520,7 @@ class TestGetTypeHintsForNodeCallable:
         assert is_param_spec_node(node)
 
         with pytest.raises(TypeError, match="Cannot convert ParamSpecNode"):
-            get_type_hints_for_node(node)
+            to_runtime_type(node)
 
     def test_typevartuple_node_raises_type_error(self) -> None:
         Ts = TypeVarTuple("Ts")  # noqa: N806
@@ -1529,7 +1529,7 @@ class TestGetTypeHintsForNodeCallable:
         assert is_type_var_tuple_node(node)
 
         with pytest.raises(TypeError, match="Cannot convert TypeVarTupleNode"):
-            get_type_hints_for_node(node)
+            to_runtime_type(node)
 
 
 class TestUnknownAnnotationType:
@@ -1555,7 +1555,7 @@ class TestTupleNoArgs:
         # Bare `tuple` should be handled
         assert result is not None
         # Should be a generic type or concrete type
-        if is_tuple_type_node(result):
+        if is_tuple_node(result):
             # If it's a TupleType, it should be homogeneous (tuple[Any, ...])
             assert result.homogeneous is True
 
@@ -1589,10 +1589,10 @@ class TestInternalTupleFunction:
         result = _inspect_tuple(FakeAnnotation(), (), ctx)
 
         # Should be treated as tuple[Any, ...] (homogeneous)
-        assert is_tuple_type_node(result)
+        assert is_tuple_node(result)
         assert result.homogeneous is True
         assert len(result.elements) == 1
-        assert is_any_type_node(result.elements[0])
+        assert is_any_node(result.elements[0])
 
 
 class TestInternalCallableFunction:
@@ -1601,9 +1601,9 @@ class TestInternalCallableFunction:
         result = _inspect_callable((), ctx)
 
         # Bare Callable should return empty params with Any return
-        assert is_callable_type_node(result)
+        assert is_callable_node(result)
         assert result.params == ()
-        assert is_any_type_node(result.returns)
+        assert is_any_node(result.returns)
 
     def test_callable_with_unknown_param_format(self) -> None:
         ctx = InspectContext(config=DEFAULT_CONFIG)
@@ -1611,9 +1611,9 @@ class TestInternalCallableFunction:
         result = _inspect_callable(("weird_thing", int), ctx)
 
         # Should fall back to empty params with Any return
-        assert is_callable_type_node(result)
+        assert is_callable_node(result)
         assert result.params == ()
-        assert is_any_type_node(result.returns)
+        assert is_any_node(result.returns)
 
     def test_callable_with_wrong_arg_count(self) -> None:
         ctx = InspectContext(config=DEFAULT_CONFIG)
@@ -1621,9 +1621,9 @@ class TestInternalCallableFunction:
         result = _inspect_callable(("a", "b", "c"), ctx)
 
         # Should fall back to empty params with Any return
-        assert is_callable_type_node(result)
+        assert is_callable_node(result)
         assert result.params == ()
-        assert is_any_type_node(result.returns)
+        assert is_any_node(result.returns)
 
 
 class TestTypeParamFiltering:
@@ -1658,7 +1658,7 @@ class TestTypeParamFiltering:
 
         # Should work, type_params should be empty since int/str aren't type params
         assert is_subscripted_generic_node(result)
-        assert is_generic_type(result.origin)
+        assert is_generic_node(result.origin)
         assert result.origin.type_params == ()
 
     def test_subscripted_user_generic_captures_type_params(self) -> None:
@@ -1671,7 +1671,7 @@ class TestTypeParamFiltering:
 
         # User-defined generics have __parameters__ with actual TypeVars
         assert is_subscripted_generic_node(result)
-        assert is_generic_type(result.origin)
+        assert is_generic_node(result.origin)
         # The origin should have captured the TypeVar as a type param
         assert len(result.origin.type_params) == 1
         assert is_type_var_node(result.origin.type_params[0])
@@ -1690,4 +1690,4 @@ class TestTypeParamFiltering:
 
         # Should work - since non-TypeVars are filtered out, type_params is empty
         # and it returns a ConcreteType instead of GenericTypeNode
-        assert is_concrete_type(result) or is_generic_type(result)
+        assert is_concrete_node(result) or is_generic_node(result)

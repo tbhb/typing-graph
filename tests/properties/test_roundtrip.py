@@ -7,8 +7,8 @@ from typing_extensions import Never, Self
 
 from hypothesis import HealthCheck, example, given, settings
 
-from typing_graph import cache_clear, get_type_hints_for_node, inspect_type
-from typing_graph._node import is_concrete_type
+from typing_graph import cache_clear, inspect_type, to_runtime_type
+from typing_graph._node import is_concrete_node
 
 from .strategies import primitive_types, roundtrippable_annotations
 
@@ -168,7 +168,7 @@ def test_roundtrip_preserves_structure(annotation: Any) -> None:
     # replays examples from its database
     cache_clear()
     node = inspect_type(annotation)
-    reconstructed = get_type_hints_for_node(node)
+    reconstructed = to_runtime_type(node)
 
     assert _types_equivalent(annotation, reconstructed), (
         f"Round-trip failed:\n"
@@ -193,10 +193,10 @@ def test_concrete_type_cls_attribute_preserved(cls: type) -> None:
     cache_clear()
     node = inspect_type(cls)
 
-    assert is_concrete_type(node), f"Expected ConcreteType for {cls}, got {type(node)}"
+    assert is_concrete_node(node), f"Expected ConcreteNode for {cls}, got {type(node)}"
     assert node.cls is cls, f"cls attribute mismatch: expected {cls}, got {node.cls}"
 
-    reconstructed = get_type_hints_for_node(node)
+    reconstructed = to_runtime_type(node)
     assert reconstructed is cls, (
         f"Round-trip cls mismatch: expected {cls}, got {reconstructed}"
     )
@@ -218,7 +218,7 @@ def test_roundtrip_without_extras_strips_metadata(annotation: Any) -> None:
     node = inspect_type(annotation)
 
     # Get type hint without metadata (include_extras=False)
-    reconstructed = get_type_hints_for_node(node, include_extras=False)
+    reconstructed = to_runtime_type(node, include_extras=False)
 
     # If original had Annotated metadata, reconstructed should be the inner type
     original_origin = get_origin(annotation)

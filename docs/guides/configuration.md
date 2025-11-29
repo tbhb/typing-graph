@@ -45,17 +45,17 @@ Use eager mode when you need all types fully resolved and want immediate feedbac
 
 ### Deferred mode (default)
 
-`EvalMode.DEFERRED` resolves what it can and represents unresolvable references as [`ForwardRef`][typing_graph.ForwardRef] nodes.
+`EvalMode.DEFERRED` resolves what it can and represents unresolvable references as [`ForwardRefNode`][typing_graph.ForwardRefNode] nodes.
 
 ```python
 config = InspectConfig(eval_mode=EvalMode.DEFERRED)
 
-# Forward references become ForwardRef nodes
+# Forward references become ForwardRefNode nodes
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from mymodule import SomeType  # Not available at runtime
 
-# Won't fail; creates a ForwardRef node
+# Won't fail; creates a ForwardRefNode node
 node = inspect_type("SomeType", config=config)
 ```
 
@@ -101,13 +101,13 @@ from typing_graph import InspectConfig, inspect_type
 # With hoisting (default)
 config = InspectConfig(hoist_metadata=True)
 node = inspect_type(Annotated[int, "metadata"], config=config)
-print(type(node).__name__)  # ConcreteType
+print(type(node).__name__)  # ConcreteNode
 print(node.metadata)        # ('metadata',)
 
 # Without hoisting - metadata is still accessible on the node
 config = InspectConfig(hoist_metadata=False)
 node = inspect_type(Annotated[int, "metadata"], config=config)
-print(type(node).__name__)  # ConcreteType
+print(type(node).__name__)  # ConcreteNode
 print(node.metadata)        # ('metadata',)
 ```
 

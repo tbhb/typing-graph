@@ -9,7 +9,7 @@ import pytest
 from typing_graph import (
     get_union_members,
     inspect_type,
-    is_concrete_type,
+    is_concrete_node,
     is_optional_node,
     is_union_node,
     unwrap_optional,
@@ -90,7 +90,7 @@ class TestUnwrapOptional:
         unwrapped = unwrap_optional(node)
         assert unwrapped is not None
         assert len(unwrapped) == 1
-        assert is_concrete_type(unwrapped[0])
+        assert is_concrete_node(unwrapped[0])
         assert unwrapped[0].cls is int
 
     def test_typing_optional_returns_inner_type(self) -> None:
@@ -98,7 +98,7 @@ class TestUnwrapOptional:
         unwrapped = unwrap_optional(node)
         assert unwrapped is not None
         assert len(unwrapped) == 1
-        assert is_concrete_type(unwrapped[0])
+        assert is_concrete_node(unwrapped[0])
         assert unwrapped[0].cls is str
 
     def test_multi_optional_returns_all_non_none(self) -> None:
@@ -106,7 +106,7 @@ class TestUnwrapOptional:
         unwrapped = unwrap_optional(node)
         assert unwrapped is not None
         assert len(unwrapped) == 2
-        cls_set = {m.cls for m in unwrapped if is_concrete_type(m)}
+        cls_set = {m.cls for m in unwrapped if is_concrete_node(m)}
         assert cls_set == {int, str}
 
     def test_non_optional_union_returns_none(self) -> None:

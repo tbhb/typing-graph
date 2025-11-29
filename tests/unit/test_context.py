@@ -2,14 +2,14 @@ from typing import Annotated
 
 import pytest
 
-from typing_graph import ConcreteType, InspectConfig, inspect_type
+from typing_graph import ConcreteNode, InspectConfig, inspect_type
 from typing_graph._context import (
     InspectContext,
     extract_field_metadata,
     get_source_location,
 )
 from typing_graph._node import (
-    AnnotatedType,
+    AnnotatedNode,
     ParamSpecNode,
     TypeVarNode,
     TypeVarTupleNode,
@@ -31,7 +31,7 @@ class TestInspectContext:
 
     def test_child_shares_seen(self, config: InspectConfig) -> None:
         ctx = InspectContext(config=config)
-        dummy_node = ConcreteType(cls=int)
+        dummy_node = ConcreteNode(cls=int)
         ctx.seen[123] = dummy_node
         child = ctx.child()
         assert child.seen is ctx.seen
@@ -44,30 +44,28 @@ class TestInspectContext:
         assert child.resolving is ctx.resolving
         assert "SomeType" in child.resolving
 
-    def test_unlimited_depth_allows_recursion(self, config: InspectConfig) -> None:
-        config.max_depth = None
+    def test_unlimited_depth_allows_recursion(self) -> None:
+        config = InspectConfig(max_depth=None)
         ctx = InspectContext(config=config)
         assert ctx.check_max_depth_exceeded() is True
 
-    def test_depth_below_limit_allows_recursion(self, config: InspectConfig) -> None:
-        config.max_depth = 5
+    def test_depth_below_limit_allows_recursion(self) -> None:
+        config = InspectConfig(max_depth=5)
         ctx = InspectContext(config=config, depth=3)
         assert ctx.check_max_depth_exceeded() is True
 
-    def test_depth_at_limit_blocks_recursion(self, config: InspectConfig) -> None:
-        config.max_depth = 5
+    def test_depth_at_limit_blocks_recursion(self) -> None:
+        config = InspectConfig(max_depth=5)
         ctx = InspectContext(config=config, depth=5)
         assert ctx.check_max_depth_exceeded() is False
 
-    def test_depth_exceeding_limit_blocks_recursion(
-        self, config: InspectConfig
-    ) -> None:
-        config.max_depth = 5
+    def test_depth_exceeding_limit_blocks_recursion(self) -> None:
+        config = InspectConfig(max_depth=5)
         ctx = InspectContext(config=config, depth=10)
         assert ctx.check_max_depth_exceeded() is False
 
-    def test_nested_children_increment_depth(self, config: InspectConfig) -> None:
-        config.max_depth = 3
+    def test_nested_children_increment_depth(self) -> None:
+        config = InspectConfig(max_depth=3)
         ctx = InspectContext(config=config)
         assert ctx.depth == 0
         assert ctx.check_max_depth_exceeded() is True
@@ -87,36 +85,36 @@ class TestInspectContext:
 
 class TestExtractFieldMetadata:
     def test_returns_annotations_for_annotated_type_node(self) -> None:
-        # Create an AnnotatedType directly
-        # (inspect_type hoists metadata to ConcreteType)
-        node = AnnotatedType(
-            base=ConcreteType(cls=int),
+        # Create an AnnotatedNode directly
+        # (inspect_type hoists metadata to ConcreteNode)
+        node = AnnotatedNode(
+            base=ConcreteNode(cls=int),
             annotations=("meta1", "meta2"),
         )
 
         result = extract_field_metadata(node)
 
-        # AnnotatedType stores metadata in annotations field
+        # AnnotatedNode stores metadata in annotations field
         assert result == ("meta1", "meta2")
 
     def test_returns_metadata_for_annotated_via_inspect_type(self) -> None:
-        # inspect_type returns ConcreteType with hoisted metadata
+        # inspect_type returns ConcreteNode with hoisted metadata
         node = inspect_type(Annotated[int, "meta1", "meta2"])
 
         result = extract_field_metadata(node)
 
-        # Metadata is hoisted to the ConcreteType's metadata field
+        # Metadata is hoisted to the ConcreteNode's metadata field
         assert result == ("meta1", "meta2")
 
     def test_returns_metadata_for_concrete_type(self) -> None:
-        node = ConcreteType(cls=int, metadata=("meta",))
+        node = ConcreteNode(cls=int, metadata=("meta",))
 
         result = extract_field_metadata(node)
 
         assert result == ("meta",)
 
     def test_returns_empty_tuple_for_no_metadata(self) -> None:
-        node = ConcreteType(cls=int)
+        node = ConcreteNode(cls=int)
 
         result = extract_field_metadata(node)
 
@@ -208,11 +206,11 @@ class TestIsTypeParamNode:
         assert is_type_param_node(node) is True
 
     def test_returns_false_for_concrete_type(self) -> None:
-        node = ConcreteType(cls=int)
+        node = ConcreteNode(cls=int)
 
         assert is_type_param_node(node) is False
 
     def test_returns_false_for_annotated_type(self) -> None:
-        node = AnnotatedType(base=ConcreteType(cls=int), annotations=("meta",))
+        node = AnnotatedNode(base=ConcreteNode(cls=int), annotations=("meta",))
 
         assert is_type_param_node(node) is False

@@ -309,20 +309,6 @@ The exception provides:
 
 This exception will be raised by protocol-based methods like `find_protocol()` and `has_protocol()` in later stages.
 
-## SupportsLessThan protocol
-
-The `SupportsLessThan` protocol types the `key` parameter in sorting operations:
-
-```python
-from typing_graph._metadata import SupportsLessThan
-
-# The protocol defines types that support the < operator
-class SupportsLessThan(Protocol):
-    def __lt__(self, other: object, /) -> bool: ...
-```
-
-This protocol will be used by the `sorted()` method in later stages to ensure type safety when sorting collections.
-
 ## Factory methods
 
 ### Creating from iterables

@@ -7,7 +7,7 @@ from hypothesis import HealthCheck, example, given, settings
 
 from typing_graph import Variance, cache_clear, inspect_type
 from typing_graph._node import (
-    is_concrete_type,
+    is_concrete_node,
     is_param_spec_node,
     is_type_var_node,
     is_type_var_tuple_node,
@@ -64,7 +64,7 @@ def test_typevar_bound_preserved(tv: TypeVar) -> None:
     # Verify bound is correctly captured
     if tv.__bound__ is not None:
         assert node.bound is not None
-        assert is_concrete_type(node.bound)
+        assert is_concrete_node(node.bound)
         assert node.bound.cls is tv.__bound__
     else:
         assert node.bound is None
@@ -82,7 +82,7 @@ def test_typevar_constraints_preserved(tv: TypeVar) -> None:
     if tv.__constraints__:
         assert len(node.constraints) == len(tv.__constraints__)
         for i, constraint_node in enumerate(node.constraints):
-            assert is_concrete_type(constraint_node)
+            assert is_concrete_node(constraint_node)
             assert constraint_node.cls is tv.__constraints__[i]
     else:
         assert node.constraints == ()

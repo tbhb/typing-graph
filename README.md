@@ -87,9 +87,9 @@ poetry add typing-graph
 >>> # Inspect the type graph
 >>> node = inspect_type(Urls)
 >>> node  # doctest: +SKIP
-SubscriptedGeneric(metadata=(MinLen(value=1),), origin=GenericTypeNode(cls=list), args=(ConcreteType(metadata=(Pattern(regex='^https?://'),), cls=str),))
+SubscriptedGenericNode(metadata=(MinLen(value=1),), origin=GenericTypeNode(cls=list), args=(ConcreteNode(metadata=(Pattern(regex='^https?://'),), cls=str),))
 
->>> # The outer node is a SubscriptedGeneric (list) with container-level metadata
+>>> # The outer node is a SubscriptedGenericNode (list) with container-level metadata
 >>> node.origin.cls
 <class 'list'>
 >>> node.metadata
@@ -124,7 +124,7 @@ print(func.signature.returns.cls)  # str
 
 ```python
 from dataclasses import dataclass
-from typing_graph import inspect_class, DataclassType
+from typing_graph import inspect_class, DataclassNode
 
 @dataclass(frozen=True, slots=True)
 class User:
@@ -132,7 +132,7 @@ class User:
     age: int
 
 node = inspect_class(User)
-assert isinstance(node, DataclassType)
+assert isinstance(node, DataclassNode)
 assert node.frozen is True
 assert node.slots is True
 assert len(node.fields) == 2
@@ -161,25 +161,25 @@ All type representations inherit from `TypeNode`, which provides:
 
 ### Core type nodes
 
-| Node                 | Represents                                               |
-|----------------------|----------------------------------------------------------|
-| `ConcreteType`       | Non-generic nominal types (`int`, `str`, custom classes) |
-| `GenericTypeNode`    | Unsubscripted generics (`list`, `Dict`)                  |
-| `SubscriptedGeneric` | Applied type arguments (`list[int]`, `Dict[str, T]`)     |
-| `UnionType`          | Union types (`Union[A, B]`, `A \| B`)                    |
-| `TupleType`          | Tuple types (heterogeneous and homogeneous)              |
-| `CallableType`       | Callable types with parameter and return type info       |
-| `AnnotatedType`      | `Annotated[T, ...]` when metadata is not hoisted         |
+| Node                    | Represents                                               |
+|-------------------------|----------------------------------------------------------|
+| `ConcreteNode`          | Non-generic nominal types (`int`, `str`, custom classes) |
+| `GenericTypeNode`       | Unsubscripted generics (`list`, `Dict`)                  |
+| `SubscriptedGenericNode`| Applied type arguments (`list[int]`, `Dict[str, T]`)     |
+| `UnionNode`             | Union types (`Union[A, B]`, `A \| B`)                    |
+| `TupleNode`             | Tuple types (heterogeneous and homogeneous)              |
+| `CallableNode`          | Callable types with parameter and return type info       |
+| `AnnotatedNode`         | `Annotated[T, ...]` when metadata is not hoisted         |
 
 ### Special forms
 
-| Node                | Represents                          |
-|---------------------|-------------------------------------|
-| `AnyType`           | `typing.Any`                        |
-| `NeverType`         | `typing.Never` / `typing.NoReturn`  |
-| `SelfType`          | `typing.Self`                       |
-| `LiteralNode`       | `Literal[...]` with specific values |
-| `LiteralStringType` | `typing.LiteralString`              |
+| Node                  | Represents                          |
+|-----------------------|-------------------------------------|
+| `AnyNode`             | `typing.Any`                        |
+| `NeverNode`           | `typing.Never` / `typing.NoReturn`  |
+| `SelfNode`            | `typing.Self`                       |
+| `LiteralNode`         | `Literal[...]` with specific values |
+| `LiteralStringNode`   | `typing.LiteralString`              |
 
 ### Type variables
 
@@ -191,15 +191,15 @@ All type representations inherit from `TypeNode`, which provides:
 
 ### Structured types
 
-| Node                | Represents                           |
-|---------------------|--------------------------------------|
-| `DataclassType`     | Dataclasses with field metadata      |
-| `TypedDictType`     | TypedDict with field definitions     |
-| `NamedTupleType`    | NamedTuple with named fields         |
-| `ProtocolType`      | Protocol with methods and attributes |
-| `EnumType`          | Enum with typed members              |
-| `AttrsType`         | attrs classes                        |
-| `PydanticModelType` | Pydantic models                      |
+| Node                  | Represents                           |
+|-----------------------|--------------------------------------|
+| `DataclassNode`       | Dataclasses with field metadata      |
+| `TypedDictNode`       | TypedDict with field definitions     |
+| `NamedTupleNode`      | NamedTuple with named fields         |
+| `ProtocolNode`        | Protocol with methods and attributes |
+| `EnumNode`            | Enum with typed members              |
+| `AttrsNode`           | attrs classes                        |
+| `PydanticModelNode`   | Pydantic models                      |
 
 ## Configuration
 
@@ -221,7 +221,7 @@ node = inspect_type(SomeType, config=config)
 ### Forward reference evaluation modes
 
 - `EvalMode.EAGER`: Fully resolve annotations; fail on errors
-- `EvalMode.DEFERRED`: Use `ForwardRef` for unresolvable annotations (default)
+- `EvalMode.DEFERRED`: Use `ForwardRefNode` for unresolvable annotations (default)
 - `EvalMode.STRINGIFIED`: Keep annotations as strings, resolve lazily
 
 ## Inspection functions
@@ -236,7 +236,7 @@ node = inspect_type(SomeType, config=config)
 | `inspect_enum()`            | Inspect an Enum specifically                |
 | `inspect_module()`          | Discover all public types in a module       |
 | `inspect_type_alias()`      | Inspect a type alias                        |
-| `get_type_hints_for_node()` | Convert a node back to runtime type hints   |
+| `to_runtime_type()`         | Convert a node back to runtime type hints   |
 | `cache_clear()`             | Clear the global inspection cache           |
 | `cache_info()`              | Get cache statistics                        |
 

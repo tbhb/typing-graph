@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeVar
 from typing_extensions import TypeIs, override
 
 if TYPE_CHECKING:
@@ -50,6 +50,10 @@ class TypeNode(ABC):
 def is_type_node(obj: object) -> TypeIs[TypeNode]:
     """Return whether the argument is an instance of TypeNode."""
     return isinstance(obj, TypeNode)
+
+
+TypeNodeT = TypeVar("TypeNodeT", bound=TypeNode)
+"""TypeVar bound to TypeNode for generic functions over node types."""
 
 
 class Variance(Enum):
@@ -215,7 +219,7 @@ def is_unpack_node(obj: object) -> TypeIs[UnpackNode]:
 
 
 @dataclass(slots=True, frozen=True)
-class ConcreteType(TypeNode):
+class ConcreteNode(TypeNode):
     """A non-generic nominal type: int, str, MyClass, etc."""
 
     cls: type
@@ -224,10 +228,14 @@ class ConcreteType(TypeNode):
     def children(self) -> "Sequence[TypeNode]":
         return ()
 
+    @override
+    def __str__(self) -> str:
+        return self.cls.__name__
 
-def is_concrete_type(obj: object) -> TypeIs[ConcreteType]:
-    """Return whether the argument is a ConcreteType instance."""
-    return isinstance(obj, ConcreteType)
+
+def is_concrete_node(obj: object) -> TypeIs[ConcreteNode]:
+    """Return whether the argument is a ConcreteNode instance."""
+    return isinstance(obj, ConcreteNode)
 
 
 @dataclass(slots=True, frozen=True)
@@ -241,8 +249,12 @@ class GenericTypeNode(TypeNode):
     def children(self) -> "Sequence[TypeNode]":
         return self.type_params
 
+    @override
+    def __str__(self) -> str:
+        return self.cls.__name__
 
-def is_generic_type(obj: object) -> TypeIs[GenericTypeNode]:
+
+def is_generic_node(obj: object) -> TypeIs[GenericTypeNode]:
     """Return whether the argument is a GenericType instance."""
     return isinstance(obj, GenericTypeNode)
 
@@ -252,7 +264,7 @@ class SpecialForm(TypeNode, ABC):
 
 
 @dataclass(slots=True, frozen=True)
-class AnyType(TypeNode):
+class AnyNode(TypeNode):
     """typing.Any - compatible with all types (gradual typing escape hatch)."""
 
     @override
@@ -260,13 +272,13 @@ class AnyType(TypeNode):
         return ()
 
 
-def is_any_type_node(obj: object) -> TypeIs[AnyType]:
-    """Return whether the argument is an AnyType instance."""
-    return isinstance(obj, AnyType)
+def is_any_node(obj: object) -> TypeIs[AnyNode]:
+    """Return whether the argument is an AnyNode instance."""
+    return isinstance(obj, AnyNode)
 
 
 @dataclass(slots=True, frozen=True)
-class NeverType(TypeNode):
+class NeverNode(TypeNode):
     """typing.Never / typing.NoReturn - the bottom type (uninhabited)."""
 
     @override
@@ -274,13 +286,13 @@ class NeverType(TypeNode):
         return ()
 
 
-def is_never_type_node(obj: object) -> TypeIs[NeverType]:
-    """Return whether the argument is a NeverType instance."""
-    return isinstance(obj, NeverType)
+def is_never_node(obj: object) -> TypeIs[NeverNode]:
+    """Return whether the argument is a NeverNode instance."""
+    return isinstance(obj, NeverNode)
 
 
 @dataclass(slots=True, frozen=True)
-class SelfType(TypeNode):
+class SelfNode(TypeNode):
     """typing.Self - reference to the enclosing class."""
 
     @override
@@ -288,13 +300,13 @@ class SelfType(TypeNode):
         return ()
 
 
-def is_self_type_node(obj: object) -> TypeIs[SelfType]:
-    """Return whether the argument is a SelfType instance."""
-    return isinstance(obj, SelfType)
+def is_self_node(obj: object) -> TypeIs[SelfNode]:
+    """Return whether the argument is a SelfNode instance."""
+    return isinstance(obj, SelfNode)
 
 
 @dataclass(slots=True, frozen=True)
-class LiteralStringType(TypeNode):
+class LiteralStringNode(TypeNode):
     """typing.LiteralString - any literal string value (PEP 675)."""
 
     @override
@@ -302,13 +314,13 @@ class LiteralStringType(TypeNode):
         return ()
 
 
-def is_literal_string_type_node(obj: object) -> TypeIs[LiteralStringType]:
-    """Return whether the argument is a LiteralStringType instance."""
-    return isinstance(obj, LiteralStringType)
+def is_literal_string_node(obj: object) -> TypeIs[LiteralStringNode]:
+    """Return whether the argument is a LiteralStringNode instance."""
+    return isinstance(obj, LiteralStringNode)
 
 
 @dataclass(slots=True, frozen=True)
-class EllipsisType(TypeNode):
+class EllipsisNode(TypeNode):
     """The ... used in Callable[..., R] and Tuple[T, ...]."""
 
     @override
@@ -316,68 +328,77 @@ class EllipsisType(TypeNode):
         return ()
 
 
-def is_ellipsis_type_node(obj: object) -> TypeIs[EllipsisType]:
-    """Return whether the argument is an EllipsisType instance."""
-    return isinstance(obj, EllipsisType)
+def is_ellipsis_node(obj: object) -> TypeIs[EllipsisNode]:
+    """Return whether the argument is an EllipsisNode instance."""
+    return isinstance(obj, EllipsisNode)
 
 
 # === Forward References ===
 
 
-class RefState:
-    """Resolution state for forward references."""
-
-    @dataclass(slots=True, frozen=True)
-    class Unresolved:
-        """Not yet attempted to resolve."""
-
-    @dataclass(slots=True, frozen=True)
-    class Resolved:
-        """Successfully resolved to a type."""
-
-        node: TypeNode
-
-    @dataclass(slots=True, frozen=True)
-    class Failed:
-        """Resolution attempted but failed."""
-
-        error: str
-
-
-def is_ref_state_resolved(state: object) -> TypeIs[RefState.Resolved]:
-    """Return whether the argument is a RefState.Resolved instance."""
-    return isinstance(state, RefState.Resolved)
-
-
-def is_ref_state_failed(state: object) -> TypeIs[RefState.Failed]:
-    """Return whether the argument is a RefState.Failed instance."""
-    return isinstance(state, RefState.Failed)
-
-
-def is_ref_state_unresolved(state: object) -> TypeIs[RefState.Unresolved]:
-    """Return whether the argument is a RefState.Unresolved instance."""
-    return isinstance(state, RefState.Unresolved)
+@dataclass(slots=True, frozen=True)
+class RefUnresolved:
+    """Not yet attempted to resolve."""
 
 
 @dataclass(slots=True, frozen=True)
-class ForwardRef(TypeNode):
+class RefResolved:
+    """Successfully resolved to a type."""
+
+    node: TypeNode
+
+
+@dataclass(slots=True, frozen=True)
+class RefFailed:
+    """Resolution attempted but failed."""
+
+    error: str
+
+
+RefState = RefUnresolved | RefResolved | RefFailed
+"""Type alias for forward reference resolution states."""
+
+
+def is_ref_state_resolved(state: object) -> TypeIs[RefResolved]:
+    """Return whether the argument is a RefResolved instance."""
+    return isinstance(state, RefResolved)
+
+
+def is_ref_state_failed(state: object) -> TypeIs[RefFailed]:
+    """Return whether the argument is a RefFailed instance."""
+    return isinstance(state, RefFailed)
+
+
+def is_ref_state_unresolved(state: object) -> TypeIs[RefUnresolved]:
+    """Return whether the argument is a RefUnresolved instance."""
+    return isinstance(state, RefUnresolved)
+
+
+@dataclass(slots=True, frozen=True)
+class ForwardRefNode(TypeNode):
     """A string forward reference like 'MyClass'."""
 
     ref: str
-    state: RefState.Unresolved | RefState.Resolved | RefState.Failed = field(
-        default_factory=RefState.Unresolved
-    )
+    state: RefState = field(default_factory=RefUnresolved)
 
     @override
     def children(self) -> "Sequence[TypeNode]":
-        if isinstance(self.state, RefState.Resolved):
+        if isinstance(self.state, RefResolved):
             return (self.state.node,)
         return ()
 
+    @override
+    def __str__(self) -> str:
+        if isinstance(self.state, RefResolved):
+            return f"ForwardRef({self.ref!r}) -> {self.state.node}"
+        if isinstance(self.state, RefFailed):
+            return f"ForwardRef({self.ref!r}) [failed: {self.state.error}]"
+        return f"ForwardRef({self.ref!r})"
 
-def is_forward_ref_node(obj: object) -> TypeIs[ForwardRef]:
-    """Return whether the argument is a ForwardRef instance."""
-    return isinstance(obj, ForwardRef)
+
+def is_forward_ref_node(obj: object) -> TypeIs[ForwardRefNode]:
+    """Return whether the argument is a ForwardRefNode instance."""
+    return isinstance(obj, ForwardRefNode)
 
 
 @dataclass(slots=True, frozen=True)
@@ -397,10 +418,10 @@ def is_literal_node(obj: object) -> TypeIs[LiteralNode]:
 
 
 @dataclass(slots=True, frozen=True)
-class SubscriptedGeneric(TypeNode):
+class SubscriptedGenericNode(TypeNode):
     """Generic with type args applied: List[int], Dict[str, T], etc."""
 
-    origin: TypeNode  # GenericType or another SubscriptedGeneric
+    origin: TypeNode  # GenericType or another SubscriptedGenericNode
     args: tuple[TypeNode, ...]
     _children: tuple[TypeNode, ...] = field(
         init=False, repr=False, compare=False, hash=False
@@ -413,14 +434,19 @@ class SubscriptedGeneric(TypeNode):
     def children(self) -> "Sequence[TypeNode]":
         return self._children
 
+    @override
+    def __str__(self) -> str:
+        args_str = ", ".join(str(arg) for arg in self.args)
+        return f"{self.origin}[{args_str}]"
 
-def is_subscripted_generic_node(obj: object) -> TypeIs[SubscriptedGeneric]:
-    """Return whether the argument is a SubscriptedGeneric instance."""
-    return isinstance(obj, SubscriptedGeneric)
+
+def is_subscripted_generic_node(obj: object) -> TypeIs[SubscriptedGenericNode]:
+    """Return whether the argument is a SubscriptedGenericNode instance."""
+    return isinstance(obj, SubscriptedGenericNode)
 
 
 @dataclass(slots=True, frozen=True)
-class GenericAlias(TypeNode):
+class GenericAliasNode(TypeNode):
     """Parameterized type alias: type Vector[T] = list[T] (PEP 695)."""
 
     name: str
@@ -438,9 +464,9 @@ class GenericAlias(TypeNode):
         return self._children
 
 
-def is_generic_alias_node(obj: object) -> TypeIs[GenericAlias]:
-    """Return whether the argument is a GenericAlias instance."""
-    return isinstance(obj, GenericAlias)
+def is_generic_alias_node(obj: object) -> TypeIs[GenericAliasNode]:
+    """Return whether the argument is a GenericAliasNode instance."""
+    return isinstance(obj, GenericAliasNode)
 
 
 @dataclass(slots=True, frozen=True)
@@ -470,6 +496,10 @@ class UnionNode(TypeNode):
     def children(self) -> "Sequence[TypeNode]":
         return self.members
 
+    @override
+    def __str__(self) -> str:
+        return " | ".join(str(m) for m in self.members)
+
 
 def is_union_type_node(obj: object) -> TypeIs[UnionNode]:
     """Return whether the argument is a UnionNode instance."""
@@ -477,7 +507,7 @@ def is_union_type_node(obj: object) -> TypeIs[UnionNode]:
 
 
 @dataclass(slots=True, frozen=True)
-class DiscriminatedUnion(TypeNode):
+class DiscriminatedUnionNode(TypeNode):
     """A union discriminated by a literal field value.
 
     Example:
@@ -500,13 +530,13 @@ class DiscriminatedUnion(TypeNode):
         return self._children
 
 
-def is_discriminated_union_node(obj: object) -> TypeIs[DiscriminatedUnion]:
-    """Return whether the argument is a DiscriminatedUnion instance."""
-    return isinstance(obj, DiscriminatedUnion)
+def is_discriminated_union_node(obj: object) -> TypeIs[DiscriminatedUnionNode]:
+    """Return whether the argument is a DiscriminatedUnionNode instance."""
+    return isinstance(obj, DiscriminatedUnionNode)
 
 
 @dataclass(slots=True, frozen=True)
-class IntersectionType(TypeNode):
+class IntersectionNode(TypeNode):
     """Intersection of types (not yet in typing, but used by type checkers)."""
 
     members: tuple[TypeNode, ...]
@@ -516,16 +546,16 @@ class IntersectionType(TypeNode):
         return self.members
 
 
-def is_intersection_type_node(obj: object) -> TypeIs[IntersectionType]:
-    """Return whether the argument is an IntersectionType instance."""
-    return isinstance(obj, IntersectionType)
+def is_intersection_node(obj: object) -> TypeIs[IntersectionNode]:
+    """Return whether the argument is an IntersectionNode instance."""
+    return isinstance(obj, IntersectionNode)
 
 
 @dataclass(slots=True, frozen=True)
-class CallableType(TypeNode):
+class CallableNode(TypeNode):
     """Callable[[P1, P2], R] or Callable[P, R] or Callable[..., R]."""
 
-    params: tuple[TypeNode, ...] | ParamSpecNode | ConcatenateNode | EllipsisType
+    params: tuple[TypeNode, ...] | ParamSpecNode | ConcatenateNode | EllipsisNode
     returns: TypeNode
     _children: tuple[TypeNode, ...] = field(
         init=False, repr=False, compare=False, hash=False
@@ -543,13 +573,13 @@ class CallableType(TypeNode):
         return self._children
 
 
-def is_callable_type_node(obj: object) -> TypeIs[CallableType]:
-    """Return whether the argument is a CallableType instance."""
-    return isinstance(obj, CallableType)
+def is_callable_node(obj: object) -> TypeIs[CallableNode]:
+    """Return whether the argument is a CallableNode instance."""
+    return isinstance(obj, CallableNode)
 
 
 @dataclass(slots=True, frozen=True)
-class TupleType(TypeNode):
+class TupleNode(TypeNode):
     """Tuple types in various forms.
 
     Examples:
@@ -566,18 +596,26 @@ class TupleType(TypeNode):
     def children(self) -> "Sequence[TypeNode]":
         return self.elements
 
+    @override
+    def __str__(self) -> str:
+        if self.homogeneous and self.elements:
+            return f"tuple[{self.elements[0]}, ...]"
+        if not self.elements:
+            return "tuple[()]"
+        return f"tuple[{', '.join(str(e) for e in self.elements)}]"
 
-def is_tuple_type_node(obj: object) -> TypeIs[TupleType]:
-    """Return whether the argument is a TupleType instance."""
-    return isinstance(obj, TupleType)
+
+def is_tuple_node(obj: object) -> TypeIs[TupleNode]:
+    """Return whether the argument is a TupleNode instance."""
+    return isinstance(obj, TupleNode)
 
 
 @dataclass(slots=True, frozen=True)
-class AnnotatedType(TypeNode):
+class AnnotatedNode(TypeNode):
     """Annotated[T, metadata, ...].
 
     Note: During graph construction, you may choose to hoist metadata to the
-    inner type's `metadata` field and elide the AnnotatedType wrapper. This
+    inner type's `metadata` field and elide the AnnotatedNode wrapper. This
     node represents the un-elided form.
     """
 
@@ -591,13 +629,13 @@ class AnnotatedType(TypeNode):
         return (self.base,)
 
 
-def is_annotated_type_node(obj: object) -> TypeIs[AnnotatedType]:
-    """Return whether the argument is an AnnotatedType instance."""
-    return isinstance(obj, AnnotatedType)
+def is_annotated_node(obj: object) -> TypeIs[AnnotatedNode]:
+    """Return whether the argument is an AnnotatedNode instance."""
+    return isinstance(obj, AnnotatedNode)
 
 
 @dataclass(slots=True, frozen=True)
-class MetaType(TypeNode):
+class MetaNode(TypeNode):
     """Type[T] or type[T] - the class object itself, not an instance."""
 
     of: TypeNode
@@ -607,13 +645,13 @@ class MetaType(TypeNode):
         return (self.of,)
 
 
-def is_meta_type_node(obj: object) -> TypeIs[MetaType]:
-    """Return whether the argument is a MetaType instance."""
-    return isinstance(obj, MetaType)
+def is_meta_node(obj: object) -> TypeIs[MetaNode]:
+    """Return whether the argument is a MetaNode instance."""
+    return isinstance(obj, MetaNode)
 
 
 @dataclass(slots=True, frozen=True)
-class TypeGuardType(TypeNode):
+class TypeGuardNode(TypeNode):
     """typing.TypeGuard[T] - narrows type in true branch (PEP 647)."""
 
     narrows_to: TypeNode
@@ -623,13 +661,13 @@ class TypeGuardType(TypeNode):
         return (self.narrows_to,)
 
 
-def is_type_guard_type_node(obj: object) -> TypeIs[TypeGuardType]:
-    """Return whether the argument is a TypeGuardType instance."""
-    return isinstance(obj, TypeGuardType)
+def is_type_guard_node(obj: object) -> TypeIs[TypeGuardNode]:
+    """Return whether the argument is a TypeGuardNode instance."""
+    return isinstance(obj, TypeGuardNode)
 
 
 @dataclass(slots=True, frozen=True)
-class TypeIsType(TypeNode):
+class TypeIsNode(TypeNode):
     """typing.TypeIs[T] - narrows type bidirectionally (PEP 742)."""
 
     narrows_to: TypeNode
@@ -639,9 +677,9 @@ class TypeIsType(TypeNode):
         return (self.narrows_to,)
 
 
-def is_type_is_type_node(obj: object) -> TypeIs[TypeIsType]:
-    """Return whether the argument is a TypeIsType instance."""
-    return isinstance(obj, TypeIsType)
+def is_type_is_node(obj: object) -> TypeIs[TypeIsNode]:
+    """Return whether the argument is a TypeIsNode instance."""
+    return isinstance(obj, TypeIsNode)
 
 
 @dataclass(slots=True, frozen=True)
@@ -654,7 +692,7 @@ class FieldDef:
     metadata: tuple[object, ...] = ()  # Metadata from Annotated on this field
 
 
-class StructuredType(TypeNode, ABC):
+class StructuredNode(TypeNode, ABC):
     """Base for types with named, typed fields."""
 
     @abstractmethod
@@ -663,13 +701,13 @@ class StructuredType(TypeNode, ABC):
         ...
 
 
-def is_structured_type_node(obj: object) -> TypeIs[StructuredType]:
-    """Return whether the argument is a StructuredType instance."""
-    return isinstance(obj, StructuredType)
+def is_structured_node(obj: object) -> TypeIs[StructuredNode]:
+    """Return whether the argument is a StructuredNode instance."""
+    return isinstance(obj, StructuredNode)
 
 
 @dataclass(slots=True, frozen=True)
-class TypedDictType(StructuredType):
+class TypedDictNode(StructuredNode):
     """TypedDict with named fields."""
 
     name: str
@@ -692,13 +730,13 @@ class TypedDictType(StructuredType):
         return self._children
 
 
-def is_typed_dict_type_node(obj: object) -> TypeIs[TypedDictType]:
-    """Return whether the argument is a TypedDictType instance."""
-    return isinstance(obj, TypedDictType)
+def is_typed_dict_node(obj: object) -> TypeIs[TypedDictNode]:
+    """Return whether the argument is a TypedDictNode instance."""
+    return isinstance(obj, TypedDictNode)
 
 
 @dataclass(slots=True, frozen=True)
-class NamedTupleType(StructuredType):
+class NamedTupleNode(StructuredNode):
     """NamedTuple with named fields."""
 
     name: str
@@ -719,9 +757,9 @@ class NamedTupleType(StructuredType):
         return self._children
 
 
-def is_named_tuple_type_node(obj: object) -> TypeIs[NamedTupleType]:
-    """Return whether the argument is a NamedTupleType instance."""
-    return isinstance(obj, NamedTupleType)
+def is_named_tuple_node(obj: object) -> TypeIs[NamedTupleNode]:
+    """Return whether the argument is a NamedTupleNode instance."""
+    return isinstance(obj, NamedTupleNode)
 
 
 # === Dataclass ===
@@ -741,7 +779,7 @@ class DataclassFieldDef(FieldDef):
 
 
 @dataclass(slots=True, frozen=True)
-class DataclassType(StructuredType):
+class DataclassNode(StructuredNode):
     """A dataclass with typed fields and configuration."""
 
     cls: type
@@ -767,13 +805,13 @@ class DataclassType(StructuredType):
         return self._children
 
 
-def is_dataclass_type_node(obj: object) -> TypeIs[DataclassType]:
-    """Return whether the argument is a DataclassType instance."""
-    return isinstance(obj, DataclassType)
+def is_dataclass_node(obj: object) -> TypeIs[DataclassNode]:
+    """Return whether the argument is a DataclassNode instance."""
+    return isinstance(obj, DataclassNode)
 
 
 @dataclass(slots=True, frozen=True)
-class EnumType(TypeNode):
+class EnumNode(TypeNode):
     """An Enum with typed members."""
 
     cls: type
@@ -785,9 +823,9 @@ class EnumType(TypeNode):
         return (self.value_type,)
 
 
-def is_enum_type_node(obj: object) -> TypeIs[EnumType]:
-    """Return whether the argument is an EnumType instance."""
-    return isinstance(obj, EnumType)
+def is_enum_node(obj: object) -> TypeIs[EnumNode]:
+    """Return whether the argument is an EnumNode instance."""
+    return isinstance(obj, EnumNode)
 
 
 @dataclass(slots=True, frozen=True)
@@ -823,7 +861,7 @@ class Parameter:
 class SignatureNode(TypeNode):
     """A full callable signature with named parameters.
 
-    More detailed than CallableType - includes parameter names, kinds, defaults.
+    More detailed than CallableNode - includes parameter names, kinds, defaults.
     Use for introspecting actual functions/methods.
     """
 
@@ -855,7 +893,7 @@ class MethodSig:
     """A method signature (not a TypeNode itself)."""
 
     name: str
-    signature: SignatureNode | CallableType
+    signature: SignatureNode | CallableNode
     is_classmethod: bool = False
     is_staticmethod: bool = False
     is_property: bool = False
@@ -867,7 +905,7 @@ def is_method_sig(obj: object) -> TypeIs[MethodSig]:
 
 
 @dataclass(slots=True, frozen=True)
-class ProtocolType(TypeNode):
+class ProtocolNode(TypeNode):
     """Protocol defining structural interface."""
 
     name: str
@@ -888,9 +926,9 @@ class ProtocolType(TypeNode):
         return self._children
 
 
-def is_protocol_type_node(obj: object) -> TypeIs[ProtocolType]:
-    """Return whether the argument is a ProtocolType instance."""
-    return isinstance(obj, ProtocolType)
+def is_protocol_node(obj: object) -> TypeIs[ProtocolNode]:
+    """Return whether the argument is a ProtocolNode instance."""
+    return isinstance(obj, ProtocolNode)
 
 
 @dataclass(slots=True, frozen=True)

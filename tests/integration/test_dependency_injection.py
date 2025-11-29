@@ -21,10 +21,10 @@ from typing_graph import (
     inspect_function,
 )
 from typing_graph._node import (
-    is_concrete_type,
-    is_dataclass_type_node,
+    is_concrete_node,
+    is_dataclass_node,
     is_function_node,
-    is_protocol_type_node,
+    is_protocol_node,
     is_signature_node,
     is_union_type_node,
 )
@@ -196,7 +196,7 @@ class TestConstructorParameterInspection:
 
         repo_param = params["repo"]
         # The type should reference UserRepository
-        assert is_concrete_type(repo_param.type)
+        assert is_concrete_node(repo_param.type)
         assert repo_param.type.cls is UserRepository
 
     def test_parameter_metadata_is_extracted(self) -> None:
@@ -286,7 +286,7 @@ class TestOptionalDependencyDetection:
 
         member_types: set[type[object]] = set()
         for member in cache_param.type.members:
-            if is_concrete_type(member):
+            if is_concrete_node(member):
                 member_types.add(member.cls)
 
         assert type(None) in member_types
@@ -302,7 +302,7 @@ class TestOptionalDependencyDetection:
 
         has_cache = False
         for member in cache_param.type.members:
-            if is_concrete_type(member) and member.cls is Cache:
+            if is_concrete_node(member) and member.cls is Cache:
                 has_cache = True
                 break
 
@@ -323,13 +323,13 @@ class TestProtocolTypeInspection:
     def test_protocol_detected_by_inspect_class(self) -> None:
         result = inspect_class(Logger)
 
-        assert is_protocol_type_node(result)
+        assert is_protocol_node(result)
         assert result.name == "Logger"
 
     def test_protocol_has_methods(self) -> None:
         result = inspect_class(Logger)
 
-        assert is_protocol_type_node(result)
+        assert is_protocol_node(result)
         method_names = {m.name for m in result.methods}
         assert "log" in method_names
         assert "error" in method_names
@@ -337,7 +337,7 @@ class TestProtocolTypeInspection:
     def test_protocol_method_signature_inspected(self) -> None:
         result = inspect_class(Logger)
 
-        assert is_protocol_type_node(result)
+        assert is_protocol_node(result)
         log_method = next(m for m in result.methods if m.name == "log")
         assert is_signature_node(log_method.signature)
 
@@ -349,13 +349,13 @@ class TestProtocolTypeInspection:
     def test_runtime_checkable_protocol_detected(self) -> None:
         result = inspect_class(Cache)
 
-        assert is_protocol_type_node(result)
+        assert is_protocol_node(result)
         assert result.is_runtime_checkable is True
 
     def test_non_runtime_checkable_protocol_detected(self) -> None:
         result = inspect_class(Logger)
 
-        assert is_protocol_type_node(result)
+        assert is_protocol_node(result)
         assert result.is_runtime_checkable is False
 
 
@@ -363,29 +363,29 @@ class TestNestedServiceDependencies:
     def test_dataclass_fields_inspected(self) -> None:
         result = inspect_dataclass(UserService)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         assert len(result.fields) == 2
 
     def test_field_names_match_dataclass_fields(self) -> None:
         result = inspect_dataclass(UserService)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         field_names = {f.name for f in result.fields}
         assert field_names == {"repo", "logger"}
 
     def test_nested_dependency_type_is_dataclass(self) -> None:
         result = inspect_dataclass(UserService)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         repo_field = next(f for f in result.fields if f.name == "repo")
 
-        assert is_concrete_type(repo_field.type)
+        assert is_concrete_node(repo_field.type)
         assert repo_field.type.cls is UserRepository
 
     def test_field_metadata_extracted(self) -> None:
         result = inspect_dataclass(UserService)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         repo_field = next(f for f in result.fields if f.name == "repo")
 
         assert has_metadata_of_type(repo_field.metadata, Inject)
@@ -395,15 +395,15 @@ class TestDependencyGraphTraversal:
     def test_two_level_dependency_chain(self) -> None:
         # UserService -> UserRepository -> Database
         service_result = inspect_dataclass(UserService)
-        assert is_dataclass_type_node(service_result)
+        assert is_dataclass_node(service_result)
 
         repo_field = next(f for f in service_result.fields if f.name == "repo")
-        assert is_concrete_type(repo_field.type)
+        assert is_concrete_node(repo_field.type)
         assert repo_field.type.cls is UserRepository
 
         # Now inspect the nested dependency
         repo_result = inspect_dataclass(UserRepository)
-        assert is_dataclass_type_node(repo_result)
+        assert is_dataclass_node(repo_result)
 
         db_field = next(f for f in repo_result.fields if f.name == "db")
         assert has_metadata_of_type(db_field.metadata, Inject)
@@ -416,7 +416,7 @@ class TestDependencyGraphTraversal:
 
         # All should have Inject on their dependencies
         for result in [service_result, repo_result, db_result]:
-            assert is_dataclass_type_node(result)
+            assert is_dataclass_node(result)
             for field_def in result.fields:
                 assert has_metadata_of_type(field_def.metadata, Inject)
 
@@ -445,12 +445,12 @@ class TestDynamicServiceDefinition:
             db: Annotated[Database, Inject(), Singleton()]
 
         result = inspect_dataclass(ServiceWithProtocol)
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
 
         fields = {f.name: f for f in result.fields}
 
         logger_field = fields["logger"]
-        assert is_concrete_type(logger_field.type)
+        assert is_concrete_node(logger_field.type)
         assert logger_field.type.cls is Logger
 
         db_field = fields["db"]

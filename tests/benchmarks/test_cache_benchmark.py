@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from typing_graph import TypeNode, cache_clear, cache_info, inspect_type
-from typing_graph._node import is_concrete_type, is_subscripted_generic_node
+from typing_graph._node import is_concrete_node, is_subscripted_generic_node
 
 from .conftest import (
     build_nested_list,
@@ -28,7 +28,7 @@ class TestColdCacheBenchmarks:
 
         result = benchmark(inspect_with_cold_cache)
 
-        assert is_concrete_type(result)
+        assert is_concrete_node(result)
 
     def test_benchmark_cold_cache_generic_type(
         self, benchmark: "BenchmarkFixture"
@@ -73,7 +73,7 @@ class TestWarmCacheBenchmarks:
 
         result = benchmark(inspect_type, int)
 
-        assert is_concrete_type(result)
+        assert is_concrete_node(result)
 
     def test_benchmark_warm_cache_generic_type(
         self, benchmark: "BenchmarkFixture"
@@ -116,7 +116,7 @@ class TestCacheHitRateBenchmarks:
         results = benchmark(inspect_cached_types)
 
         assert len(results) == 5
-        assert all(is_concrete_type(r) for r in results)
+        assert all(is_concrete_node(r) for r in results)
 
     def test_benchmark_0_percent_hit_rate(self, benchmark: "BenchmarkFixture") -> None:
         def inspect_uncached_types() -> list[TypeNode]:
@@ -127,7 +127,7 @@ class TestCacheHitRateBenchmarks:
         results = benchmark(inspect_uncached_types)
 
         assert len(results) == 5
-        assert all(is_concrete_type(r) for r in results)
+        assert all(is_concrete_node(r) for r in results)
 
     def test_benchmark_50_percent_hit_rate(self, benchmark: "BenchmarkFixture") -> None:
         # Pre-populate half the types
@@ -155,7 +155,7 @@ class TestCacheDisabledBenchmarks:
     ) -> None:
         result = benchmark(inspect_type, int, use_cache=False)
 
-        assert is_concrete_type(result)
+        assert is_concrete_node(result)
 
     def test_benchmark_no_cache_generic_type(
         self, benchmark: "BenchmarkFixture"
@@ -238,7 +238,7 @@ class TestCacheSizeImpact:
 
         result = benchmark(inspect_type, int)
 
-        assert is_concrete_type(result)
+        assert is_concrete_node(result)
 
     def test_benchmark_lookup_medium_cache(self, benchmark: "BenchmarkFixture") -> None:
         # Medium cache: 100 entries
@@ -247,7 +247,7 @@ class TestCacheSizeImpact:
 
         result = benchmark(inspect_type, int)
 
-        assert is_concrete_type(result)
+        assert is_concrete_node(result)
 
     def test_benchmark_lookup_large_cache(self, benchmark: "BenchmarkFixture") -> None:
         # Large cache: 500 entries
@@ -256,7 +256,7 @@ class TestCacheSizeImpact:
 
         result = benchmark(inspect_type, int)
 
-        assert is_concrete_type(result)
+        assert is_concrete_node(result)
 
 
 class TestCacheClearBenchmarks:

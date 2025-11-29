@@ -6,26 +6,26 @@ from typing_extensions import TypeVarTuple
 from hypothesis import HealthCheck, example, given, settings
 
 from typing_graph import (
-    AnnotatedType,
-    AnyType,
-    ConcreteType,
-    EllipsisType,
+    AnnotatedNode,
+    AnyNode,
+    ConcreteNode,
+    EllipsisNode,
     LiteralNode,
-    MetaType,
-    NeverType,
+    MetaNode,
+    NeverNode,
     NewTypeNode,
-    SelfType,
-    SubscriptedGeneric,
+    SelfNode,
+    SubscriptedGenericNode,
     TypeAliasNode,
-    TypeGuardType,
-    TypeIsType,
+    TypeGuardNode,
+    TypeIsNode,
     TypeNode,
     UnionNode,
     UnpackNode,
     cache_clear,
     inspect_type,
 )
-from typing_graph._node import LiteralStringType
+from typing_graph._node import LiteralStringNode
 
 from .strategies import extended_type_annotations, type_annotations
 
@@ -33,12 +33,12 @@ from .strategies import extended_type_annotations, type_annotations
 
 # Leaf types have no children
 LEAF_TYPES = (
-    ConcreteType,
-    AnyType,
-    NeverType,
-    SelfType,
-    EllipsisType,
-    LiteralStringType,
+    ConcreteNode,
+    AnyNode,
+    NeverNode,
+    SelfNode,
+    EllipsisNode,
+    LiteralStringNode,
     LiteralNode,
 )
 
@@ -47,15 +47,15 @@ LEAF_TYPES = (
 # Note: GenericTypeNode excluded (unparameterized generics may have empty type_params)
 # Note: CallableType with empty params still has return type child
 CONTAINER_TYPES = (
-    SubscriptedGeneric,
+    SubscriptedGenericNode,
     UnionNode,
-    MetaType,
-    TypeGuardType,
-    TypeIsType,
+    MetaNode,
+    TypeGuardNode,
+    TypeIsNode,
     UnpackNode,
     TypeAliasNode,
     NewTypeNode,
-    AnnotatedType,
+    AnnotatedNode,
 )
 
 

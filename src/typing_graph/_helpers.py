@@ -5,7 +5,7 @@ import typing
 from ._node import (
     GenericTypeNode,
     TypeNode,
-    is_concrete_type,
+    is_concrete_node,
     is_subscripted_generic_node,
     is_union_type_node,
 )
@@ -142,7 +142,7 @@ def is_optional_node(node: TypeNode) -> bool:
     if members is None:
         return False
 
-    return any(is_concrete_type(m) and m.cls is type(None) for m in members)
+    return any(is_concrete_node(m) and m.cls is type(None) for m in members)
 
 
 def unwrap_optional(node: TypeNode) -> tuple[TypeNode, ...] | None:
@@ -166,7 +166,7 @@ def unwrap_optional(node: TypeNode) -> tuple[TypeNode, ...] | None:
         >>> unwrapped = unwrap_optional(node)
         >>> len(unwrapped)
         1
-        >>> is_concrete_type(unwrapped[0]) and unwrapped[0].cls is int
+        >>> is_concrete_node(unwrapped[0]) and unwrapped[0].cls is int
         True
         >>>
         >>> # Multiple non-None types
@@ -191,5 +191,5 @@ def unwrap_optional(node: TypeNode) -> tuple[TypeNode, ...] | None:
         return None
 
     return tuple(
-        m for m in members if not (is_concrete_type(m) and m.cls is type(None))
+        m for m in members if not (is_concrete_node(m) and m.cls is type(None))
     )

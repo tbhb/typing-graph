@@ -13,7 +13,7 @@ from typing_graph import (
 )
 from typing_graph._node import (
     is_class_node,
-    is_concrete_type,
+    is_concrete_node,
     is_function_node,
     is_param_spec_node,
     is_signature_node,
@@ -173,7 +173,7 @@ class TestFunctionDiscovery:
         func_node = result.functions["sample_function"]
         assert is_function_node(func_node)
         param_type = func_node.signature.parameters[0].type
-        assert is_concrete_type(param_type)
+        assert is_concrete_node(param_type)
         assert param_type.cls is int
 
     def test_function_return_type_is_captured(self) -> None:
@@ -182,7 +182,7 @@ class TestFunctionDiscovery:
 
         func_node = result.functions["sample_function"]
         assert is_function_node(func_node)
-        assert is_concrete_type(func_node.signature.returns)
+        assert is_concrete_node(func_node.signature.returns)
         assert func_node.signature.returns.cls is str
 
 

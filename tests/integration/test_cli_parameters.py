@@ -17,9 +17,9 @@ from typing_graph import (
     inspect_enum,
 )
 from typing_graph._node import (
-    is_concrete_type,
-    is_dataclass_type_node,
-    is_enum_type_node,
+    is_concrete_node,
+    is_dataclass_node,
+    is_enum_node,
     is_subscripted_generic_node,
     is_union_type_node,
 )
@@ -94,7 +94,7 @@ class TestCLIArgMetadataExtraction:
     def test_cliarg_short_extracted(self) -> None:
         result = inspect_dataclass(DatabaseConfig)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         port_field = next(f for f in result.fields if f.name == "port")
 
         cliarg = find_metadata_of_type(port_field.metadata, CLIArg)
@@ -104,7 +104,7 @@ class TestCLIArgMetadataExtraction:
     def test_cliarg_long_extracted(self) -> None:
         result = inspect_dataclass(DatabaseConfig)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         port_field = next(f for f in result.fields if f.name == "port")
 
         cliarg = find_metadata_of_type(port_field.metadata, CLIArg)
@@ -114,7 +114,7 @@ class TestCLIArgMetadataExtraction:
     def test_cliarg_with_only_long(self) -> None:
         result = inspect_dataclass(DatabaseConfig)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         host_field = next(f for f in result.fields if f.name == "host")
 
         cliarg = find_metadata_of_type(host_field.metadata, CLIArg)
@@ -125,7 +125,7 @@ class TestCLIArgMetadataExtraction:
     def test_cliarg_with_short_and_long(self) -> None:
         result = inspect_dataclass(ServerConfig)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         port_field = next(f for f in result.fields if f.name == "port")
 
         cliarg = find_metadata_of_type(port_field.metadata, CLIArg)
@@ -138,7 +138,7 @@ class TestEnvVarMetadataExtraction:
     def test_envvar_name_extracted(self) -> None:
         result = inspect_dataclass(DatabaseConfig)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         port_field = next(f for f in result.fields if f.name == "port")
 
         envvar = find_metadata_of_type(port_field.metadata, EnvVar)
@@ -148,7 +148,7 @@ class TestEnvVarMetadataExtraction:
     def test_envvar_on_password_field(self) -> None:
         result = inspect_dataclass(DatabaseConfig)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         password_field = next(f for f in result.fields if f.name == "password")
 
         envvar = find_metadata_of_type(password_field.metadata, EnvVar)
@@ -158,7 +158,7 @@ class TestEnvVarMetadataExtraction:
     def test_cliarg_and_envvar_combined(self) -> None:
         result = inspect_dataclass(DatabaseConfig)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         port_field = next(f for f in result.fields if f.name == "port")
 
         # Should have both
@@ -174,7 +174,7 @@ class TestConverterMetadataExtraction:
 
         result = inspect_dataclass(ConfigWithConverter)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         date_field = next(f for f in result.fields if f.name == "start_date")
 
         converter = find_metadata_of_type(date_field.metadata, Converter)
@@ -188,7 +188,7 @@ class TestConverterMetadataExtraction:
 
         result = inspect_dataclass(ConfigWithConverterAndConstraints)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         value_field = next(f for f in result.fields if f.name == "value")
 
         # Should have all three
@@ -201,7 +201,7 @@ class TestNestedConfigInspection:
     def test_server_config_has_db_field(self) -> None:
         result = inspect_dataclass(ServerConfig)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         db_field = next(f for f in result.fields if f.name == "db")
 
         # db is DatabaseConfig | None
@@ -210,7 +210,7 @@ class TestNestedConfigInspection:
     def test_nested_config_type_accessible(self) -> None:
         result = inspect_dataclass(ServerConfig)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         db_field = next(f for f in result.fields if f.name == "db")
 
         assert is_union_type_node(db_field.type)
@@ -218,7 +218,7 @@ class TestNestedConfigInspection:
         # Find DatabaseConfig member
         db_type = None
         for member in db_field.type.members:
-            if is_concrete_type(member) and member.cls is DatabaseConfig:
+            if is_concrete_node(member) and member.cls is DatabaseConfig:
                 db_type = member
                 break
 
@@ -228,7 +228,7 @@ class TestNestedConfigInspection:
         # Inspect DatabaseConfig from ServerConfig.db
         db_result = inspect_dataclass(DatabaseConfig)
 
-        assert is_dataclass_type_node(db_result)
+        assert is_dataclass_node(db_result)
         field_names = {f.name for f in db_result.fields}
         assert field_names == {"host", "port", "username", "password"}
 
@@ -253,32 +253,32 @@ class TestEnumFieldForChoices:
     def test_enum_field_detected(self) -> None:
         result = inspect_dataclass(ServerConfig)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         log_level_field = next(f for f in result.fields if f.name == "log_level")
 
         # Type should be LogLevel (concrete type)
-        assert is_concrete_type(log_level_field.type)
+        assert is_concrete_node(log_level_field.type)
         assert log_level_field.type.cls is LogLevel
 
     def test_enum_members_for_choices(self) -> None:
         # Inspect enum to get choices for CLI argument
         result = inspect_enum(LogLevel)
 
-        assert is_enum_type_node(result)
+        assert is_enum_node(result)
         member_names = [name for name, _ in result.members]
         assert member_names == ["DEBUG", "INFO", "WARNING", "ERROR"]
 
     def test_enum_values_for_validation(self) -> None:
         result = inspect_enum(LogLevel)
 
-        assert is_enum_type_node(result)
+        assert is_enum_node(result)
         member_values = [value for _, value in result.members]
         assert member_values == ["debug", "info", "warning", "error"]
 
     def test_int_enum_for_numeric_choices(self) -> None:
         result = inspect_enum(Priority)
 
-        assert is_enum_type_node(result)
+        assert is_enum_node(result)
         member_dict = dict(result.members)
         assert member_dict["LOW"] == 1
         assert member_dict["MEDIUM"] == 2
@@ -289,7 +289,7 @@ class TestDefaultValueExtraction:
     def test_field_with_default_not_required(self) -> None:
         result = inspect_dataclass(ServerConfig)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         log_level_field = next(f for f in result.fields if f.name == "log_level")
 
         assert log_level_field.required is False
@@ -297,7 +297,7 @@ class TestDefaultValueExtraction:
     def test_field_without_default_is_required(self) -> None:
         result = inspect_dataclass(ServerConfig)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         name_field = next(f for f in result.fields if f.name == "name")
 
         assert name_field.required is True
@@ -305,7 +305,7 @@ class TestDefaultValueExtraction:
     def test_optional_field_not_required(self) -> None:
         result = inspect_dataclass(ServerConfig)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         db_field = next(f for f in result.fields if f.name == "db")
 
         assert db_field.required is False
@@ -315,7 +315,7 @@ class TestConstraintExtraction:
     def test_port_range_constraints(self) -> None:
         result = inspect_dataclass(ServerConfig)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         port_field = next(f for f in result.fields if f.name == "port")
 
         gt = find_metadata_of_type(port_field.metadata, Gt)
@@ -330,7 +330,7 @@ class TestConstraintExtraction:
     def test_string_length_constraint(self) -> None:
         result = inspect_dataclass(ServerConfig)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         name_field = next(f for f in result.fields if f.name == "name")
 
         minlen = find_metadata_of_type(name_field.metadata, MinLen)
@@ -346,7 +346,7 @@ class TestListFieldForMultipleValues:
 
         result = inspect_dataclass(ConfigWithList)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         hosts_field = next(f for f in result.fields if f.name == "allowed_hosts")
 
         assert is_subscripted_generic_node(hosts_field.type)
@@ -358,13 +358,13 @@ class TestListFieldForMultipleValues:
 
         result = inspect_dataclass(ConfigWithList)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         ports_field = next(f for f in result.fields if f.name == "ports")
 
         assert is_subscripted_generic_node(ports_field.type)
         element = ports_field.type.args[0]
 
-        assert is_concrete_type(element)
+        assert is_concrete_node(element)
         assert element.cls is int
 
 
@@ -383,7 +383,7 @@ class TestCombinedMetadataDiscovery:
 
         result = inspect_dataclass(FullyAnnotatedConfig)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
         port_field = next(f for f in result.fields if f.name == "port")
 
         # All metadata should be present
@@ -434,7 +434,7 @@ class TestConfigTraversalForArgumentGeneration:
     def test_collect_all_cliargs(self) -> None:
         result = inspect_dataclass(DatabaseConfig)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
 
         cliargs: list[tuple[str, CLIArg]] = []
         for field_def in result.fields:
@@ -450,7 +450,7 @@ class TestConfigTraversalForArgumentGeneration:
     def test_collect_all_envvars(self) -> None:
         result = inspect_dataclass(DatabaseConfig)
 
-        assert is_dataclass_type_node(result)
+        assert is_dataclass_node(result)
 
         envvars: list[tuple[str, EnvVar]] = []
         for field_def in result.fields:
@@ -471,7 +471,7 @@ class TestConfigTraversalForArgumentGeneration:
         all_cliargs: list[tuple[str, CLIArg]] = []
 
         for dataclass_result in [server_result, db_result]:
-            assert is_dataclass_type_node(dataclass_result)
+            assert is_dataclass_node(dataclass_result)
             for field_def in dataclass_result.fields:
                 cliarg = find_metadata_of_type(field_def.metadata, CLIArg)
                 if cliarg:

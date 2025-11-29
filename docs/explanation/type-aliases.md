@@ -46,7 +46,7 @@ Vector: TypeAlias = list[float]
 node = inspect_type_alias(Vector, name="Vector")
 print(type(node).__name__)  # TypeAliasNode
 print(node.name)            # Vector
-print(node.value)           # SubscriptedGeneric(origin=list, args=(ConcreteType(cls=float),))
+print(node.value)           # SubscriptedGenericNode(origin=list, args=(ConcreteNode(cls=float),))
 ```
 
 You must provide the `name` parameter because simple type aliases don't inherently carry their name at runtime—they're just references to the aliased type.
@@ -76,22 +76,22 @@ This syntax offers key advantages:
 
 ### Inspecting aliases defined with PEP 695
 
-typing-graph represents PEP 695 type aliases as [`GenericAlias`][typing_graph.GenericAlias] when they have type parameters:
+typing-graph represents PEP 695 type aliases as [`GenericAliasNode`][typing_graph.GenericAliasNode] when they have type parameters:
 
 ```python
 # snippet - PEP 695 alias inspection not yet implemented
-from typing_graph import inspect_type_alias, GenericAlias
+from typing_graph import inspect_type_alias, GenericAliasNode
 
 type Vector[T] = list[T]
 
 node = inspect_type_alias(Vector)
-print(type(node).__name__)  # GenericAlias
+print(type(node).__name__)  # GenericAliasNode
 print(node.name)            # Vector
 print(node.type_params)     # (TypeVarNode(name='T', ...),)
-print(node.value)           # SubscriptedGeneric referencing T
+print(node.value)           # SubscriptedGenericNode referencing T
 ```
 
-Simple PEP 695 aliases without type parameters still produce `GenericAlias` nodes with empty `type_params`:
+Simple PEP 695 aliases without type parameters still produce `GenericAliasNode` nodes with empty `type_params`:
 
 ```python
 # snippet - PEP 695 alias inspection not yet implemented
@@ -99,7 +99,7 @@ type UserId = int
 
 node = inspect_type_alias(UserId)
 print(node.type_params)  # ()
-print(node.value)        # ConcreteType(cls=int)
+print(node.value)        # ConcreteNode(cls=int)
 ```
 
 ## How type aliases differ from direct types
@@ -109,9 +109,9 @@ When inspecting a type directly, typing-graph produces a node for that type:
 ```python
 from typing_graph import inspect_type
 
-# Direct inspection produces ConcreteType
+# Direct inspection produces ConcreteNode
 node = inspect_type(int)
-print(type(node).__name__)  # ConcreteType
+print(type(node).__name__)  # ConcreteNode
 ```
 
 When inspecting a type alias, typing-graph preserves the alias wrapper:
@@ -125,7 +125,7 @@ UserId: TypeAlias = int
 # Alias inspection preserves the wrapper
 node = inspect_type_alias(UserId, name="UserId")
 print(type(node).__name__)  # TypeAliasNode
-print(node.value)           # ConcreteType(cls=int)
+print(node.value)           # ConcreteNode(cls=int)
 ```
 
 If you use `inspect_type()` on an alias value, it sees through the alias to the underlying type.
@@ -141,7 +141,7 @@ type Container[T] = list[T]
 type Mapping[T, U] = dict[T, U]
 ```
 
-typing-graph captures these scoped parameters in the [`GenericAlias.type_params`][typing_graph.GenericAlias] tuple. Each parameter becomes a [`TypeVarNode`][typing_graph.TypeVarNode], [`ParamSpecNode`][typing_graph.ParamSpecNode], or [`TypeVarTupleNode`][typing_graph.TypeVarTupleNode]:
+typing-graph captures these scoped parameters in the [`GenericAliasNode.type_params`][typing_graph.GenericAliasNode] tuple. Each parameter becomes a [`TypeVarNode`][typing_graph.TypeVarNode], [`ParamSpecNode`][typing_graph.ParamSpecNode], or [`TypeVarTupleNode`][typing_graph.TypeVarTupleNode]:
 
 ```python
 # snippet - PEP 695 alias inspection not yet implemented
@@ -181,7 +181,7 @@ type SortedList[T: Comparable] = list[T]
 
 node = inspect_type_alias(SortedList)
 type_var = node.type_params[0]
-print(type_var.bound)        # ConcreteType for Comparable
+print(type_var.bound)        # ConcreteNode for Comparable
 print(type_var.constraints)  # ()
 
 type Number[T: (int, float, complex)] = T
@@ -189,7 +189,7 @@ type Number[T: (int, float, complex)] = T
 node = inspect_type_alias(Number)
 type_var = node.type_params[0]
 print(type_var.bound)        # None
-print(type_var.constraints)  # (ConcreteType(int), ConcreteType(float), ConcreteType(complex))
+print(type_var.constraints)  # (ConcreteNode(int), ConcreteNode(float), ConcreteNode(complex))
 ```
 
 ## Node types summary
@@ -197,8 +197,8 @@ print(type_var.constraints)  # (ConcreteType(int), ConcreteType(float), Concrete
 | Alias style | Node type | Has type params |
 | ----------- | --------- | --------------- |
 | Traditional (`TypeAlias`) | `TypeAliasNode` | No |
-| PEP 695 simple (`type X = T`) | `GenericAlias` | Empty tuple |
-| PEP 695 generic (`type X[T] = ...`) | `GenericAlias` | Contains params |
+| PEP 695 simple (`type X = T`) | `GenericAliasNode` | Empty tuple |
+| PEP 695 generic (`type X[T] = ...`) | `GenericAliasNode` | Contains params |
 
 ## See also
 
