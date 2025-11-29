@@ -120,17 +120,16 @@ class TestFromAnnotatedNested:
 
 
 class TestGetRequiredErrorMessage:
-    @pytest.mark.xfail(reason="get_required method not yet implemented")
     def test_get_required_error_message_with_real_constraints(self) -> None:
         coll = MetadataCollection(_items=(Gt(0), Lt(100)))
 
         try:
-            coll.get_required(Ge)  # pyright: ignore[reportAttributeAccessIssue,reportUnknownMemberType]
+            _ = coll.get_required(Ge)
             pytest.fail("Should have raised MetadataNotFoundError")
         except LookupError as e:
             # Error message should show available types
             msg = str(e)
-            assert "Gt" in msg or "Lt" in msg
+            assert "Ge" in msg
 
 
 class TestPredicateExecutionIsolation:

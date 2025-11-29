@@ -538,6 +538,296 @@ class TestFlattenMethod:
         assert flattened is MetadataCollection.EMPTY
 
 
+# Helper classes for subclass tests
+class Animal:
+    pass
+
+
+class Dog(Animal):
+    name: str
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+
+class Cat(Animal):
+    name: str
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+
+class TestFindMethod:
+    def test_find_returns_first_matching_type(self) -> None:
+        coll = MetadataCollection(_items=(Ge(ge=0), Le(le=100), Ge(ge=10)))
+        result = coll.find(Ge)
+        assert result == Ge(ge=0)
+        assert result != Ge(ge=10)
+
+    def test_find_returns_none_when_no_match(self) -> None:
+        coll = MetadataCollection(_items=(Ge(ge=0), "doc"))
+        result = coll.find(Le)
+        assert result is None
+
+    def test_find_returns_none_for_empty_collection(self) -> None:
+        coll = MetadataCollection.EMPTY
+        result = coll.find(int)
+        assert result is None
+
+    def test_find_matches_subclasses(self) -> None:
+        dog = Dog("Fido")
+        cat = Cat("Whiskers")
+        coll = MetadataCollection(_items=("doc", dog, cat))
+        result = coll.find(Animal)
+        assert result is dog
+
+    def test_find_with_bool_matches_int_due_to_subclass(self) -> None:
+        coll = MetadataCollection(_items=(True, 42, "doc"))
+        result = coll.find(int)
+        # bool is a subclass of int, so True matches first
+        assert result is True
+
+
+class TestFindFirstMethod:
+    def test_find_first_single_type_matches(self) -> None:
+        coll = MetadataCollection(_items=(Ge(ge=0), Le(le=100)))
+        result = coll.find_first(Ge)
+        assert result == Ge(ge=0)
+
+    def test_find_first_multiple_types_returns_first_match(self) -> None:
+        dog = Dog("Fido")
+        coll = MetadataCollection(_items=(dog, "doc", Le(le=100)))
+        result = coll.find_first(Le, str)
+        # "doc" comes before Le(100) in the collection
+        assert result == "doc"
+
+    def test_find_first_returns_none_when_no_match(self) -> None:
+        coll = MetadataCollection(_items=(Ge(ge=0), "doc"))
+        result = coll.find_first(Le, int)
+        assert result is None
+
+    def test_find_first_returns_none_for_empty_collection(self) -> None:
+        coll = MetadataCollection.EMPTY
+        result = coll.find_first(int, str)
+        assert result is None
+
+    def test_find_first_returns_none_with_no_types(self) -> None:
+        coll = MetadataCollection(_items=(Ge(ge=0), "doc"))
+        result = coll.find_first()
+        assert result is None
+
+
+class TestFindAllMethod:
+    def test_find_all_no_args_returns_all_items(self) -> None:
+        coll = MetadataCollection(_items=(Ge(ge=0), "doc", Le(le=100)))
+        result = coll.find_all()
+        assert list(result) == [Ge(ge=0), "doc", Le(le=100)]
+        assert isinstance(result, MetadataCollection)
+
+    def test_find_all_no_args_on_empty_returns_empty_singleton(self) -> None:
+        coll = MetadataCollection.EMPTY
+        result = coll.find_all()
+        assert result is MetadataCollection.EMPTY
+
+    def test_find_all_single_type_returns_matching(self) -> None:
+        coll = MetadataCollection(_items=(Ge(ge=0), Le(le=100), Ge(ge=10)))
+        result = coll.find_all(Ge)
+        assert list(result) == [Ge(ge=0), Ge(ge=10)]
+
+    def test_find_all_multiple_types_returns_all_matching(self) -> None:
+        coll = MetadataCollection(_items=(Ge(ge=0), "doc", Le(le=100), 42))
+        result = coll.find_all(Ge, Le)
+        assert list(result) == [Ge(ge=0), Le(le=100)]
+
+    def test_find_all_preserves_order(self) -> None:
+        items = (Ge(ge=1), Le(le=2), Ge(ge=3), Le(le=4), Ge(ge=5))
+        coll = MetadataCollection(_items=items)
+        result = coll.find_all(Ge)
+        assert list(result) == [Ge(ge=1), Ge(ge=3), Ge(ge=5)]
+
+    def test_find_all_returns_empty_singleton_when_no_match(self) -> None:
+        coll = MetadataCollection(_items=("doc", 42))
+        result = coll.find_all(Ge)
+        assert result is MetadataCollection.EMPTY
+
+    @pytest.mark.xfail(reason="exclude() not implemented until Stage 4")
+    def test_find_all_enables_chaining(self) -> None:
+        coll = MetadataCollection(_items=(Ge(ge=0), Le(le=100), Ge(ge=10)))
+        result = coll.find_all(Ge, Le).exclude(Le)  # pyright: ignore[reportAttributeAccessIssue, reportUnknownVariableType, reportUnknownMemberType]
+        assert list(result) == [Ge(ge=0), Ge(ge=10)]  # pyright: ignore[reportUnknownArgumentType]
+
+
+class TestHasMethod:
+    def test_has_returns_true_when_type_present(self) -> None:
+        coll = MetadataCollection(_items=(Ge(ge=0), "doc"))
+        assert coll.has(Ge) is True
+
+    def test_has_returns_false_when_type_absent(self) -> None:
+        coll = MetadataCollection(_items=(Ge(ge=0), "doc"))
+        assert coll.has(Le) is False
+
+    def test_has_returns_false_for_empty_collection(self) -> None:
+        coll = MetadataCollection.EMPTY
+        assert coll.has(int) is False
+
+    def test_has_multiple_types_returns_true_if_any_present(self) -> None:
+        coll = MetadataCollection(_items=(Ge(ge=0),))
+        assert coll.has(Le, Ge) is True
+
+    def test_has_multiple_types_returns_false_if_none_present(self) -> None:
+        coll = MetadataCollection(_items=("doc", 42))
+        assert coll.has(Ge, Le) is False
+
+    def test_has_with_no_types_returns_false(self) -> None:
+        coll = MetadataCollection(_items=(Ge(ge=0), "doc"))
+        assert coll.has() is False
+
+
+class TestCountMethod:
+    def test_count_single_type_returns_correct_count(self) -> None:
+        coll = MetadataCollection(_items=(Ge(ge=0), Ge(ge=10), Le(le=100)))
+        assert coll.count(Ge) == 2
+
+    def test_count_returns_zero_when_no_match(self) -> None:
+        coll = MetadataCollection(_items=("doc", 42))
+        assert coll.count(Ge) == 0
+
+    def test_count_returns_all_for_matching_type(self) -> None:
+        coll = MetadataCollection(_items=("a", "b", "c"))
+        assert coll.count(str) == 3
+
+    def test_count_multiple_types_returns_combined_count(self) -> None:
+        coll = MetadataCollection(_items=(Ge(ge=0), Ge(ge=10), Le(le=100), "doc"))
+        assert coll.count(Ge, Le) == 3
+
+    def test_count_with_no_types_returns_zero(self) -> None:
+        coll = MetadataCollection(_items=(Ge(ge=0), "doc"))
+        assert coll.count() == 0
+
+
+class TestGetMethod:
+    def test_get_without_default_returns_match(self) -> None:
+        coll = MetadataCollection(_items=(Ge(ge=0), "doc"))
+        result = coll.get(Ge)
+        assert result == Ge(ge=0)
+
+    def test_get_without_default_returns_none_on_miss(self) -> None:
+        coll = MetadataCollection(_items=(Ge(ge=0), "doc"))
+        result = coll.get(Le)
+        assert result is None
+
+    def test_get_with_same_type_default_returns_match(self) -> None:
+        coll = MetadataCollection(_items=(Ge(ge=0), "doc"))
+        result = coll.get(Ge, Ge(ge=999))
+        assert result == Ge(ge=0)
+
+    def test_get_with_same_type_default_returns_default_on_miss(self) -> None:
+        coll = MetadataCollection(_items=(Ge(ge=0),))
+        result = coll.get(Le, Le(le=100))
+        assert result == Le(le=100)
+
+    def test_get_with_sentinel_default_pattern(self) -> None:
+        class _Missing:
+            pass
+
+        missing = _Missing()
+        coll = MetadataCollection(_items=(Ge(ge=0),))
+        result = coll.get(Le, missing)
+        assert result is missing
+
+    def test_get_returns_falsy_values_correctly(self) -> None:
+        coll = MetadataCollection(_items=(0, False, ""))
+        # Should return 0, not the default
+        assert coll.get(int, -1) == 0
+        # Should return False, not True default
+        # Note: bool is a subclass of int, so int matches first
+        coll2 = MetadataCollection(_items=(False, 1))
+        assert coll2.get(bool, True) is False
+        # Should return empty string, not default
+        assert coll.get(str, "default") == ""
+
+
+class TestGetRequiredMethod:
+    def test_get_required_returns_matching_item(self) -> None:
+        coll = MetadataCollection(_items=(Ge(ge=0), "doc"))
+        result = coll.get_required(Ge)
+        assert result == Ge(ge=0)
+
+    def test_get_required_raises_metadata_not_found_error(self) -> None:
+        coll = MetadataCollection(_items=(Ge(ge=0), "doc"))
+        with pytest.raises(MetadataNotFoundError):
+            _ = coll.get_required(Le)
+
+    def test_get_required_raises_for_empty_collection(self) -> None:
+        coll = MetadataCollection.EMPTY
+        with pytest.raises(MetadataNotFoundError):
+            _ = coll.get_required(int)
+
+    def test_get_required_error_has_correct_attributes(self) -> None:
+        coll = MetadataCollection(_items=(Ge(ge=0),))
+        with pytest.raises(MetadataNotFoundError) as exc_info:
+            _ = coll.get_required(Le)
+        error = exc_info.value
+        assert error.requested_type is Le
+        assert error.collection is coll
+        assert "Le" in str(error)
+        assert "find()" in str(error)
+
+
+class TestFindSubclassMethod:
+    def test_find_subclass_returns_first_subclass_match(self) -> None:
+        dog = Dog("Fido")
+        cat = Cat("Whiskers")
+        coll = MetadataCollection(_items=("doc", dog, cat, 42))
+        result = coll.find_subclass(Animal)
+        assert result is dog
+
+    def test_find_subclass_returns_none_when_no_subclass_match(self) -> None:
+        coll = MetadataCollection(_items=("doc", 42, True))
+        result = coll.find_subclass(Animal)
+        assert result is None
+
+    def test_find_subclass_matches_exact_type(self) -> None:
+        dog = Dog("Fido")
+        coll = MetadataCollection(_items=("doc", dog))
+        result = coll.find_subclass(Dog)
+        assert result is dog
+
+
+class TestFindAllSubclassMethod:
+    def test_find_all_subclass_returns_all_subclass_matches(self) -> None:
+        dog = Dog("Fido")
+        cat = Cat("Whiskers")
+        coll = MetadataCollection(_items=(dog, "doc", cat, 42))
+        result = coll.find_all_subclass(Animal)
+        assert list(result) == [dog, cat]
+
+    def test_find_all_subclass_returns_empty_when_no_match(self) -> None:
+        coll = MetadataCollection(_items=("doc", 42, True))
+        result = coll.find_all_subclass(Animal)
+        assert result is MetadataCollection.EMPTY
+
+    def test_find_all_subclass_preserves_order(self) -> None:
+        dog1 = Dog("Fido")
+        cat = Cat("Whiskers")
+        dog2 = Dog("Rex")
+        coll = MetadataCollection(_items=(dog1, "doc", cat, 42, dog2))
+        result = coll.find_all_subclass(Animal)
+        assert list(result) == [dog1, cat, dog2]
+
+
+class TestIsEmptyProperty:
+    def test_is_empty_returns_true_for_empty(self) -> None:
+        assert MetadataCollection.EMPTY.is_empty is True
+        assert MetadataCollection().is_empty is True
+
+    def test_is_empty_returns_false_for_non_empty(self) -> None:
+        coll = MetadataCollection(_items=(1,))
+        assert coll.is_empty is False
+        coll_multi = MetadataCollection(_items=(1, 2, 3))
+        assert coll_multi.is_empty is False
+
+
 class TestFlattenDeepMethod:
     def test_flatten_deep_handles_nested_grouped(self) -> None:
         @final

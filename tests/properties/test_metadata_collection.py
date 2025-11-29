@@ -226,6 +226,98 @@ class TestOfFactoryProperties:
         assert len(coll) == len(items)
 
 
+class TestQueryMethodProperties:
+    @given(metadata_collections())
+    @settings(deadline=None)
+    def test_find_none_implies_has_false(self, coll: MetadataCollection) -> None:
+        # If find returns None for a type, has should return False
+        if coll.find(int) is None:
+            assert coll.has(int) is False
+        if coll.find(str) is None:
+            assert coll.has(str) is False
+        if coll.find(float) is None:
+            assert coll.has(float) is False
+
+    @given(metadata_collections())
+    @settings(deadline=None)
+    def test_count_equals_find_all_length(self, coll: MetadataCollection) -> None:
+        # count(T) should equal len(list(find_all(T)))
+        assert coll.count(int) == len(list(coll.find_all(int)))
+        assert coll.count(str) == len(list(coll.find_all(str)))
+        assert coll.count(float) == len(list(coll.find_all(float)))
+
+    @given(metadata_collections())
+    @settings(deadline=None)
+    def test_has_equals_count_positive(self, coll: MetadataCollection) -> None:
+        # has(T) should equal count(T) > 0
+        assert coll.has(int) == (coll.count(int) > 0)
+        assert coll.has(str) == (coll.count(str) > 0)
+        assert coll.has(float) == (coll.count(float) > 0)
+
+    @given(metadata_collections())
+    @settings(deadline=None)
+    def test_find_all_idempotence(self, coll: MetadataCollection) -> None:
+        # find_all(T).find_all(T) should equal find_all(T)
+        first_pass = coll.find_all(int)
+        second_pass = first_pass.find_all(int)
+        assert list(first_pass) == list(second_pass)
+
+    @given(metadata_collections())
+    @settings(deadline=None)
+    def test_get_equals_find_with_none_default(self, coll: MetadataCollection) -> None:
+        # get(T) should equal find(T) when no default provided
+        assert coll.get(int) == coll.find(int)
+        assert coll.get(str) == coll.find(str)
+        assert coll.get(float) == coll.find(float)
+
+    @given(metadata_collections())
+    @settings(deadline=None)
+    def test_is_empty_equals_len_zero(self, coll: MetadataCollection) -> None:
+        # is_empty should equal len(coll) == 0
+        assert coll.is_empty == (len(coll) == 0)
+
+    @given(metadata_collections())
+    @settings(deadline=None)
+    def test_find_subclass_consistent_with_find(self, coll: MetadataCollection) -> None:
+        # find_subclass uses isinstance semantics, same as find
+        assert coll.find_subclass(int) == coll.find(int)
+        assert coll.find_subclass(str) == coll.find(str)
+
+    @given(metadata_collections())
+    @settings(deadline=None)
+    def test_find_all_subclass_consistent_with_find_all(
+        self, coll: MetadataCollection
+    ) -> None:
+        # find_all_subclass uses isinstance semantics, same as find_all
+        assert list(coll.find_all_subclass(int)) == list(coll.find_all(int))
+        assert list(coll.find_all_subclass(str)) == list(coll.find_all(str))
+
+    @given(metadata_collections())
+    @settings(deadline=None)
+    def test_find_all_no_args_returns_all_items(self, coll: MetadataCollection) -> None:
+        # find_all() with no args should return all items
+        result = coll.find_all()
+        assert list(result) == list(coll)
+
+    @given(metadata_collections())
+    @settings(deadline=None)
+    def test_has_with_no_types_returns_false(self, coll: MetadataCollection) -> None:
+        # has() with no arguments should always return False
+        assert coll.has() is False
+
+    @given(metadata_collections())
+    @settings(deadline=None)
+    def test_count_with_no_types_returns_zero(self, coll: MetadataCollection) -> None:
+        # count() with no arguments should always return 0
+        assert coll.count() == 0
+
+    @given(metadata_collections())
+    @settings(deadline=None)
+    def test_find_first_no_args_returns_none(self, coll: MetadataCollection) -> None:
+        # find_first() with no arguments should always return None
+        assert coll.find_first() is None
+
+
 class TestFlattenProperties:
     @given(st.lists(hashable_items(), max_size=20))
     @settings(deadline=None)

@@ -428,17 +428,270 @@ print(list(deep_flat))  # [1, 2, 3]
 
 Both flatten methods return `self` if no `GroupedMetadata` items exist, avoiding unnecessary allocations.
 
+## Query methods
+
+### Finding by type
+
+Use `find()` to get the first item matching a specific type:
+
+```python
+from dataclasses import dataclass
+from typing_graph._metadata import MetadataCollection
+
+@dataclass(frozen=True)
+class Gt:
+    value: int
+
+@dataclass(frozen=True)
+class Lt:
+    value: int
+
+coll = MetadataCollection(_items=(Gt(0), Lt(100), Gt(10), "doc"))
+
+# Find first item of type
+constraint = coll.find(Gt)
+print(constraint)  # Gt(value=0)
+
+# Returns None if not found
+missing = coll.find(float)
+print(missing)  # None
+```
+
+The `find()` method uses `isinstance` semantics, so subclasses also match:
+
+```python
+from typing_graph._metadata import MetadataCollection
+
+class Animal:
+    pass
+
+class Dog(Animal):
+    pass
+
+coll = MetadataCollection(_items=(Dog(), "doc"))
+result = coll.find(Animal)  # Returns the Dog instance
+```
+
+### Finding first of multiple types
+
+Use `find_first()` to find the first item matching any of several types:
+
+```python
+from typing_graph._metadata import MetadataCollection
+
+coll = MetadataCollection(_items=("doc", 42, True))
+
+# Find first item matching any type
+result = coll.find_first(int, float)
+print(result)  # 42
+
+# Returns None if no types match
+result = coll.find_first(list, dict)
+print(result)  # None
+```
+
+### Finding all matching items
+
+Use `find_all()` to get all items matching specific types:
+
+```python
+from dataclasses import dataclass
+from typing_graph._metadata import MetadataCollection
+
+@dataclass(frozen=True)
+class Gt:
+    value: int
+
+@dataclass(frozen=True)
+class Lt:
+    value: int
+
+coll = MetadataCollection(_items=(Gt(0), Lt(100), Gt(10), "doc"))
+
+# Find all items of a type
+all_gt = coll.find_all(Gt)
+print(list(all_gt))  # [Gt(value=0), Gt(value=10)]
+
+# Find all items matching any of multiple types
+constraints = coll.find_all(Gt, Lt)
+print(list(constraints))  # [Gt(value=0), Lt(value=100), Gt(value=10)]
+
+# With no arguments, returns a copy of all items
+all_items = coll.find_all()
+print(list(all_items))  # [Gt(value=0), Lt(value=100), Gt(value=10), 'doc']
+```
+
+### Checking for presence
+
+Use `has()` to check if any item matches given types:
+
+```python
+from dataclasses import dataclass
+from typing_graph._metadata import MetadataCollection
+
+@dataclass(frozen=True)
+class Gt:
+    value: int
+
+coll = MetadataCollection(_items=(Gt(0), "doc", 42))
+
+# Check for a single type
+print(coll.has(Gt))     # True
+print(coll.has(float))  # False
+
+# Check for any of multiple types
+print(coll.has(float, list))  # False
+print(coll.has(str, int))     # True
+```
+
+### Counting matches
+
+Use `count()` to count items matching given types:
+
+```python
+from dataclasses import dataclass
+from typing_graph._metadata import MetadataCollection
+
+@dataclass(frozen=True)
+class Gt:
+    value: int
+
+@dataclass(frozen=True)
+class Lt:
+    value: int
+
+coll = MetadataCollection(_items=(Gt(0), Lt(100), Gt(10), "doc"))
+
+# Count items of a type
+print(coll.count(Gt))  # 2
+
+# Count items matching any of multiple types
+print(coll.count(Gt, Lt))  # 3
+```
+
+### Getting with defaults
+
+Use `get()` to retrieve an item with a default value if not found:
+
+```python
+from dataclasses import dataclass
+from typing_graph._metadata import MetadataCollection
+
+@dataclass(frozen=True)
+class Gt:
+    value: int
+
+@dataclass(frozen=True)
+class Lt:
+    value: int
+
+coll = MetadataCollection(_items=(Gt(0), "doc"))
+
+# Get with no default returns None if not found
+result = coll.get(Lt)
+print(result)  # None
+
+# Get with default value
+result = coll.get(Lt, Lt(100))
+print(result)  # Lt(value=100)
+
+# Get returns the matched item, not the default
+result = coll.get(Gt, Gt(999))
+print(result)  # Gt(value=0)
+```
+
+The `get()` method correctly handles falsy values like `0`, `False`, and empty strings:
+
+```python
+from typing_graph._metadata import MetadataCollection
+
+coll = MetadataCollection(_items=(0, False, ""))
+
+# Falsy values are returned correctly
+print(coll.get(int, -1))   # 0 (not -1)
+print(coll.get(str, "x"))  # '' (not 'x')
+```
+
+### Requiring metadata
+
+Use `get_required()` when metadata must exist:
+
+```python
+from dataclasses import dataclass
+from typing_graph._metadata import MetadataCollection, MetadataNotFoundError
+
+@dataclass(frozen=True)
+class Gt:
+    value: int
+
+@dataclass(frozen=True)
+class Lt:
+    value: int
+
+coll = MetadataCollection(_items=(Gt(0), "doc"))
+
+# Returns the item if found
+constraint = coll.get_required(Gt)
+print(constraint)  # Gt(value=0)
+
+# Raises MetadataNotFoundError if not found
+try:
+    coll.get_required(Lt)
+except MetadataNotFoundError as e:
+    print(e.requested_type)  # <class 'Lt'>
+    print(e.collection)      # MetadataCollection([...])
+```
+
+### Finding subclasses
+
+Use `find_subclass()` and `find_all_subclass()` when you want to explicitly match by inheritance:
+
+```python
+from typing_graph._metadata import MetadataCollection
+
+class Constraint:
+    pass
+
+class MinValue(Constraint):
+    def __init__(self, value: int) -> None:
+        self.value = value
+
+class MaxValue(Constraint):
+    def __init__(self, value: int) -> None:
+        self.value = value
+
+coll = MetadataCollection(_items=(MinValue(0), MaxValue(100), "doc"))
+
+# Find first subclass match
+result = coll.find_subclass(Constraint)
+print(type(result).__name__)  # MinValue
+
+# Find all subclass matches
+all_constraints = coll.find_all_subclass(Constraint)
+print(len(all_constraints))  # 2
+```
+
+### Checking emptiness
+
+Use the `is_empty` property for readable empty checks:
+
+```python
+from typing_graph._metadata import MetadataCollection
+
+empty = MetadataCollection.EMPTY
+non_empty = MetadataCollection(_items=(1, 2))
+
+print(empty.is_empty)      # True
+print(non_empty.is_empty)  # False
+
+# More readable than len() == 0
+if coll.is_empty:
+    print("No metadata")
+```
+
 ## Coming soon
 
 The following features are planned for future stages of the MetadataCollection implementation.
-
-### Query methods (Stage 2)
-
-- `find(type)` - Find first item matching a type
-- `find_all(*types)` - Find all items matching types
-- `has(*types)` - Check if any item matches types
-- `get(type, default)` - Get with default value
-- `get_required(type)` - Get or raise MetadataNotFoundError
 
 ### Filtering methods (Stage 3)
 

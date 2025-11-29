@@ -1,8 +1,4 @@
-"""Metadata collection for type annotations.
-
-This module provides the MetadataCollection class for storing and querying
-metadata extracted from Annotated type annotations.
-"""
+"""Metadata collection for type annotations."""
 
 from dataclasses import dataclass, field
 from typing import (
@@ -10,6 +6,7 @@ from typing import (
     Annotated,
     ClassVar,
     Protocol,
+    TypeVar,
     final,
     get_args,
     get_origin,
@@ -19,6 +16,10 @@ from typing_extensions import Self, override
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
+
+# Type variables for generic query operations
+T = TypeVar("T")
+D = TypeVar("D")
 
 # Annotated[T, ...] requires at least the base type T plus one metadata item
 _MIN_ANNOTATED_ARGS = 2
@@ -413,6 +414,280 @@ class MetadataCollection:
         displayed = ", ".join(repr(item) for item in self._items[:max_display])
         remaining = len(self._items) - max_display
         return f"MetadataCollection([{displayed}, ...<{remaining} more>])"
+
+    @property
+    def is_empty(self) -> bool:
+        """Check if the collection has no items.
+
+        Returns:
+            True if the collection contains no items, False otherwise.
+
+        Examples:
+            >>> MetadataCollection.EMPTY.is_empty
+            True
+            >>> MetadataCollection(_items=(1, 2)).is_empty
+            False
+        """
+        return len(self._items) == 0
+
+    def find(self, type_: type[T]) -> T | None:
+        """Return the first item that is an instance of the given type.
+
+        Uses ``isinstance`` semantics, matching subclasses.
+
+        Args:
+            type_: The type to search for.
+
+        Returns:
+            The first matching item, or None if no match is found.
+
+        Examples:
+            >>> coll = MetadataCollection(_items=("doc", 42, True))
+            >>> coll.find(int)
+            42
+            >>> coll.find(str)
+            'doc'
+            >>> coll.find(float) is None
+            True
+        """
+        for item in self._items:
+            if isinstance(item, type_):
+                return item
+        return None
+
+    def find_first(self, *types: type) -> object | None:
+        """Return the first item matching any of the given types.
+
+        Args:
+            *types: One or more types to search for.
+
+        Returns:
+            The first item that is an instance of any of the given types,
+            or None if no match is found or no types are provided.
+
+        Examples:
+            >>> coll = MetadataCollection(_items=("doc", 42, True))
+            >>> coll.find_first(int, bool)
+            42
+            >>> coll.find_first(float, complex) is None
+            True
+            >>> coll.find_first() is None
+            True
+        """
+        if not types:
+            return None
+        for item in self._items:
+            if isinstance(item, types):
+                return item
+        return None
+
+    def has(self, *types: type) -> bool:
+        """Check if any item is an instance of any of the given types.
+
+        Args:
+            *types: One or more types to check for.
+
+        Returns:
+            True if any item matches any of the given types,
+            False otherwise or if no types are provided.
+
+        Examples:
+            >>> coll = MetadataCollection(_items=("doc", 42))
+            >>> coll.has(int)
+            True
+            >>> coll.has(float)
+            False
+            >>> coll.has(str, int)
+            True
+            >>> coll.has()
+            False
+        """
+        if not types:
+            return False
+        return any(isinstance(item, types) for item in self._items)
+
+    def count(self, *types: type) -> int:
+        """Count items that are instances of any of the given types.
+
+        Args:
+            *types: One or more types to count.
+
+        Returns:
+            The number of items matching any of the given types,
+            or 0 if no types are provided.
+
+        Examples:
+            >>> coll = MetadataCollection(_items=("a", "b", 1, 2, 3))
+            >>> coll.count(str)
+            2
+            >>> coll.count(int)
+            3
+            >>> coll.count(str, int)
+            5
+            >>> coll.count()
+            0
+        """
+        if not types:
+            return 0
+        return sum(1 for item in self._items if isinstance(item, types))
+
+    @overload
+    def find_all(self) -> "MetadataCollection": ...
+
+    @overload
+    def find_all(self, type_: type[T], /) -> "MetadataCollection": ...
+
+    @overload
+    def find_all(
+        self, type_: type[T], type2_: type, /, *types: type
+    ) -> "MetadataCollection": ...
+
+    def find_all(self, *types: type) -> "MetadataCollection":
+        """Return all items that are instances of any of the given types.
+
+        If called with no arguments, returns a copy of the entire collection.
+
+        Args:
+            *types: Zero or more types to filter by.
+
+        Returns:
+            A new MetadataCollection containing matching items,
+            or all items if no types are specified.
+
+        Examples:
+            >>> coll = MetadataCollection(_items=("a", 1, "b", 2))
+            >>> list(coll.find_all())
+            ['a', 1, 'b', 2]
+            >>> list(coll.find_all(str))
+            ['a', 'b']
+            >>> list(coll.find_all(int, str))
+            ['a', 1, 'b', 2]
+            >>> coll.find_all(float) is MetadataCollection.EMPTY
+            True
+        """
+        if not types:
+            # Return copy of all items
+            if not self._items:
+                return MetadataCollection.EMPTY
+            return MetadataCollection(_items=self._items)
+        matches = tuple(item for item in self._items if isinstance(item, types))
+        if not matches:
+            return MetadataCollection.EMPTY
+        return MetadataCollection(_items=matches)
+
+    @overload
+    def get(self, type_: type[T]) -> T | None: ...
+
+    @overload
+    def get(self, type_: type[T], default: D) -> T | D: ...
+
+    def get(self, type_: type[T], default: D | None = None) -> T | D | None:
+        """Return the first matching item or a default value.
+
+        Follows the ``dict.get()`` pattern for familiarity. Unlike ``find()``,
+        this method correctly handles falsy values like ``0``, ``False``, or
+        empty strings.
+
+        Args:
+            type_: The type to search for.
+            default: Value to return if no match is found. Defaults to None.
+
+        Returns:
+            The first matching item, or the default value if not found.
+
+        Examples:
+            >>> coll = MetadataCollection(_items=("doc", 42))
+            >>> coll.get(int)
+            42
+            >>> coll.get(float) is None
+            True
+            >>> coll.get(float, -1)
+            -1
+            >>> coll.get(float, "missing")
+            'missing'
+            >>> # Falsy values are returned correctly
+            >>> coll = MetadataCollection(_items=(0, False, ""))
+            >>> coll.get(int, -1)
+            0
+            >>> coll.get(bool, True)
+            False
+        """
+        # Iterate directly instead of using find() to handle falsy values
+        for item in self._items:
+            if isinstance(item, type_):
+                return item  # pyright narrows type after isinstance check
+        return default
+
+    def get_required(self, type_: type[T]) -> T:
+        """Return the first matching item or raise MetadataNotFoundError.
+
+        Use this method when the metadata is expected to exist. For optional
+        metadata, use ``find()`` or ``get()`` instead.
+
+        Args:
+            type_: The type to search for.
+
+        Returns:
+            The first matching item.
+
+        Raises:
+            MetadataNotFoundError: If no item of the given type is found.
+
+        Examples:
+            >>> coll = MetadataCollection(_items=("doc", 42))
+            >>> coll.get_required(int)
+            42
+            >>> coll.get_required(float)  # doctest: +IGNORE_EXCEPTION_DETAIL
+            Traceback (most recent call last):
+                ...
+            MetadataNotFoundError: No metadata of type 'float' found...
+        """
+        result = self.find(type_)
+        if result is not None:
+            return result
+        raise MetadataNotFoundError(type_, self)
+
+    def find_subclass(self, base: type[T]) -> T | None:
+        """Return the first item whose type is a subclass of the given base.
+
+        This method uses ``isinstance`` semantics, which matches both exact
+        types and subclasses. It is semantically equivalent to ``find()``.
+
+        Args:
+            base: The base type to search for.
+
+        Returns:
+            The first matching item, or None if no match is found.
+
+        Examples:
+            >>> coll = MetadataCollection(_items=(True, 42, "doc"))
+            >>> coll.find_subclass(int)  # bool is a subclass of int
+            True
+            >>> coll.find_subclass(float) is None
+            True
+        """
+        return self.find(base)
+
+    def find_all_subclass(self, base: type[T]) -> "MetadataCollection":
+        """Return all items whose types are subclasses of the given base.
+
+        This method uses ``isinstance`` semantics, which matches both exact
+        types and subclasses. It is semantically equivalent to ``find_all()``.
+
+        Args:
+            base: The base type to search for.
+
+        Returns:
+            A new MetadataCollection containing all matching items.
+
+        Examples:
+            >>> coll = MetadataCollection(_items=(True, 42, "doc", False))
+            >>> list(coll.find_all_subclass(int))  # bool is a subclass of int
+            [True, 42, False]
+            >>> coll.find_all_subclass(float) is MetadataCollection.EMPTY
+            True
+        """
+        return self.find_all(base)
 
     @classmethod
     def of(
