@@ -12,6 +12,8 @@ from typing_graph._metadata import (
     MetadataNotFoundError,
     ProtocolNotRuntimeCheckableError,
     SupportsLessThan,
+    _ensure_runtime_checkable,
+    _is_grouped_metadata,
 )
 
 if TYPE_CHECKING:
@@ -1372,3 +1374,73 @@ class TestByType:
     def test_by_type_empty_returns_empty_mapping(self) -> None:
         result = MetadataCollection.EMPTY.by_type()
         assert len(result) == 0
+
+
+class TestMutationKillers:
+    # Tests designed to kill surviving mutants from cosmic-ray mutation testing.
+    # Each test targets a specific mutation and documents why it kills the mutant.
+
+    def test_ensure_runtime_checkable_rejects_protocol_without_runtime_attribute(
+        self,
+    ) -> None:
+        # Kills mutant: Line 87, ReplaceFalseWithTrue in getattr default.
+        # Mutation: getattr(protocol, "_is_runtime_protocol", False) -> True
+        # A Protocol WITHOUT _is_runtime_protocol should be rejected (False default).
+        # With mutant: getattr returns True, not True = False, NO raise (WRONG!)
+
+        # Create a mock protocol-like class that has _is_protocol but NOT
+        # _is_runtime_protocol. This simulates a Protocol defined without
+        # @runtime_checkable decorator.
+        @final
+        class FakeNonRuntimeProtocol:
+            _is_protocol: bool = True
+            # Intentionally NO _is_runtime_protocol attribute
+
+        with pytest.raises(ProtocolNotRuntimeCheckableError):
+            _ensure_runtime_checkable(FakeNonRuntimeProtocol)
+
+    def test_is_grouped_metadata_uses_exact_string_match_not_lexicographic(
+        self,
+    ) -> None:
+        # Kills mutant: Line 47, ReplaceComparisonOperator_Eq_LtE.
+        # Mutation: cls.__name__ == "GroupedMetadata" -> <= "GroupedMetadata"
+        # "Aardvark" < "GroupedMetadata" lexicographically, so with mutant:
+        # "Aardvark" <= "GroupedMetadata" is True (WRONG!)
+
+        @final
+        class Aardvark:
+            # Class with name lexicographically before 'GroupedMetadata'
+
+            def __iter__(self) -> "Iterator[object]":
+                return iter([])
+
+        fake_grouped = Aardvark()
+        assert _is_grouped_metadata(fake_grouped) is False
+
+    def test_from_annotated_unwraps_nested_documents_equivalent_mutation(self) -> None:
+        # Documents: Line 926 mutation (unwrap_nested: True -> False) is EQUIVALENT.
+        #
+        # Originally classified as KILLABLE, but actually EQUIVALENT because:
+        # 1. Python auto-flattens nested Annotated types at definition time
+        # 2. The unwrap_nested parameter only affects dynamically constructed types
+        # 3. The recursive unwrap code (lines 976-980) has pragma: no cover
+        #
+        # This test proves the mutation doesn't change observable behavior.
+
+        # Python auto-flattens nested Annotated types at definition time
+        inner_type = Annotated[int, "inner_meta"]
+        outer_type = Annotated[inner_type, "outer_meta"]
+
+        # Default behavior (unwrap_nested=True implicit)
+        coll_default = MetadataCollection.from_annotated(outer_type)
+
+        # Explicit unwrap_nested=True
+        coll_true = MetadataCollection.from_annotated(outer_type, unwrap_nested=True)
+
+        # Explicit unwrap_nested=False
+        coll_false = MetadataCollection.from_annotated(outer_type, unwrap_nested=False)
+
+        # All three produce identical results due to Python's auto-flattening
+        # This proves the mutation (True->False default) is EQUIVALENT
+        assert coll_default == coll_true == coll_false
+        assert list(coll_default) == ["inner_meta", "outer_meta"]
