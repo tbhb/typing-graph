@@ -355,6 +355,9 @@ class MetadataCollection:
         """
         if not isinstance(other, MetadataCollection):
             return NotImplemented
+        # O(1) early-exit for different lengths
+        if len(self._items) != len(other._items):
+            return False
         return self._items == other._items
 
     @override
@@ -1184,7 +1187,8 @@ class MetadataCollection:
             >>> coll.map(len)
             (1, 2, 3)
         """
-        return tuple(func(item) for item in self._items)
+        # List comprehension is faster than generator expression inside tuple()
+        return tuple([func(item) for item in self._items])
 
     def partition(
         self, predicate: "Callable[[object], bool]"

@@ -825,6 +825,93 @@ print(list(grouped[int]))  # [1, 2]
 
 The returned mapping is immutable.
 
+## Performance
+
+`MetadataCollection` is designed for efficient metadata operations with predictable performance characteristics. Most common operations complete in microseconds or nanoseconds.
+
+### Complexity reference
+
+The following table summarizes the Big-O complexity for all public methods:
+
+| Category | Method | Complexity | Notes |
+| -------- | ------ | ---------- | ----- |
+| **Construction** | `of()` | O(n) | Linear in item count |
+| | `from_annotated()` | O(n) | Includes type introspection overhead |
+| | `EMPTY` | O(1) | Singleton access |
+| **Query** | `find()` | O(n) worst, O(1) best | Stops at first match |
+| | `find_first()` | O(n) | Checks multiple types |
+| | `find_all()` | O(n) | Single pass for all matches |
+| | `get()` | O(n) | Same as `find()` |
+| | `get_required()` | O(n) | Same as `find()` |
+| | `has()` | O(n) | Stops at first match |
+| | `count()` | O(n) | Full scan required |
+| **Filtering** | `filter()` | O(n) | Predicate called on each item |
+| | `filter_by_type()` | O(n) | Type check plus predicate |
+| | `first()` | O(n) | Stops at first match |
+| | `first_of_type()` | O(n) | Type check plus predicate |
+| | `any()` | O(n) | Stops at first match |
+| | `find_protocol()` | O(n) | High overhead per item |
+| | `has_protocol()` | O(n) | Stops at first match |
+| | `count_protocol()` | O(n) | Full scan required |
+| **Transformation** | `__add__`, `__or__` | O(n+m) | Concatenation |
+| | `exclude()` | O(n) | Creates new collection |
+| | `unique()` | O(n) hashable, O(n^2) unhashable | Hash-based deduplication |
+| | `sorted()` | O(n log n) | Python's Timsort |
+| | `reversed()` | O(n) | Creates new collection |
+| | `map()` | O(n) | Function call per item |
+| | `partition()` | O(n) | Single pass |
+| **Introspection** | `types()` | O(n) | Builds frozenset |
+| | `by_type()` | O(n) | Groups by type |
+| **Sequence** | `__len__` | O(1) | Tuple length |
+| | `__bool__` | O(1) | Tuple truthiness |
+| | `is_empty` | O(1) | Tuple negation |
+| | `__getitem__` (index) | O(1) | Tuple index |
+| | `__getitem__` (slice) | O(k) | k is slice size |
+| | `__contains__` | O(n) | Linear search |
+| | `__iter__` | O(n) | Tuple iteration |
+| **Equality/Hash** | `__eq__` | O(1) early, O(n) worst | Length check first |
+| | `__hash__` | O(n) | Hashes all items |
+| | `is_hashable` | O(n) | Attempts hash |
+
+### Timing reference
+
+These baseline timings were measured on representative workloads. Actual performance varies by hardware and collection contents.
+
+| Operation | Typical timing | Conditions |
+| --------- | -------------- | ---------- |
+| `find()` best case | ~83ns | Match at first position |
+| `find()` worst case | ~2.7us | 100 items, no match |
+| `has()` | ~2-4us | 100 items |
+| `filter_by_type()` | ~4us | 100 items, selective predicate |
+| `sorted()` default key | ~46us | 100 items |
+| `sorted()` custom key | ~51us | 100 items |
+| `unique()` hashable | ~18us | 100 items |
+| `__eq__` different lengths | ~130ns | O(1) early exit |
+| `__hash__` | ~6us | 100 items |
+| Sequence operations | 50-100ns | `len()`, `bool()`, `is_empty` (any size) |
+
+### Method selection guide
+
+When performance matters, choose methods that stop early:
+
+- **Prefer `find()` over `find_all()`** when you only need the first match
+- **Prefer `has()` over `count()`** when you only need existence
+- **Prefer `first()` over `filter()`** when you only need one result
+- **Prefer `any()` over `filter()` + `bool()`** for existence checks
+- **Avoid `find_protocol()` in hot paths**---use `find()` with concrete types when possible
+
+For equality comparisons, different-length collections return immediately (O(1)), so `__eq__` is fast for the common case of comparing unequal collections.
+
+### Performance caveats
+
+1. **Protocol filtering overhead**: Protocol-based methods (`find_protocol()`, `has_protocol()`, `count_protocol()`) have significant overhead (~4us per item) due to Python's typing module introspection. For hot paths, prefer concrete type matching with `find()` or `has()`.
+
+2. **Function call overhead**: Simple property access (`len()`, `bool()`, `is_empty`) incurs ~25-75ns of Python function/property call overhead. This is unavoidable for method calls but negligible for most use cases.
+
+3. **Tuple hash computation**: The `is_hashable` property and `__hash__` must compute the hash of the entire underlying tuple. For large collections with many items, this is O(n) with approximately 60ns per item.
+
+4. **Unhashable item deduplication**: The `unique()` method falls back to O(n^2) comparison-based deduplication when items are unhashable. For collections with unhashable items and many duplicates, consider filtering before calling `unique()`.
+
 ## See also
 
 - [Metadata and annotated types](explanation/metadata.md) - Understanding how metadata flows through type graphs
