@@ -1,26 +1,38 @@
 # Explanation
 
-This section provides understanding-oriented discussion of concepts, architecture, and design decisions. Read these to learn how typing-graph works and why.
+This section provides understanding-oriented discussions of concepts, architecture, and design decisions. These pages answer "why" questions: why typing-graph exists, why it makes certain design choices, and why Python's type system works the way it does.
+
+Unlike tutorials (which guide you through tasks) or reference documentation (which lists every API detail), explanations help you build mental models. Reading these pages will deepen your understanding of both typing-graph and Python's type system, making you more effective when building type introspection tools.
+
+## How to use this section
+
+Each page explores a concept in depth. You don't need to read them in order, though the architecture overview provides useful context for the others. If you're trying to do something specific, start with the [tutorials](../tutorials/index.md) or [how-to guides](../guides/index.md) instead.
 
 ## Available topics
 
 [Architecture overview](architecture.md)
-:   High-level architecture of typing-graph, including the inspection layer, node hierarchy, and design principles.
+:   Why typing-graph exists, how its components work together, and the reasoning behind key design decisions. Start here to understand the library's structure.
 
 [Forward references](forward-references.md)
-:   How typing-graph handles forward references, evaluation modes, resolution states, and cycle detection.
+:   The evolution of forward reference handling in Python, from string annotations to PEP 649's lazy evaluation. Explains typing-graph's evaluation modes and why they exist.
 
 [Metadata and Annotated types](metadata.md)
-:   How typing-graph extracts and represents metadata from `Annotated` types, including metadata hoisting and the distinction between container-level and element-level metadata.
+:   How `Annotated` metadata enables declarative programming, how typing-graph extracts and organizes it, and the design rationale behind `MetadataCollection`.
 
 [Qualifiers](qualifiers.md)
-:   Type qualifiers like `ClassVar`, `Final`, `Required`, and `ReadOnly`—what they mean, where they're valid, and how typing-graph extracts them.
+:   Type qualifiers like `ClassVar`, `Final`, and `Required`: what they mean, how they evolved, and how typing-graph distinguishes them from metadata.
 
 [Type aliases](type-aliases.md)
-:   Traditional `TypeAlias` annotations and PEP 695 `type` statements—how typing-graph represents and inspects type aliases.
+:   The difference between traditional and PEP 695 type aliases, why Python needed new syntax, and how typing-graph represents both forms.
 
 [Generics and variance](generics.md)
-:   Type parameters (`TypeVar`, `ParamSpec`, `TypeVarTuple`), variance (covariant, contravariant, invariant), and how typing-graph represents generic types.
+:   Type parameters, variance rules, and why they matter. Explains how typing-graph models generic types and what automatic variance inference means.
 
 [Union types](union-types.md)
-:   How Python represents union types (`types.UnionType` vs `typing.Union`), the `|` operator quirk with typing special forms, and how typing-graph normalizes them.
+:   Why Python has two different union types, the surprising behavior of the `|` operator, and how typing-graph handles the distinction.
+
+## Related resources
+
+- **Want hands-on practice?** Start with the [tutorials](../tutorials/index.md)
+- **Need to do specific tasks?** Use the [how-to guides](../guides/index.md)
+- **Looking up API details?** See the [API reference](../reference/api.md)

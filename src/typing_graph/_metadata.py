@@ -67,7 +67,18 @@ def _flatten_items(items: "Iterable[object]") -> tuple[object, ...]:
 
 
 def _default_sort_key(item: object) -> tuple[str, str]:
-    """Default sort key: (type_name, repr) for stable heterogeneous sorting."""
+    """Return default sort key for stable heterogeneous sorting.
+
+    Groups items by type name first, then by repr within each type.
+    This provides consistent, reproducible ordering for collections
+    with mixed types.
+
+    Args:
+        item: Any metadata item to generate a sort key for.
+
+    Returns:
+        Tuple of (type_name, repr) for use as a sort key.
+    """
     return (type(item).__name__, repr(item))
 
 
@@ -377,7 +388,8 @@ class MetadataCollection:
 
         Examples:
             >>> coll = MetadataCollection(_items=(1, "doc", (2, 3)))
-            >>> hash(coll)  # Works for hashable items
+            >>> isinstance(hash(coll), int)  # Works for hashable items
+            True
             >>> coll_unhashable = MetadataCollection(_items=([1, 2],))
             >>> hash(coll_unhashable)  # doctest: +IGNORE_EXCEPTION_DETAIL
             Traceback (most recent call last):
@@ -438,6 +450,9 @@ class MetadataCollection:
             >>> empty = MetadataCollection.EMPTY
             >>> (empty + empty) is MetadataCollection.EMPTY
             True
+
+        See Also:
+            __or__: Equivalent operator using |.
         """
         if not isinstance(other, MetadataCollection):
             return NotImplemented
@@ -463,6 +478,9 @@ class MetadataCollection:
             >>> b = MetadataCollection(_items=(3, 4))
             >>> list(a | b)
             [1, 2, 3, 4]
+
+        See Also:
+            __add__: Equivalent operator using +.
         """
         return self.__add__(other)
 
@@ -484,6 +502,9 @@ class MetadataCollection:
             >>> coll_unhashable = MetadataCollection(_items=([1, 2],))
             >>> coll_unhashable.is_hashable
             False
+
+        See Also:
+            __hash__: Compute hash value.
         """
         try:
             _ = hash(self._items)
@@ -504,6 +525,10 @@ class MetadataCollection:
             True
             >>> MetadataCollection(_items=(1, 2)).is_empty
             False
+
+        See Also:
+            __bool__: Boolean conversion.
+            __len__: Get item count.
         """
         return not self._items
 
@@ -528,6 +553,12 @@ class MetadataCollection:
             'doc'
             >>> coll.find(float) is None
             True
+
+        See Also:
+            find_first: Find first item matching any of several types.
+            find_all: Find all items matching a type.
+            get: Find with default value.
+            get_required: Find or raise exception.
         """
         for item in self._items:
             if isinstance(item, type_):
@@ -552,6 +583,10 @@ class MetadataCollection:
             True
             >>> coll.find_first() is None
             True
+
+        See Also:
+            find: Find first item of exact type.
+            find_all: Find all items matching types.
         """
         if not types:
             return None
@@ -580,6 +615,10 @@ class MetadataCollection:
             True
             >>> coll.has()
             False
+
+        See Also:
+            count: Count items matching types.
+            any: Check with predicate instead of type.
         """
         if not types:
             return False
@@ -605,6 +644,10 @@ class MetadataCollection:
             5
             >>> coll.count()
             0
+
+        See Also:
+            has: Check existence without counting.
+            count_protocol: Count items satisfying a protocol.
         """
         if not types:
             return 0
@@ -646,6 +689,11 @@ class MetadataCollection:
             ['a', 1, 'b', 2]
             >>> coll.find_all(float) is MetadataCollection.EMPTY
             True
+
+        See Also:
+            find: Find first item of type.
+            find_first: Find first item matching any type.
+            filter_by_type: Filter with predicate.
         """
         if not types:
             # Return copy of all items
@@ -693,6 +741,10 @@ class MetadataCollection:
             0
             >>> coll.get(bool, True)
             False
+
+        See Also:
+            find: Find without default value.
+            get_required: Find or raise exception.
         """
         # Iterate directly instead of using find() to handle falsy values
         for item in self._items:
@@ -723,6 +775,10 @@ class MetadataCollection:
             Traceback (most recent call last):
                 ...
             MetadataNotFoundError: No metadata of type 'float' found...
+
+        See Also:
+            get: Find with default value.
+            find: Find without raising.
         """
         # Iterate directly to correctly handle falsy values like 0, False, ""
         for item in self._items:
@@ -741,6 +797,17 @@ class MetadataCollection:
 
         Security:
             Predicates execute arbitrary code. Use only trusted sources.
+
+        Examples:
+            >>> coll = MetadataCollection(_items=(1, 2, 3, 4, 5))
+            >>> evens = coll.filter(lambda x: x % 2 == 0)
+            >>> list(evens)
+            [2, 4]
+
+        See Also:
+            filter_by_type: Filter with type safety.
+            find_all: Filter by type only.
+            exclude: Filter by excluding types.
         """
         matches = tuple(item for item in self._items if predicate(item))
         if not matches:
@@ -763,6 +830,16 @@ class MetadataCollection:
 
         Security:
             Predicates execute arbitrary code. Use only trusted sources.
+
+        Examples:
+            >>> coll = MetadataCollection(_items=("short", "medium", "verylongstring"))
+            >>> long_strings = coll.filter_by_type(str, lambda s: len(s) > 6)
+            >>> list(long_strings)
+            ['verylongstring']
+
+        See Also:
+            filter: Filter without type restriction.
+            find_all: Filter by type only.
         """
         matches = tuple(
             item for item in self._items if isinstance(item, type_) and predicate(item)
@@ -782,6 +859,18 @@ class MetadataCollection:
 
         Security:
             Predicates execute arbitrary code. Use only trusted sources.
+
+        Examples:
+            >>> coll = MetadataCollection(_items=(1, 2, 3, 4, 5))
+            >>> coll.first(lambda x: x > 3)
+            4
+            >>> coll.first(lambda x: x > 10) is None
+            True
+
+        See Also:
+            first_of_type: Find first of type with predicate.
+            find: Find by type without predicate.
+            any: Check existence with predicate.
         """
         for item in self._items:
             if predicate(item):
@@ -802,6 +891,17 @@ class MetadataCollection:
 
         Security:
             Predicates execute arbitrary code. Use only trusted sources.
+
+        Examples:
+            >>> coll = MetadataCollection(_items=("a", 10, "bb", 20))
+            >>> coll.first_of_type(int, lambda x: x > 15)
+            20
+            >>> coll.first_of_type(str)
+            'a'
+
+        See Also:
+            first: Find with predicate only.
+            find: Find by type only.
         """
         for item in self._items:
             if isinstance(item, type_) and (predicate is None or predicate(item)):
@@ -819,6 +919,18 @@ class MetadataCollection:
 
         Security:
             Predicates execute arbitrary code. Use only trusted sources.
+
+        Examples:
+            >>> coll = MetadataCollection(_items=(1, 2, 3, 4, 5))
+            >>> coll.any(lambda x: x > 3)
+            True
+            >>> coll.any(lambda x: x > 10)
+            False
+
+        See Also:
+            has: Check by type instead of predicate.
+            first: Find the matching item.
+            filter: Get all matching items.
         """
         return builtins.any(predicate(item) for item in self._items)
 
@@ -837,6 +949,23 @@ class MetadataCollection:
 
         Security:
             Protocol types may have custom __subclasshook__. Use trusted sources.
+
+        Examples:
+            >>> from typing import Protocol, runtime_checkable
+            >>> @runtime_checkable
+            ... class HasValue(Protocol):
+            ...     value: int
+            >>> class Item:
+            ...     value = 42
+            >>> coll = MetadataCollection(_items=(Item(), "doc", 123))
+            >>> matches = coll.find_protocol(HasValue)
+            >>> len(matches)
+            1
+
+        See Also:
+            has_protocol: Check protocol existence.
+            count_protocol: Count protocol matches.
+            filter: Filter with custom predicate.
         """
         _ensure_runtime_checkable(protocol)
         matches = tuple(item for item in self._items if isinstance(item, protocol))
@@ -859,6 +988,19 @@ class MetadataCollection:
 
         Security:
             See find_protocol() for security considerations.
+
+        Examples:
+            >>> from typing import Protocol, runtime_checkable
+            >>> @runtime_checkable
+            ... class HasLen(Protocol):
+            ...     def __len__(self) -> int: ...
+            >>> coll = MetadataCollection(_items=([1, 2], "doc", 123))
+            >>> coll.has_protocol(HasLen)
+            True
+
+        See Also:
+            find_protocol: Get matching items.
+            has: Check by type instead of protocol.
         """
         _ensure_runtime_checkable(protocol)
         return builtins.any(isinstance(item, protocol) for item in self._items)
@@ -878,6 +1020,19 @@ class MetadataCollection:
 
         Security:
             See find_protocol() for security considerations.
+
+        Examples:
+            >>> from typing import Protocol, runtime_checkable
+            >>> @runtime_checkable
+            ... class HasLen(Protocol):
+            ...     def __len__(self) -> int: ...
+            >>> coll = MetadataCollection(_items=([1, 2], "doc", 123, (3, 4)))
+            >>> coll.count_protocol(HasLen)
+            3
+
+        See Also:
+            find_protocol: Get matching items.
+            count: Count by type instead of protocol.
         """
         _ensure_runtime_checkable(protocol)
         return sum(1 for item in self._items if isinstance(item, protocol))
@@ -910,6 +1065,10 @@ class MetadataCollection:
             MetadataCollection([])
             >>> MetadataCollection.of([]) is MetadataCollection.EMPTY
             True
+
+        See Also:
+            from_annotated: Extract from Annotated types.
+            EMPTY: Singleton empty collection.
         """
         if auto_flatten:
             flattened = _flatten_items(items)
@@ -953,7 +1112,10 @@ class MetadataCollection:
             >>> Inner = Annotated[int, "inner"]
             >>> Outer = Annotated[Inner, "outer"]
             >>> MetadataCollection.from_annotated(Outer)
-            MetadataCollection(['outer', 'inner'])
+            MetadataCollection(['inner', 'outer'])
+
+        See Also:
+            of: Create from any iterable.
         """
         # Check if it's an Annotated type
         origin = get_origin(annotated_type)
@@ -1000,6 +1162,9 @@ class MetadataCollection:
             >>> coll = MetadataCollection(_items=(1, 2, 3))
             >>> coll.flatten()
             MetadataCollection([1, 2, 3])
+
+        See Also:
+            flatten_deep: Recursive flattening.
         """
         flattened = _flatten_items(self._items)
         if flattened == self._items:
@@ -1022,6 +1187,9 @@ class MetadataCollection:
             >>> coll = MetadataCollection(_items=(1, 2, 3))
             >>> coll.flatten_deep()
             MetadataCollection([1, 2, 3])
+
+        See Also:
+            flatten: Single-level flattening.
         """
         current = self._items
         while True:
@@ -1058,6 +1226,10 @@ class MetadataCollection:
             []
             >>> coll.exclude() is coll
             True
+
+        See Also:
+            filter: Filter with predicate.
+            find_all: Keep items of types.
         """
         if not types:
             return self
@@ -1084,6 +1256,9 @@ class MetadataCollection:
             >>> coll = MetadataCollection(_items=([1], [2], [1]))
             >>> list(coll.unique())
             [[1], [2]]
+
+        See Also:
+            sorted: Sort items.
         """
         if not self._items:
             return MetadataCollection.EMPTY
@@ -1139,6 +1314,10 @@ class MetadataCollection:
             >>> coll = MetadataCollection(_items=("bb", "a", "ccc"))
             >>> list(coll.sorted(key=len))
             ['a', 'bb', 'ccc']
+
+        See Also:
+            unique: Remove duplicates.
+            reversed: Reverse order.
         """
         if not self._items:
             return MetadataCollection.EMPTY
@@ -1158,6 +1337,9 @@ class MetadataCollection:
             [3, 2, 1]
             >>> MetadataCollection.EMPTY.reversed() is MetadataCollection.EMPTY
             True
+
+        See Also:
+            sorted: Sort items.
         """
         if not self._items:
             return MetadataCollection.EMPTY
@@ -1186,6 +1368,10 @@ class MetadataCollection:
             >>> coll = MetadataCollection(_items=("a", "bb", "ccc"))
             >>> coll.map(len)
             (1, 2, 3)
+
+        See Also:
+            partition: Split collection by predicate.
+            filter: Keep items matching predicate.
         """
         # List comprehension is faster than generator expression inside tuple()
         return tuple([func(item) for item in self._items])
@@ -1212,6 +1398,10 @@ class MetadataCollection:
             [2, 4]
             >>> list(non_matching)
             [1, 3, 5]
+
+        See Also:
+            filter: Keep only matching items.
+            map: Transform items.
         """
         matching: list[object] = []
         non_matching: list[object] = []
@@ -1243,6 +1433,9 @@ class MetadataCollection:
             >>> coll = MetadataCollection(_items=("a", 1, "b", 2.0))
             >>> sorted(t.__name__ for t in coll.types())
             ['float', 'int', 'str']
+
+        See Also:
+            by_type: Group items by type.
         """
         return frozenset(type(item) for item in self._items)
 
@@ -1260,6 +1453,9 @@ class MetadataCollection:
             ['a', 'b']
             >>> list(grouped[int])
             [1, 2]
+
+        See Also:
+            types: Get unique types only.
         """
         groups: dict[type, list[object]] = {}
         for item in self._items:

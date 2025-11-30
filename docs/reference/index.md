@@ -1,14 +1,14 @@
 # Reference
 
-This section provides technical descriptions of the API. Consult when you need precise details about classes, functions, or terminology.
+Technical specifications and lookup resources for the typing-graph API.
 
 ## Available references
 
 [API documentation](api.md)
-:   Complete API reference for all public classes and functions, including [`inspect_type()`][typing_graph.inspect_type], type node classes, and configuration options.
+:   Complete reference for all public classes, functions, and configuration options. Auto-generated from source docstrings via mkdocstrings.
 
 [Glossary](glossary.md)
-:   Definitions of key terms used throughout the documentation, including type graph, type node, metadata hoisting, and more.
+:   Definitions of key terms used throughout the documentation: type graph, type node, metadata hoisting, and related concepts.
 
 [Changelog](changelog.md)
 :   Version history documenting new features, bug fixes, and breaking changes for each release.

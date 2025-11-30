@@ -3,7 +3,9 @@ annotated-types
 [aA]pplication
 APIs?
 attrs
+auto_flatten
 basedpyright
+[bB]oolean
 Bluesky
 [cC]allable('s)?
 [cC]ode[cC]ov
@@ -11,18 +13,24 @@ codespell
 [cC]omposab(ility|le)
 [cC]ontravarian(ce|t)
 [dD]ataclass(es|'s)?
+[dD]eduplic(at(e|es|ed|ing|ion)|able)
 [dD]ocstrings?
 dev
-Enum
+[eE]nums?
+[fF]alsy
 GitHub
 GitHub Environments
 has_attr
 [hH]otfix(es)?
 [iI]nterdependen((c(e|ies|y))|t)
+is_empty
+is_instance
 markdownlint
 matches_protocol
-is_instance
+[mM]kdocstrings
+msgspec
 [nN]amespaces?
+[pP]arameteriz(e|es|ed|ing|ation)
 pip
 pnpm
 [pP]ydantic('s)?
@@ -30,6 +38,7 @@ pnpm
 [pP]ython(ic)?
 rc
 [rR]ecurs(e|es|ing)
+[rR]eimplement(s|ed|ing)?
 [rR]equiredness
 (sbom|SBOM)
 [sS]erializers?
@@ -39,6 +48,9 @@ SQLAlchemy
 stdlib
 (stringified|STRINGIFIED)
 [sS]ubtrees?
+Timsort
+[uU]nhashable
+[uU]nstaged
 [uU]ntrusted
 ([uU]n)?[sS]ubscript(able|ed)
 uv
@@ -48,6 +60,7 @@ typing-graph
 [vV]ariadic
 venv
 [vV]alidat(es?|ors?)
+[wW]orktrees?
 yamllint
 [bB]ackports?
 [cC]onfig
@@ -66,3 +79,7 @@ inspect_class
 [sS]ubtyp(e|es|ed|ing)
 [sS]upert?ype(s)?
 [sS]yntaxes
+[mM]ultiple
+[rR]equirement(s)?
+[hH]owever
+[iI]mplement(s|ed|ing|ation)?

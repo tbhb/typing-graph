@@ -1,0 +1,3 @@
+# Blocked terms
+# Em dash (U+2014) - use regular dash or rewrite the sentence
+\x{2014}

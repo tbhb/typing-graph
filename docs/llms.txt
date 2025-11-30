@@ -1,0 +1,83 @@
+# typing-graph
+
+> A Python library for inspecting and querying metadata from type annotations. Pass any type (generics, `Annotated`, dataclasses, `TypedDict`, PEP 695 aliases) and get back a graph of nodes representing the type structure and its metadata. Provides the structured type introspection layer for validation frameworks, CLI tools, serializers, ORMs, and similar tools.
+
+typing-graph transforms Python type annotations into a traversable graph of nodes. Each node represents a component of a type annotation, from simple types like `int` to complex nested generics like `dict[str, list[Annotated[int, Gt(0)]]]`. The library handles metadata hoisting (extracting annotations from `Annotated` wrappers), qualifier detection (`ClassVar`, `Final`, `Required`), forward reference resolution, and caching.
+
+Core concepts:
+
+- **TypeNode**: Immutable objects representing inspected type annotations. Node classes correspond to type categories: `ConcreteNode` for simple types, `SubscriptedGenericNode` for parameterized generics, `UnionNode` for unions.
+- **MetadataCollection**: Immutable, type-safe container for metadata attached via `Annotated`. Provides query, filter, and transformation methods.
+- **inspect_type()**: Main entry point that inspects any type annotation and returns the appropriate TypeNode.
+- **Metadata hoisting**: By default, metadata from `Annotated` wrappers is attached directly to the base type node.
+
+## Documentation
+
+- [Home](https://typing-graph.tbhb.dev/): Project overview and quick example
+- [Installation](https://typing-graph.tbhb.dev/install/): pip, uv, Poetry installation options
+- [API reference](https://typing-graph.tbhb.dev/reference/api/): Complete reference for all public classes and functions
+
+## Tutorials
+
+- [Your first type inspection](https://typing-graph.tbhb.dev/tutorials/first-inspection/): Learn core concepts including inspect_type(), type nodes, and metadata access
+- [Working with metadata](https://typing-graph.tbhb.dev/tutorials/working-with-metadata/): Create, query, and transform MetadataCollection instances
+- [Inspecting structured types](https://typing-graph.tbhb.dev/tutorials/structured-types/): Work with dataclasses, TypedDict, and NamedTuple
+- [Inspecting functions](https://typing-graph.tbhb.dev/tutorials/functions/): Analyze function signatures and parameters
+
+## How-to guides
+
+- [Querying metadata](https://typing-graph.tbhb.dev/guides/metadata-queries/): Find, get, and count metadata items by type
+- [Filtering metadata](https://typing-graph.tbhb.dev/guides/metadata-filtering/): Filter using predicates, type constraints, and protocols
+- [Transforming metadata](https://typing-graph.tbhb.dev/guides/metadata-transformations/): Combine, sort, deduplicate, and transform collections
+- [Metadata recipes](https://typing-graph.tbhb.dev/guides/metadata-recipes/): Real-world patterns for validation extraction
+- [Walking the type graph](https://typing-graph.tbhb.dev/guides/walking-type-graph/): Traverse recursively using children() method
+- [Configuration options](https://typing-graph.tbhb.dev/guides/configuration/): Customize with InspectConfig, forward reference modes, cache
+
+## Explanation
+
+- [Architecture overview](https://typing-graph.tbhb.dev/explanation/architecture/): Why typing-graph exists and how components work together
+- [Metadata and Annotated types](https://typing-graph.tbhb.dev/explanation/metadata/): How Annotated metadata is extracted and organized
+- [Forward references](https://typing-graph.tbhb.dev/explanation/forward-references/): Evaluation modes and why they exist
+- [Generics and variance](https://typing-graph.tbhb.dev/explanation/generics/): Type parameters and variance rules
+- [Union types](https://typing-graph.tbhb.dev/explanation/union-types/): typing.Union vs types.UnionType differences
+
+## API summary
+
+Core inspection functions:
+
+- `inspect_type(tp, config=None)` - Inspect any type annotation, returns TypeNode
+- `inspect_class(cls, config=None)` - Auto-detect and inspect a class
+- `inspect_dataclass(cls, config=None)` - Inspect dataclass specifically
+- `inspect_typed_dict(cls, config=None)` - Inspect TypedDict specifically
+- `inspect_function(fn, config=None)` - Inspect function signature
+
+Key node types:
+
+- `ConcreteNode` - Simple types like int, str, custom classes
+- `SubscriptedGenericNode` - Applied generics like list[int], with origin and args
+- `UnionNode` - Union types with members
+- `DataclassNode` - Dataclass with fields
+- `TypedDictNode` - TypedDict with fields
+- `FunctionNode` - Function with parameters and return type
+
+MetadataCollection methods:
+
+- `of(items)` - Create from iterable
+- `from_annotated(tp)` - Extract from Annotated type
+- `find(type_)` - Find first item of exact type
+- `find_all(*types)` - Find all items matching types
+- `has(*types)` - Check if any item matches
+- `filter(predicate)` - Filter by predicate function
+- `find_protocol(protocol)` - Find first protocol implementer
+
+Configuration:
+
+- `InspectConfig(eval_mode, hoist_metadata, ...)` - Control inspection behavior
+- `EvalMode.EAGER/DEFERRED/STRINGIFIED` - Forward reference handling
+
+## Optional
+
+- [Glossary](https://typing-graph.tbhb.dev/reference/glossary/): Definitions of key terms
+- [Changelog](https://typing-graph.tbhb.dev/reference/changelog/): Version history
+- [GitHub repository](https://github.com/tbhb/typing-graph): Source code
+- [PyPI package](https://pypi.org/project/typing-graph/): Package page

@@ -169,6 +169,7 @@ nav:
   - Getting started:
       - index.md
       - Installation: install.md
+      - Conventions: conventions.md
       - Getting help: support.md
       - Contributing: contributing.md
       - Roadmap: roadmap.md
@@ -177,11 +178,15 @@ nav:
   - Tutorials:
       - tutorials/index.md
       - Your first type inspection: tutorials/first-inspection.md
+      - Working with metadata: tutorials/working-with-metadata.md
       - Inspecting structured types: tutorials/structured-types.md
       - Inspecting functions: tutorials/functions.md
   - Guides:
       - guides/index.md
-      - Extracting metadata: guides/extracting-metadata.md
+      - Querying metadata: guides/metadata-queries.md
+      - Filtering metadata: guides/metadata-filtering.md
+      - Transforming metadata: guides/metadata-transformations.md
+      - Metadata recipes: guides/metadata-recipes.md
       - Walking the type graph: guides/walking-type-graph.md
       - Configuration options: guides/configuration.md
   - Explanation:

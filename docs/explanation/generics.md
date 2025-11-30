@@ -1,6 +1,30 @@
 # Generics and variance
 
-This page explains how typing-graph represents generic types, type parameters, and variance.
+This page explains how typing-graph represents generic types, type parameters, and variance. Understanding how typing-graph models generics enables you to build type introspection tools that work with parameterized types.
+
+## Why generics exist
+
+Before generics, container types couldn't express what they contained. A function returning `list` told you nothing about the elements. You'd write:
+
+```python
+# snippet - illustrative pattern
+def get_users() -> list:  # What kind of list?
+    ...
+```
+
+Callers had to trust documentation, runtime checks, or experimentation to learn that this returned a list of `User` objects. Static type checkers couldn't help because they lacked the necessary information.
+
+Generics solve this by letting types carry parameters:
+
+```python
+# snippet - illustrative pattern
+def get_users() -> list[User]:  # A list of Users
+    ...
+```
+
+Now the type annotation is both human-readable and machine-checkable. The type checker can verify that code using the returned list treats elements as `User` objects.
+
+typing-graph models this parameterization explicitly. When you inspect `list[User]`, you get a `SubscriptedGenericNode` that separately captures the generic origin (`list`) and its type arguments (`User`). This structure enables tools to answer questions like "what does this list contain?" or "is this a mapping type?"
 
 ## What are generics?
 
@@ -151,7 +175,30 @@ value_node = node.args[1]     # SubscriptedGenericNode for list[int]
 
 ## Variance
 
-Variance describes how subtyping of type parameters relates to subtyping of the generic type itself.
+Variance describes how subtyping of type parameters relates to subtyping of the generic type itself. This concept often confuses newcomers to type systems, but it has important practical implications.
+
+!!! abstract "Why variance matters"
+
+    Consider a function that processes a list of animals:
+
+    ```python
+    # snippet - illustrative pattern
+    def feed_animals(animals: list[Animal]) -> None:
+        for animal in animals:
+            animal.eat()
+    ```
+
+    Can you pass a `list[Cat]` to this function? Intuitively, yes, since cats are animals. But what if the function modifies the list?
+
+    ```python
+    # snippet - illustrative pattern
+    def add_animal(animals: list[Animal]) -> None:
+        animals.append(Dog())  # Adds a dog to the list
+    ```
+
+    Now passing `list[Cat]` would be a type error: you'd have a dog in your list of cats.
+
+    Variance rules encode these safety considerations. Understanding variance helps you design generic types correctly and understand why the type checker rejects certain code.
 
 ### Invariance (default)
 
@@ -242,6 +289,14 @@ typing-graph captures this with the `infer_variance` flag:
 print(type_var_node.infer_variance)  # True if auto-inferred
 ```
 
+??? info "Why automatic variance is significant"
+
+    Before PEP 695, specifying variance correctly was a source of friction. You had to understand variance well enough to choose `covariant=True` or `contravariant=True`, and getting it wrong produced confusing type errors.
+
+    Automatic inference removes this burden for most cases. The type checker examines how you use the type parameter: only in return positions (covariant), only in parameter positions (contravariant), or both (invariant). This matches how other languages like Kotlin and C# handle variance.
+
+    typing-graph's `infer_variance` flag lets you distinguish between explicitly declared variance and inferred variance, which can matter for documentation generation or migration tooling.
+
 ## Type parameter bounds and constraints
 
 ### Bounds
@@ -323,10 +378,19 @@ print(type_var_node.default)  # TypeNode or None
 | Unsubscripted generic | `GenericTypeNode` | `cls`, `type_params` |
 | Subscripted generic | `SubscriptedGenericNode` | `origin`, `args` |
 
+## Practical application
+
+Now that you understand generics, apply this knowledge:
+
+- **Traverse generic types** with [Walking the type graph](../guides/walking-type-graph.md)
+- **Work with generic aliases** in [Type aliases](type-aliases.md)
+- **Inspect functions with generic parameters** in [Inspecting functions](../tutorials/functions.md)
+
 ## See also
 
 - [Type aliases](type-aliases.md) - How typing-graph represents generic type aliases
 - [Architecture overview](architecture.md) - How generic inspection fits into the design
+- [Type variable](../reference/glossary.md#type-variable) - Glossary definition
 - [PEP 484](https://peps.python.org/pep-0484/) - Type hints specification
 - [PEP 612](https://peps.python.org/pep-0612/) - ParamSpec
 - [PEP 646](https://peps.python.org/pep-0646/) - TypeVarTuple

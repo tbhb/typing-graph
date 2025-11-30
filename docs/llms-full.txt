@@ -1,0 +1,1017 @@
+# typing-graph
+
+> A Python library for inspecting and querying metadata from type annotations. Pass any type (generics, `Annotated`, dataclasses, `TypedDict`, PEP 695 aliases) and get back a graph of nodes representing the type structure and its metadata. Provides the structured type introspection layer for validation frameworks, CLI tools, serializers, ORMs, and similar tools.
+
+Requirements: Python 3.10+
+Dependencies: typing-inspection, typing-extensions
+Optional: annotated-types (for constraint metadata convenience methods)
+
+Install: `pip install typing-graph`
+
+---
+
+# Project overview
+
+typing-graph is a building block for Python libraries and frameworks that derive runtime behavior from type annotations. If you're building validation frameworks, CLI tools, serializers, ORMs, or similar tools that inspect types to generate code or configure behavior, typing-graph provides the structured type introspection layer so you can focus on your domain logic.
+
+Pass any type (generics, `Annotated`, dataclasses, `TypedDict`, PEP 695 aliases) and get back a graph of nodes representing the type structure and its metadata. The library handles metadata hoisting (extracting annotations from `Annotated` wrappers), qualifier detection (`ClassVar`, `Final`, `Required`), forward reference resolution, and caching. Each node exposes a `children()` method for recursive traversal.
+
+## Quick example
+
+```python
+from typing import Annotated
+from dataclasses import dataclass
+from typing_graph import inspect_type
+
+# Define constraint metadata (like you might in a validation framework)
+@dataclass
+class Pattern:
+    regex: str
+
+@dataclass
+class MinLen:
+    value: int
+
+# Define a reusable annotated type alias
+URL = Annotated[str, Pattern(r"^https?://")]
+
+# Build a complex nested type
+Urls = Annotated[list[URL], MinLen(1)]
+
+# Inspect the type graph
+node = inspect_type(Urls)
+
+# The outer node is a SubscriptedGenericNode (list) with container-level metadata
+node.origin.cls  # <class 'list'>
+node.metadata    # (MinLen(value=1),)
+
+# Traverse to the element type - it carries its own metadata
+element = node.args[0]
+element.cls      # <class 'str'>
+element.metadata # (Pattern(regex='^https?://'),)
+```
+
+Each node in the graph carries its own metadata, enabling frameworks to apply different validation or transformation logic at each level of the type structure.
+
+## Use cases
+
+typing-graph provides the foundation for frameworks that derive behavior from type annotations:
+
+- **Validation frameworks**: Build validators that extract constraints from `Annotated` metadata and generate validation logic based on type structure.
+- **Type conversion**: Convert values between types by inspecting source and target type structures, handling nested generics and union types.
+- **Command-line interfaces**: Parse command-line arguments by inspecting function signatures and generating appropriate parsers for each parameter type.
+- **ORM mapping**: Map Python classes to database schemas by analyzing field types, extracting column metadata from annotations.
+- **Feature flags**: Extract feature flag definitions from type metadata to configure runtime behavior based on annotated types.
+- **Code generation**: Generate serializers, API clients, or documentation by traversing the type graph and emitting code for each node type.
+
+---
+
+# Architecture
+
+typing-graph transforms Python type annotations into a traversable graph of nodes. Each node represents a component of a type annotation, from simple types like `int` to complex nested generics like `dict[str, list[Annotated[int, Gt(0)]]]`.
+
+The library has three main layers:
+
+1. **Inspection layer** - Functions that analyze types and produce nodes
+2. **Node layer** - Dataclasses representing type structure
+3. **Configuration layer** - Options controlling inspection behavior
+
+## The inspection process
+
+When you call `inspect_type()`, the library:
+
+1. **Checks the cache** - Returns cached result if available
+2. **Classifies the type** - Determines which node type to create
+3. **Extracts qualifiers** - Identifies `ClassVar`, `Final`, `Required`, etc.
+4. **Hoists metadata** - Moves `Annotated` metadata to the base type (if enabled)
+5. **Recursively inspects** - Processes nested types to build child nodes
+6. **Caches the result** - Stores for future lookups
+
+## Metadata hoisting
+
+When the library encounters `Annotated[T, meta1, meta2]`, it can either:
+
+- **Hoist metadata** (default): Create a node for `T` with `metadata=(meta1, meta2)`
+- **Preserve wrapper**: Create an `AnnotatedNode` node containing the base and annotations
+
+Hoisting simplifies working with annotated types since you get the underlying type directly with metadata attached.
+
+```python
+# With hoisting (default)
+node = inspect_type(Annotated[str, MaxLen(100)])
+# Returns: ConcreteNode(cls=str, metadata=(MaxLen(100),))
+
+# Without hoisting
+config = InspectConfig(hoist_metadata=False)
+node = inspect_type(Annotated[str, MaxLen(100)], config=config)
+# Returns: AnnotatedNode(base=ConcreteNode(cls=str), annotations=(MaxLen(100),))
+```
+
+## Memory efficiency and immutability
+
+The library implements all nodes as frozen dataclasses with `slots=True` for memory efficiency and immutability. This design:
+
+- Reduces memory footprint via `__slots__`
+- Guarantees immutability after construction via `frozen=True`
+- Enables safe caching (code cannot mutate nodes)
+- Makes nodes hashable (usable as dictionary keys and in sets)
+- Ensures thread safety for concurrent read access
+
+---
+
+# Core API reference
+
+## Inspection functions
+
+### inspect_type
+
+```python
+def inspect_type(
+    tp: Any,
+    *,
+    config: InspectConfig | None = None,
+) -> TypeNode:
+    """Inspect a type annotation and return the appropriate TypeNode.
+
+    Args:
+        tp: The type annotation to inspect (can be a class, generic, Annotated, etc.)
+        config: Optional configuration controlling inspection behavior.
+
+    Returns:
+        A TypeNode subclass representing the type structure.
+
+    Examples:
+        >>> from typing_graph import inspect_type
+        >>> inspect_type(int)
+        ConcreteNode(cls=<class 'int'>, ...)
+        >>> inspect_type(list[str])
+        SubscriptedGenericNode(origin=..., args=(...,), ...)
+    """
+```
+
+### inspect_class
+
+```python
+def inspect_class(
+    cls: type,
+    *,
+    config: InspectConfig | None = None,
+) -> ClassInspectResult:
+    """Auto-detect class type and inspect it appropriately.
+
+    Detects if the class is a dataclass, TypedDict, NamedTuple, Protocol, or Enum,
+    and calls the appropriate specialized inspection function.
+
+    Args:
+        cls: The class to inspect.
+        config: Optional configuration.
+
+    Returns:
+        A ClassInspectResult containing the inspection result and detected class type.
+    """
+```
+
+### inspect_dataclass
+
+```python
+def inspect_dataclass(
+    cls: type,
+    *,
+    config: InspectConfig | None = None,
+) -> DataclassNode:
+    """Inspect a dataclass and return a DataclassNode.
+
+    Args:
+        cls: The dataclass to inspect.
+        config: Optional configuration.
+
+    Returns:
+        A DataclassNode with fields, inheritance info, and metadata.
+    """
+```
+
+### inspect_typed_dict
+
+```python
+def inspect_typed_dict(
+    cls: type,
+    *,
+    config: InspectConfig | None = None,
+) -> TypedDictNode:
+    """Inspect a TypedDict and return a TypedDictNode.
+
+    Args:
+        cls: The TypedDict class to inspect.
+        config: Optional configuration.
+
+    Returns:
+        A TypedDictNode with required/optional fields and their types.
+    """
+```
+
+### inspect_function
+
+```python
+def inspect_function(
+    fn: Callable[..., Any],
+    *,
+    config: InspectConfig | None = None,
+) -> FunctionNode:
+    """Inspect a function and return a FunctionNode.
+
+    Args:
+        fn: The function to inspect.
+        config: Optional configuration.
+
+    Returns:
+        A FunctionNode with parameters, return type, and metadata.
+    """
+```
+
+### Cache management
+
+```python
+def cache_clear() -> None:
+    """Clear all cached inspection results."""
+
+def cache_info() -> CacheInfo:
+    """Return cache statistics (hits, misses, size, maxsize)."""
+```
+
+---
+
+# Type nodes
+
+All type representations inherit from `TypeNode`, which provides the common interface:
+
+```python
+@dataclass(slots=True, frozen=True)
+class TypeNode:
+    source: SourceLocation | None  # Where the type was defined
+    metadata: MetadataCollection   # Attached Annotated metadata
+    qualifiers: frozenset[Qualifier]  # ClassVar, Final, Required, etc.
+
+    def children(self) -> Sequence[TypeNode]:
+        """Return child nodes for graph traversal."""
+```
+
+## Node types
+
+### ConcreteNode
+
+Represents non-generic nominal types like `int`, `str`, custom classes.
+
+```python
+@dataclass(slots=True, frozen=True)
+class ConcreteNode(TypeNode):
+    cls: type  # The underlying Python class
+```
+
+### SubscriptedGenericNode
+
+Represents parameterized generics like `list[int]`, `dict[str, Any]`.
+
+```python
+@dataclass(slots=True, frozen=True)
+class SubscriptedGenericNode(TypeNode):
+    origin: GenericTypeNode  # The unsubscripted generic (list, dict, etc.)
+    args: tuple[TypeNode, ...]  # Type arguments
+```
+
+### UnionNode
+
+Represents union types (`A | B`, `Union[A, B]`).
+
+```python
+@dataclass(slots=True, frozen=True)
+class UnionNode(TypeNode):
+    members: tuple[TypeNode, ...]  # Union member types
+```
+
+### DataclassNode
+
+Represents dataclasses with field information.
+
+```python
+@dataclass(slots=True, frozen=True)
+class DataclassNode(TypeNode):
+    cls: type
+    fields: tuple[DataclassFieldDef, ...]  # Field definitions with types
+    bases: tuple[type, ...]  # Base classes
+    frozen: bool
+    slots: bool
+```
+
+### TypedDictNode
+
+Represents TypedDict classes.
+
+```python
+@dataclass(slots=True, frozen=True)
+class TypedDictNode(TypeNode):
+    cls: type
+    fields: tuple[FieldDef, ...]  # Field definitions
+    required_keys: frozenset[str]
+    optional_keys: frozenset[str]
+    total: bool
+```
+
+### FunctionNode
+
+Represents functions with signature information.
+
+```python
+@dataclass(slots=True, frozen=True)
+class FunctionNode(TypeNode):
+    fn: Callable[..., Any]
+    parameters: tuple[Parameter, ...]  # Parameter definitions
+    return_type: TypeNode | None  # Return type node
+```
+
+### Other node types
+
+- `GenericTypeNode` - Unsubscripted generics like `list`, `Dict`
+- `GenericAliasNode` - Generic class aliases
+- `TupleNode` - Tuple types (heterogeneous and homogeneous)
+- `CallableNode` - Callable signatures
+- `AnyNode` - `typing.Any`
+- `NeverNode` - `typing.Never`
+- `SelfNode` - `typing.Self`
+- `LiteralNode` - `Literal[...]` values
+- `TypeVarNode` - Type variables
+- `ParamSpecNode` - Parameter specifications
+- `TypeVarTupleNode` - Variadic type variables
+- `ForwardRefNode` - Forward references
+- `NamedTupleNode` - NamedTuple classes
+- `ProtocolNode` - Protocol definitions
+- `EnumNode` - Enum classes
+
+---
+
+# MetadataCollection
+
+Every `TypeNode` carries a `metadata` attribute containing any metadata attached via `Annotated`. The `MetadataCollection` class provides an immutable, type-safe container for this metadata.
+
+## Creating collections
+
+```python
+from typing_graph import MetadataCollection
+
+# From any iterable
+coll = MetadataCollection.of(["doc", 42, True])
+
+# From an Annotated type
+from typing import Annotated
+coll = MetadataCollection.from_annotated(Annotated[int, "description", 42])
+
+# Empty singleton for efficiency
+empty = MetadataCollection.EMPTY
+```
+
+## Query methods
+
+### find
+
+```python
+def find(self, type_: type[T]) -> T | None:
+    """Find first item of exact type.
+
+    Args:
+        type_: The type to search for.
+
+    Returns:
+        The first matching item, or None if not found.
+
+    Examples:
+        >>> coll = MetadataCollection.of([Gt(0), Lt(100), "doc"])
+        >>> coll.find(Gt)
+        Gt(value=0)
+        >>> coll.find(float)
+        None
+    """
+```
+
+### find_all
+
+```python
+def find_all(self, *types: type) -> MetadataCollection:
+    """Find all items matching any of the given types.
+
+    Args:
+        *types: One or more types to match.
+
+    Returns:
+        A new MetadataCollection containing matching items.
+
+    Examples:
+        >>> coll = MetadataCollection.of([Gt(0), Lt(100), Gt(10)])
+        >>> list(coll.find_all(Gt))
+        [Gt(value=0), Gt(value=10)]
+        >>> list(coll.find_all(Gt, Lt))
+        [Gt(value=0), Lt(value=100), Gt(value=10)]
+    """
+```
+
+### find_first
+
+```python
+def find_first(self, *types: type[T]) -> T | None:
+    """Find first item matching any of the given types.
+
+    Args:
+        *types: One or more types to match.
+
+    Returns:
+        The first matching item, or None if not found.
+    """
+```
+
+### has
+
+```python
+def has(self, *types: type) -> bool:
+    """Check if any item matches any of the given types.
+
+    Args:
+        *types: One or more types to check for.
+
+    Returns:
+        True if any matching item exists.
+
+    Examples:
+        >>> coll = MetadataCollection.of([Gt(0), "doc"])
+        >>> coll.has(Gt)
+        True
+        >>> coll.has(Lt)
+        False
+        >>> coll.has(str, int)
+        True
+    """
+```
+
+### count
+
+```python
+def count(self, *types: type) -> int:
+    """Count items matching any of the given types.
+
+    Args:
+        *types: One or more types to count.
+
+    Returns:
+        Number of matching items.
+    """
+```
+
+### get
+
+```python
+def get(self, type_: type[T], default: T | None = None) -> T | None:
+    """Get first item of type, or return default.
+
+    Args:
+        type_: The type to search for.
+        default: Value to return if not found.
+
+    Returns:
+        The first matching item, or default.
+    """
+```
+
+### get_required
+
+```python
+def get_required(self, type_: type[T]) -> T:
+    """Get first item of type, raising if not found.
+
+    Args:
+        type_: The type to search for.
+
+    Returns:
+        The first matching item.
+
+    Raises:
+        MetadataNotFoundError: If no matching item exists.
+    """
+```
+
+## Filtering methods
+
+### filter
+
+```python
+def filter(self, predicate: Callable[[Any], bool]) -> MetadataCollection:
+    """Filter items by predicate function.
+
+    Args:
+        predicate: Function returning True for items to keep.
+
+    Returns:
+        A new MetadataCollection with matching items.
+
+    Examples:
+        >>> coll = MetadataCollection.of([1, 2, 3, 4, 5])
+        >>> list(coll.filter(lambda x: x > 2))
+        [3, 4, 5]
+    """
+```
+
+### filter_by_type
+
+```python
+def filter_by_type(
+    self,
+    type_: type[T],
+    predicate: Callable[[T], bool] | None = None,
+) -> MetadataCollection:
+    """Filter by type and optional predicate.
+
+    Args:
+        type_: The type to filter for.
+        predicate: Optional predicate on matching items.
+
+    Returns:
+        A new MetadataCollection with matching items.
+
+    Examples:
+        >>> coll = MetadataCollection.of([Gt(0), Gt(10), Gt(100)])
+        >>> list(coll.filter_by_type(Gt, lambda g: g.value > 5))
+        [Gt(value=10), Gt(value=100)]
+    """
+```
+
+### first
+
+```python
+def first(self, predicate: Callable[[Any], bool] | None = None) -> Any | None:
+    """Get first item matching predicate, or first item if no predicate.
+
+    Args:
+        predicate: Optional predicate function.
+
+    Returns:
+        The first matching item, or None.
+    """
+```
+
+### any
+
+```python
+def any(self, predicate: Callable[[Any], bool]) -> bool:
+    """Check if any item matches predicate.
+
+    Args:
+        predicate: Predicate function.
+
+    Returns:
+        True if any item matches.
+    """
+```
+
+### find_protocol
+
+```python
+def find_protocol(self, protocol: type[T]) -> T | None:
+    """Find first item implementing a runtime-checkable protocol.
+
+    Args:
+        protocol: A @runtime_checkable Protocol class.
+
+    Returns:
+        The first implementing item, or None.
+
+    Raises:
+        ProtocolNotRuntimeCheckableError: If protocol is not @runtime_checkable.
+
+    Examples:
+        >>> from typing import Protocol, runtime_checkable
+        >>> @runtime_checkable
+        ... class HasValue(Protocol):
+        ...     value: int
+        >>> coll = MetadataCollection.of([Gt(0), "doc"])
+        >>> coll.find_protocol(HasValue)
+        Gt(value=0)
+    """
+```
+
+### has_protocol
+
+```python
+def has_protocol(self, protocol: type) -> bool:
+    """Check if any item implements a runtime-checkable protocol."""
+```
+
+### count_protocol
+
+```python
+def count_protocol(self, protocol: type) -> int:
+    """Count items implementing a runtime-checkable protocol."""
+```
+
+## Transformation methods
+
+### exclude
+
+```python
+def exclude(self, *types: type) -> MetadataCollection:
+    """Create collection excluding items of given types.
+
+    Examples:
+        >>> coll = MetadataCollection.of([Gt(0), "doc", 42])
+        >>> list(coll.exclude(str))
+        [Gt(value=0), 42]
+    """
+```
+
+### unique
+
+```python
+def unique(self) -> MetadataCollection:
+    """Create collection with duplicate items removed.
+
+    Preserves first occurrence of each unique item.
+    """
+```
+
+### sorted
+
+```python
+def sorted(
+    self,
+    key: Callable[[Any], SupportsLessThan] | None = None,
+) -> MetadataCollection:
+    """Create sorted collection.
+
+    Args:
+        key: Optional key function. Defaults to sorting by type name,
+             then by value (for items with __lt__).
+
+    Returns:
+        A new sorted MetadataCollection.
+    """
+```
+
+### reversed
+
+```python
+def reversed(self) -> MetadataCollection:
+    """Create collection with items in reverse order."""
+```
+
+### map
+
+```python
+def map(self, func: Callable[[Any], Any]) -> list[Any]:
+    """Apply function to each item and return results as list.
+
+    Note: Returns list, not MetadataCollection, since mapped values
+    may not be appropriate as metadata.
+    """
+```
+
+### partition
+
+```python
+def partition(
+    self,
+    predicate: Callable[[Any], bool],
+) -> tuple[MetadataCollection, MetadataCollection]:
+    """Partition into two collections based on predicate.
+
+    Returns:
+        Tuple of (matching, non_matching) collections.
+
+    Examples:
+        >>> coll = MetadataCollection.of([1, 2, 3, 4, 5])
+        >>> even, odd = coll.partition(lambda x: x % 2 == 0)
+        >>> list(even), list(odd)
+        ([2, 4], [1, 3, 5])
+    """
+```
+
+### Combining collections
+
+```python
+# Using + operator
+combined = coll1 + coll2
+
+# Using | operator (same as +)
+combined = coll1 | coll2
+```
+
+## Introspection methods
+
+### types
+
+```python
+def types(self) -> frozenset[type]:
+    """Return frozenset of all unique types in the collection."""
+```
+
+### by_type
+
+```python
+def by_type(self) -> dict[type, list[Any]]:
+    """Group items by their type.
+
+    Returns:
+        Dict mapping each type to list of items of that type.
+    """
+```
+
+## Sequence protocol
+
+MetadataCollection implements the sequence protocol:
+
+```python
+len(coll)           # Number of items
+bool(coll)          # True if non-empty
+coll.is_empty       # True if empty
+coll[0]             # Get item by index
+coll[1:3]           # Slice to get MetadataCollection
+item in coll        # Check containment
+for item in coll:   # Iterate items
+    ...
+```
+
+---
+
+# Configuration
+
+## InspectConfig
+
+```python
+@dataclass(slots=True)
+class InspectConfig:
+    """Configuration for type inspection.
+
+    Attributes:
+        eval_mode: How to handle forward references.
+        globalns: Global namespace for resolving forward references.
+        localns: Local namespace for resolving forward references.
+        max_depth: Maximum recursion depth (None for unlimited).
+        hoist_metadata: Whether to hoist Annotated metadata to base type.
+        include_source_locations: Whether to track source locations.
+        include_private: Whether to include private members in class inspection.
+        include_inherited: Whether to include inherited members.
+    """
+    eval_mode: EvalMode = EvalMode.DEFERRED
+    globalns: dict[str, Any] | None = None
+    localns: dict[str, Any] | None = None
+    max_depth: int | None = None
+    hoist_metadata: bool = True
+    include_source_locations: bool = False
+    include_private: bool = False
+    include_inherited: bool = True
+```
+
+## EvalMode
+
+```python
+class EvalMode(Enum):
+    """Forward reference evaluation modes.
+
+    EAGER: Resolve immediately, fail on errors.
+    DEFERRED: Create ForwardRefNode for unresolvable references.
+    STRINGIFIED: Keep as strings, resolve lazily.
+    """
+    EAGER = "eager"
+    DEFERRED = "deferred"
+    STRINGIFIED = "stringified"
+```
+
+---
+
+# Type guards
+
+Type guard functions enable type-safe node discrimination:
+
+```python
+from typing_graph import (
+    is_concrete_node,
+    is_subscripted_generic_node,
+    is_union_type_node,
+    is_dataclass_node,
+    is_typed_dict_node,
+    is_function_node,
+)
+
+node = inspect_type(some_type)
+
+if is_concrete_node(node):
+    # Type narrowed to ConcreteNode
+    print(node.cls)
+elif is_subscripted_generic_node(node):
+    # Type narrowed to SubscriptedGenericNode
+    print(node.origin.cls, node.args)
+elif is_union_type_node(node):
+    # Type narrowed to UnionNode
+    print(node.members)
+```
+
+Available type guards:
+
+- `is_type_node`, `is_concrete_node`, `is_annotated_node`
+- `is_subscripted_generic_node`, `is_generic_alias_node`, `is_generic_node`
+- `is_union_type_node`, `is_intersection_node`, `is_discriminated_union_node`
+- `is_type_var_node`, `is_param_spec_node`, `is_type_var_tuple_node`, `is_type_param_node`
+- `is_any_node`, `is_never_node`, `is_self_node`
+- `is_literal_node`, `is_literal_string_node`
+- `is_tuple_node`, `is_ellipsis_node`, `is_forward_ref_node`
+- `is_structured_node`, `is_class_node`
+- `is_dataclass_node`, `is_typed_dict_node`, `is_named_tuple_node`
+- `is_enum_node`, `is_protocol_node`
+- `is_function_node`, `is_callable_node`, `is_signature_node`
+- `is_type_alias_node`, `is_new_type_node`
+
+---
+
+# Utility functions
+
+```python
+from typing_graph import (
+    get_union_members,
+    is_union_node,
+    is_optional_node,
+    unwrap_optional,
+    to_runtime_type,
+)
+
+# Get members of a union type
+members = get_union_members(Union[int, str])  # [int, str]
+
+# Check if node is a union
+is_union_node(node)  # True for UnionNode
+
+# Check if type is Optional (Union with None)
+is_optional_node(node)
+
+# Unwrap Optional to get inner type
+inner = unwrap_optional(Optional[int])  # int
+
+# Convert TypeNode back to runtime type
+runtime_type = to_runtime_type(node)
+```
+
+---
+
+# Common patterns
+
+## Traversing the type graph
+
+```python
+def print_type_tree(node: TypeNode, indent: int = 0) -> None:
+    """Recursively print a type tree."""
+    prefix = "  " * indent
+    print(f"{prefix}{type(node).__name__}")
+
+    for child in node.children():
+        print_type_tree(child, indent + 1)
+
+node = inspect_type(dict[str, list[int]])
+print_type_tree(node)
+# SubscriptedGenericNode
+#   ConcreteNode
+#   SubscriptedGenericNode
+#     ConcreteNode
+```
+
+## Extracting validation constraints
+
+```python
+from typing import Annotated
+from typing_graph import inspect_type
+from annotated_types import Gt, Lt, Ge, Le
+
+def extract_bounds(node: TypeNode) -> dict[str, int]:
+    """Extract numeric bounds from metadata."""
+    bounds = {}
+    for constraint in node.metadata.find_all(Gt, Lt, Ge, Le):
+        if isinstance(constraint, Gt):
+            bounds["gt"] = constraint.gt
+        elif isinstance(constraint, Ge):
+            bounds["ge"] = constraint.ge
+        elif isinstance(constraint, Lt):
+            bounds["lt"] = constraint.lt
+        elif isinstance(constraint, Le):
+            bounds["le"] = constraint.le
+    return bounds
+
+BoundedInt = Annotated[int, Gt(0), Le(100)]
+node = inspect_type(BoundedInt)
+print(extract_bounds(node))  # {"gt": 0, "le": 100}
+```
+
+## Working with nested metadata
+
+```python
+# Container-level metadata on list, element-level on int
+scores_type = Annotated[list[Annotated[int, Ge(0)]], MaxLen(100)]
+node = inspect_type(scores_type)
+
+# The outer list carries container-level metadata
+print(list(node.metadata))  # [MaxLen(max_length=100)]
+
+# The inner int carries element-level metadata
+int_node = node.args[0]
+print(list(int_node.metadata))  # [Ge(ge=0)]
+```
+
+## Inspecting dataclass fields
+
+```python
+from dataclasses import dataclass
+from typing import Annotated
+from typing_graph import inspect_dataclass
+
+@dataclass
+class User:
+    name: Annotated[str, MinLen(1), MaxLen(100)]
+    age: Annotated[int, Ge(0), Le(150)]
+    email: str
+
+node = inspect_dataclass(User)
+
+for field in node.fields:
+    print(f"{field.name}: {field.type_node.cls.__name__}")
+    print(f"  Metadata: {list(field.type_node.metadata)}")
+```
+
+## Inspecting function signatures
+
+```python
+from typing_graph import inspect_function
+
+def greet(name: str, age: int = 0) -> str:
+    return f"Hello {name}, you are {age}"
+
+node = inspect_function(greet)
+
+for param in node.parameters:
+    print(f"{param.name}: {param.type_node.cls.__name__}")
+    print(f"  Kind: {param.kind}")
+    print(f"  Has default: {param.default is not param.empty}")
+
+print(f"Returns: {node.return_type.cls.__name__}")
+```
+
+---
+
+# Glossary
+
+**Annotated type**: A type constructed with `typing.Annotated` that attaches metadata to a base type. Example: `Annotated[int, Gt(0)]`.
+
+**EvalMode**: An enumeration controlling forward reference evaluation. Values: `EAGER`, `DEFERRED`, `STRINGIFIED`.
+
+**Forward reference**: A type annotation referencing a class not yet defined at the point of annotation.
+
+**GroupedMetadata**: A protocol from annotated-types for metadata containing other metadata items.
+
+**InspectConfig**: A frozen dataclass containing configuration options for type inspection.
+
+**Inspection**: The process of analyzing a type annotation to produce a TypeNode representation.
+
+**Metadata hoisting**: The process of propagating metadata from an Annotated wrapper to its base TypeNode.
+
+**MetadataCollection**: An immutable, type-safe container for metadata extracted from Annotated type annotations.
+
+**Structured type**: A type defining named fields with associated types. Includes dataclasses, TypedDict, NamedTuple, and Protocol.
+
+**Type alias**: A named reference to another type, using either `TypeAlias` annotation or PEP 695 `type` statement syntax.
+
+**Type graph**: The tree structure produced when inspecting a type annotation.
+
+**Type node**: An immutable object representing an inspected type annotation.
+
+**Type qualifier**: A wrapper type modifying how another type behaves. Includes `ClassVar`, `Final`, `Required`, `NotRequired`, `ReadOnly`, `InitVar`.
+
+**Type variable**: A placeholder for a type filled in when a generic type is parameterized.
+
+---
+
+# Exceptions
+
+```python
+class MetadataNotFoundError(LookupError):
+    """Raised when required metadata is not found in a collection.
+
+    Raised by MetadataCollection.get_required() when the requested
+    type is not present.
+    """
+
+class ProtocolNotRuntimeCheckableError(TypeError):
+    """Raised when a non-runtime-checkable protocol is used with protocol methods.
+
+    Raised by find_protocol(), has_protocol(), count_protocol() when
+    the protocol argument is not decorated with @runtime_checkable.
+    """
+```
+
+---
+
+# Repository
+
+- **Source**: <https://github.com/tbhb/typing-graph>
+- **Documentation**: <https://typing-graph.tbhb.dev/>
+- **PyPI**: <https://pypi.org/project/typing-graph/>
+- **License**: MIT

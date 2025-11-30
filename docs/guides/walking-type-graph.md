@@ -1,10 +1,10 @@
-# Walking the type graph
+# How to traverse a type graph
+
+This guide shows you how to traverse [type graphs](../reference/glossary.md#type-graph) recursively to visit all nodes, collect information, and process nested type structures. You'll learn to write recursive traversal functions, handle different [node types](../reference/glossary.md#type-node), track paths, and collect metadata during traversal.
 
 !!! note "Upcoming API improvements"
 
     A dedicated **graph traversal API** is coming soon with a `walk()` generator, visitor pattern support, and path tracking. The patterns shown here use the current stable `children()` method. See the [roadmap](../roadmap.md#graph-traversal-api) for details on planned features.
-
-This guide shows how to traverse the type graph recursively using the `children()` method available on all type nodes.
 
 ## The children method
 
@@ -44,13 +44,16 @@ def traverse(node: TypeNode) -> None:
     """Visit every node in the type graph."""
     print(f"Visiting: {type(node).__name__}")
 
-    for child in node.children():
-        traverse(child)
+    for child in node.children():  # (1)!
+        traverse(child)  # (2)!
 
 # Try it
 node = inspect_type(dict[str, list[int]])
 traverse(node)
 ```
+
+1. `children()` returns the immediate children of this node (type arguments for generics).
+2. Recursive call processes the entire subtree depth-first.
 
 Output:
 
@@ -139,11 +142,11 @@ def traverse_with_path(node: TypeNode, path: str = "root") -> None:
 
     # Build paths for children based on node type
     if is_subscripted_generic_node(node):
-        for i, child in enumerate(node.args):
+        for i, child in enumerate(node.args):  # (1)!
             traverse_with_path(child, f"{path}[{i}]")
 
     elif is_dataclass_node(node):
-        for field in node.fields:
+        for field in node.fields:  # (2)!
             traverse_with_path(field.type, f"{path}.{field.name}")
 
     else:
@@ -162,6 +165,9 @@ class User:
 node = inspect_dataclass(User)
 traverse_with_path(node)
 ```
+
+1. For generics, use index notation (for example, `emails[0]` for element type).
+2. For dataclasses, use field names (for example, `root.name`, `root.emails`).
 
 Output:
 
@@ -185,19 +191,22 @@ def traverse_limited(
     current_depth: int = 0,
 ) -> None:
     """Traverse with a depth limit."""
-    if current_depth >= max_depth:
+    if current_depth >= max_depth:  # (1)!
         print(f"{'  ' * current_depth}... (max depth reached)")
         return
 
     print(f"{'  ' * current_depth}{type(node).__name__}")
 
     for child in node.children():
-        traverse_limited(child, max_depth, current_depth + 1)
+        traverse_limited(child, max_depth, current_depth + 1)  # (2)!
 
 # Limit to 2 levels
 node = inspect_type(dict[str, list[tuple[int, float]]])
 traverse_limited(node, max_depth=2)
 ```
+
+1. Base case: stop recursion when depth limit reached.
+2. Increment depth counter with each recursive call.
 
 Output:
 
@@ -281,8 +290,14 @@ root: outer
 root[0]: inner
 ```
 
+## Result
+
+You can now write recursive traversal functions using `children()`, handle different node types with type guards, track paths through the graph, limit recursion depth, and collect both types and metadata during traversal.
+
 ## See also
 
 - [Your first type inspection](../tutorials/first-inspection.md) - Basics of `children()`
-- [Extracting metadata](extracting-metadata.md) - Processing metadata during traversal
+- [Metadata queries](metadata-queries.md) - Processing metadata during traversal
 - [Inspecting structured types](../tutorials/structured-types.md) - Dataclass field traversal
+- [Architecture overview](../explanation/architecture.md) - How the node hierarchy is designed
+- [Type graph](../reference/glossary.md#type-graph) - Glossary definition

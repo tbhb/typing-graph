@@ -1,6 +1,12 @@
 # Forward references
 
-This page explains how typing-graph handles forward references—type annotations that reference classes not yet defined at the point of annotation.
+Forward references are a notable aspect of Python's type system. This page explains what they are, why they exist, and how typing-graph handles forward reference evaluation across Python versions.
+
+## Why forward references matter
+
+Python evaluates type annotations at definition time by default. This creates a practical problem: type annotations often need to reference types that don't exist yet.
+
+This problem has driven design changes in Python's typing system, from PEP 484's string annotations through PEP 563's deferred evaluation to PEP 649's lazy evaluation. typing-graph works correctly across all these approaches.
 
 ## What are forward references?
 
@@ -15,7 +21,7 @@ class Parent:
     children: list[Node]
 ```
 
-Python solves this with **forward references**—string annotations that defer evaluation:
+Python solves this with **forward references**, which are string annotations that defer evaluation:
 
 ```python
 class Node:
@@ -26,6 +32,17 @@ class Parent:
 ```
 
 Forward references also appear when using `from __future__ import annotations` (PEP 563), which makes all annotations strings by default.
+
+!!! info "Historical context: the evolution of forward references"
+
+    Python's approach to forward references has evolved significantly:
+
+    - **PEP 484 (2014)**: Introduced string annotations as the solution
+    - **PEP 563 (2017)**: Proposed making all annotations strings via `__future__` import
+    - **PEP 649 (2021)**: Proposed lazy evaluation as an alternative, avoiding string-related issues
+    - **Python 3.14**: PEP 649 becomes the default behavior
+
+    This evolution reflects the community's ongoing effort to balance three competing concerns: runtime introspectability, performance, and developer ergonomics. typing-graph is designed to work correctly regardless of which approach a codebase uses.
 
 ## How typing-graph handles forward references
 
@@ -93,6 +110,16 @@ Use stringified mode when:
 - You want to preserve the original string form
 - Resolution should happen at a different time
 - You're analyzing code with `from __future__ import annotations`
+
+!!! note "Design trade-off: three modes vs automatic detection"
+
+    You might wonder why typing-graph requires explicit mode selection rather than automatically detecting the best approach. The reason is that the "right" choice depends on your use case, not just the input:
+
+    - **Eager mode** is right when you need immediate validation and can guarantee all types exist
+    - **Deferred mode** balances convenience and robustness, making it the right default for most tools
+    - **Stringified mode** is essential when you need to preserve the exact annotation form
+
+    Automatic detection would need to guess your intent, which inevitably leads to surprising behavior in edge cases. Explicit modes make the behavior predictable and testable.
 
 ## The forward ref node
 
@@ -208,6 +235,17 @@ Forward reference evaluation has changed across Python versions:
 
 typing-graph handles these differences internally, providing a consistent API regardless of Python version.
 
+??? abstract "Why Python's forward reference API keeps changing"
+
+    The instability of Python's forward reference API reflects genuine complexity in the problem space. Each version has attempted to address limitations discovered in practice:
+
+    - **3.10-3.11**: Basic evaluation with manual cycle detection via `recursive_guard`
+    - **3.12**: Keyword-only `recursive_guard` for clearer API
+    - **3.13**: Added `type_params` to support PEP 695 scoped type parameters
+    - **3.14**: New `evaluate_forward_ref()` function designed for PEP 649's lazy evaluation
+
+    This evolution shows Python's type system maturing from an optional annotation layer into a core language feature. Libraries like typing-graph absorb this complexity so your code doesn't have to.
+
 ## Best practices
 
 ### Use deferred mode for flexibility
@@ -274,8 +312,25 @@ def traverse(node, visited=None):
         traverse(child, visited)
 ```
 
+## The broader context
+
+Forward references connect to larger themes in Python's evolution. The tension between runtime evaluation and static analysis has shaped much of the typing module's design. PEP 649's lazy evaluation in Python 3.14 represents a potential resolution to this tension: annotations will be available at runtime without the performance cost of eager evaluation or the complexity of string-based deferred evaluation.
+
+For library authors, this evolution means designing APIs that work regardless of how annotations are evaluated. typing-graph's `EvalMode` abstraction provides this flexibility: the same inspection code works whether annotations come from string evaluation, lazy evaluation, or direct expression evaluation.
+
+## Practical application
+
+Now that you understand forward references, apply this knowledge:
+
+- **Configure evaluation modes** with [Configuration options](../guides/configuration.md)
+- **Handle forward refs during traversal** with [Walking the type graph](../guides/walking-type-graph.md)
+- **Inspect functions with forward refs** in [Inspecting functions](../tutorials/functions.md)
+
 ## See also
 
 - [Configuration options](../guides/configuration.md) - Full details on `EvalMode` and namespaces
 - [Architecture overview](architecture.md) - How forward references fit into the inspection process
-- [Glossary: Forward reference](../reference/glossary.md#forward-reference) - Quick definition
+- [Forward reference](../reference/glossary.md#forward-reference) - Glossary definition
+- [EvalMode](../reference/glossary.md#eval-mode) - Glossary definition
+- [PEP 563](https://peps.python.org/pep-0563/) - Postponed evaluation of annotations
+- [PEP 649](https://peps.python.org/pep-0649/) - Deferred evaluation of annotations using descriptors

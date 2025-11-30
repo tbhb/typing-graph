@@ -1,6 +1,19 @@
 # Type aliases
 
-This page explains how typing-graph handles type aliases, including both traditional `TypeAlias` annotations and the newer PEP 695 `type` statement syntax.
+This page explains how typing-graph handles type aliases, including both traditional `TypeAlias` annotations and the newer PEP 695 `type` statement syntax. Type aliases are a fundamental abstraction mechanism, and understanding how typing-graph represents them helps you build tools that work with aliased types.
+
+## Why type aliases matter
+
+Type aliases are more than syntactic sugar. They serve several purposes in Python codebases:
+
+- **Readability**: `UserMapping = dict[str, list[tuple[int, str]]]` is easier to understand than repeating the full type
+- **DRY principle**: Changing `UserMapping` once updates all usages
+- **Semantic meaning**: A name like `UserId` conveys intent better than `int`
+- **Generic abstraction**: Aliases can introduce type parameters for reusable generic patterns
+
+The challenge for introspection tools is that aliases behave differently at runtime depending on how they're defined. Traditional aliases are "transparent": at runtime, `Vector = list[float]` is just `list[float]`. But PEP 695 aliases are "opaque" since they're first-class objects that know their own names.
+
+typing-graph handles both forms, exposing the alias structure when available and providing consistent inspection regardless of definition style.
 
 ## What are type aliases?
 
@@ -49,7 +62,7 @@ print(node.name)            # Vector
 print(node.value)           # SubscriptedGenericNode(origin=list, args=(ConcreteNode(cls=float),))
 ```
 
-You must provide the `name` parameter because simple type aliases don't inherently carry their name at runtime—they're just references to the aliased type.
+You must provide the `name` parameter because simple type aliases don't inherently carry their name at runtime. They're just references to the aliased type.
 
 ## Type aliases with PEP 695 (Python 3.12+)
 
@@ -73,6 +86,18 @@ This syntax offers key advantages:
 - **Lazy evaluation**: The aliased type isn't evaluated until used
 - **Scoped type parameters**: Type parameters are local to the alias
 - **Runtime introspectable**: The alias carries its name and parameters
+
+!!! info "Historical context: why Python needed a new syntax"
+
+    Traditional type aliases have a fundamental limitation: they're invisible at runtime. When you write `Vector: TypeAlias = list[float]`, Python evaluates `list[float]` immediately and binds that result to `Vector`. The `TypeAlias` annotation is only meaningful to static type checkers. At runtime, `Vector` is indistinguishable from `list[float]`.
+
+    This causes several problems:
+
+    - The alias name isn't available at runtime (no way to introspect "this came from Vector")
+    - Forward references in aliases require string quoting
+    - Generic aliases need verbose `TypeVar` declarations outside the alias
+
+    PEP 695's `type` statement solves these by making type aliases first-class objects. A `type Vector[T] = list[T]` statement creates a `TypeAliasType` object that knows its name, its type parameters, and its value (lazily evaluated). This enables the runtime introspection that typing-graph relies on.
 
 ### Inspecting aliases defined with PEP 695
 
@@ -129,6 +154,14 @@ print(node.value)           # ConcreteNode(cls=int)
 ```
 
 If you use `inspect_type()` on an alias value, it sees through the alias to the underlying type.
+
+!!! note "Design trade-off: two inspection functions"
+
+    You might wonder why typing-graph has separate `inspect_type()` and `inspect_type_alias()` functions rather than one function that detects aliases automatically.
+
+    The reason is that traditional aliases are indistinguishable from their underlying types at runtime. When you pass `UserId` (a traditional alias for `int`) to a function, Python passes `int`. There's no way to tell it came from an alias. The `name` parameter in `inspect_type_alias()` lets you recover this information.
+
+    PEP 695 aliases are different: they're distinct objects that carry their names. Future versions of typing-graph may unify the inspection functions for PEP 695 aliases while keeping the current behavior for traditional aliases.
 
 ## Scoped type parameters
 
@@ -200,8 +233,16 @@ print(type_var.constraints)  # (ConcreteNode(int), ConcreteNode(float), Concrete
 | PEP 695 simple (`type X = T`) | `GenericAliasNode` | Empty tuple |
 | PEP 695 generic (`type X[T] = ...`) | `GenericAliasNode` | Contains params |
 
+## Practical application
+
+Now that you understand type aliases, apply this knowledge:
+
+- **Work with generic type parameters** in [Generics and variance](generics.md)
+- **Traverse aliased types** with [Walking the type graph](../guides/walking-type-graph.md)
+
 ## See also
 
 - [Generics and variance](generics.md) - Deep dive into type parameters and variance
 - [Architecture overview](architecture.md) - How alias inspection fits into the design
+- [Type alias](../reference/glossary.md#type-alias) - Glossary definition
 - [PEP 695](https://peps.python.org/pep-0695/) - The specification for the `type` statement

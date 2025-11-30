@@ -20,9 +20,7 @@ SKIP_PATTERNS = [
 ]
 
 # Root-level documentation files to test
-ROOT_DOC_FILES = [
-    "docs/metadata-collection.md",
-]
+ROOT_DOC_FILES: list[str] = []
 
 
 def get_common_globals() -> dict[str, object]:

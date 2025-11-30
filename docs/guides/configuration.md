@@ -1,6 +1,6 @@
-# Configuration options
+# How to configure type inspection
 
-This guide explains the [`InspectConfig`][typing_graph.InspectConfig] options and how to customize typing-graph's behavior.
+This guide shows you how to customize typing-graph's behavior using [`InspectConfig`][typing_graph.InspectConfig]. You'll learn to control forward reference resolution, limit recursion depth, manage metadata hoisting, enable source location tracking, and work with the inspection cache.
 
 ## Creating an InspectConfig
 
@@ -19,7 +19,7 @@ node = inspect_type(list[int], config=config)
 
 All configuration options have sensible defaults, so you only need to specify what you want to change.
 
-## Forward reference evaluation modes
+## Controlling forward reference resolution
 
 The `eval_mode` option controls how typing-graph handles forward references (string annotations or references to not-yet-defined types). See [`EvalMode`][typing_graph.EvalMode] for all available modes.
 
@@ -27,9 +27,9 @@ The `eval_mode` option controls how typing-graph handles forward references (str
 from typing_graph import inspect_type, InspectConfig, EvalMode
 ```
 
-### Eager mode
+### When you need all types fully resolved
 
-`EvalMode.EAGER` fully resolves all annotations immediately. If resolution fails, inspection raises an error.
+Use `EvalMode.EAGER` to resolve all annotations immediately. If resolution fails, inspection raises an error:
 
 ```python
 config = InspectConfig(eval_mode=EvalMode.EAGER)
@@ -41,11 +41,11 @@ node = inspect_type(list[int], config=config)
 # node = inspect_type("UndefinedType", config=config)  # Error!
 ```
 
-Use eager mode when you need all types fully resolved and want immediate feedback on resolution failures.
+Choose eager mode when you want immediate feedback on resolution failures.
 
-### Deferred mode (default)
+### When you want to tolerate unresolved references
 
-`EvalMode.DEFERRED` resolves what it can and represents unresolvable references as [`ForwardRefNode`][typing_graph.ForwardRefNode] nodes.
+Use `EvalMode.DEFERRED` (the default) to resolve what's possible and represent unresolvable references as [`ForwardRefNode`][typing_graph.ForwardRefNode] nodes:
 
 ```python
 config = InspectConfig(eval_mode=EvalMode.DEFERRED)
@@ -59,21 +59,21 @@ if TYPE_CHECKING:
 node = inspect_type("SomeType", config=config)
 ```
 
-This is the default mode and works well for most use cases.
+This mode works well for most use cases.
 
-### `STRINGIFIED` mode
+### When working with stringified annotations
 
-`EvalMode.STRINGIFIED` keeps annotations as strings and resolves them lazily.
+Use `EvalMode.STRINGIFIED` to keep annotations as strings and resolve them lazily:
 
 ```python
 config = InspectConfig(eval_mode=EvalMode.STRINGIFIED)
 ```
 
-Use this when working with code that uses `from __future__ import annotations` or when you want full control over resolution timing.
+Choose this mode when working with code that uses `from __future__ import annotations` or when you want full control over resolution timing.
 
-## Depth limiting
+## Limiting recursion depth
 
-The `max_depth` option limits how deeply typing-graph recurses into nested types:
+When you need to prevent issues with deeply nested or recursive types, use the `max_depth` option:
 
 ```python
 # snippet - conceptual example
@@ -81,7 +81,7 @@ config = InspectConfig(max_depth=10)
 node = inspect_type(deeply_nested_type, config=config)
 ```
 
-This prevents issues with:
+This protects against:
 
 - Recursive type definitions
 - Deeply nested generics
@@ -89,7 +89,7 @@ This prevents issues with:
 
 The default value (50) handles most real-world types.
 
-## Metadata hoisting
+## Managing metadata attachment
 
 The `hoist_metadata` option controls whether metadata from `Annotated` wrappers gets attached to the base type node:
 
@@ -113,9 +113,9 @@ print(node.metadata)        # ('metadata',)
 
 Hoisting (enabled by default) attaches metadata directly to the underlying type node for convenient access.
 
-## Source locations
+## Enabling source location tracking
 
-The `include_source_locations` option adds source file information to nodes:
+When you need to track where types are defined (for error messages, IDE integration, or documentation), enable the `include_source_locations` option:
 
 ```python
 from dataclasses import dataclass
@@ -145,11 +145,13 @@ This is useful for:
 
 Source location tracking has a small performance cost, so it's off by default.
 
-## Cache management
+## Working with the inspection cache
 
 typing-graph caches inspection results for performance. Use [`cache_info()`][typing_graph.cache_info] and [`cache_clear()`][typing_graph.cache_clear] to control this behavior.
 
 ### Viewing cache statistics
+
+When you want to check cache effectiveness:
 
 ```python
 from typing_graph import cache_info
@@ -163,6 +165,8 @@ print(f"Max size: {info.maxsize}")
 
 ### Clearing the cache
 
+When you need fresh inspection results (after modifying class definitions, for performance testing, or to free memory):
+
 ```python
 from typing_graph import cache_clear
 
@@ -170,13 +174,7 @@ from typing_graph import cache_clear
 cache_clear()
 ```
 
-Clear the cache when:
-
-- You've modified class definitions and need fresh inspection results
-- You want to measure inspection performance without cache effects
-- You're done with a batch of inspections and want to free memory
-
-### Cache behavior
+### Understanding cache behavior
 
 The cache uses the type object and configuration as keys. Different configurations produce different cache entries:
 
@@ -188,42 +186,55 @@ node1 = inspect_type(list[int])
 node2 = inspect_type(list[int], config=InspectConfig(max_depth=5))
 ```
 
-## Configuration patterns
+## Common configuration patterns
 
-### Strict validation context
+### When validating types strictly
 
-For contexts where you need fully resolved types:
+If you need fully resolved types with no forward references:
 
 ```python
 strict_config = InspectConfig(
-    eval_mode=EvalMode.EAGER,
+    eval_mode=EvalMode.EAGER,  # (1)!
     max_depth=100,
 )
 ```
 
-### Performance-sensitive context
+1. Fails immediately if any forward reference cannot be resolved.
 
-For high-volume inspection where you can tolerate forward references:
+### When optimizing for performance
+
+If you're doing high-volume inspection and can tolerate forward references:
 
 ```python
 fast_config = InspectConfig(
-    eval_mode=EvalMode.DEFERRED,
-    include_source_locations=False,
+    eval_mode=EvalMode.DEFERRED,  # (1)!
+    include_source_locations=False,  # (2)!
 )
 ```
 
-### Debugging context
+1. Creates `ForwardRefNode` for unresolvable references instead of failing.
+2. Skips source location tracking to reduce overhead.
 
-For understanding type structures during development:
+### When debugging type structures
+
+If you're exploring types during development:
 
 ```python
 debug_config = InspectConfig(
-    include_source_locations=True,
+    include_source_locations=True,  # (1)!
     hoist_metadata=True,
 )
 ```
 
+1. Enables source file and line number tracking on nodes.
+
+## Result
+
+You can now configure type inspection with forward reference modes, depth limits, metadata hoisting, source location tracking, and cache management. Use these options to balance strict validation, performance, and debugging needs.
+
 ## See also
 
 - [Your first type inspection](../tutorials/first-inspection.md) - Basic inspection usage
+- [Forward references](../explanation/forward-references.md) - Deep dive into evaluation modes
+- [Metadata hoisting](../reference/glossary.md#metadata-hoisting) - Glossary definition
 - [API reference][typing_graph.InspectConfig] - Complete InspectConfig documentation

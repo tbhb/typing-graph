@@ -6,6 +6,124 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased](https://github.com/tbhb/typing-graph/compare/v0.1.0...HEAD)
 
+### Added
+
+#### MetadataCollection class
+
+A new immutable, sequence-like container for working with type annotation metadata. The class provides a comprehensive API for querying, filtering, and transforming metadata extracted from `Annotated` types.
+
+**Core features:**
+
+- Full sequence protocol support (`__len__`, `__getitem__`, `__contains__`, `__iter__`, `__bool__`, `__reversed__`)
+- Hashable when all contained metadata is hashable
+- `EMPTY` singleton for representing empty collections
+- Truncated `__repr__` for readable debugging output
+
+**Factory methods:**
+
+- `MetadataCollection.of(*items, auto_flatten=True)` - Create from arbitrary metadata items with optional GroupedMetadata flattening
+- `MetadataCollection.from_annotated(annotated_type, *, recursive=False)` - Extract metadata from Annotated types
+- `flatten()` - Expand GroupedMetadata at the top level
+- `flatten_deep()` - Recursively expand all nested GroupedMetadata
+
+**Query methods:**
+
+- `find(type_)` - Find first metadata of exact type, returns `T | None`
+- `find_first(*types)` - Find first metadata matching any of the given types
+- `find_all(*types)` - Find all metadata matching given types (single type returns `MetadataCollection[T]`)
+- `has(*types)` - Check if any metadata matches the given types
+- `count(*types)` - Count metadata items matching the given types
+- `get(type_, default=...)` - Get first metadata of type with optional default
+- `get_required(type_)` - Get first metadata of type, raising `MetadataNotFoundError` if not found
+
+**Filtering methods:**
+
+- `filter(predicate)` - Filter by arbitrary predicate function
+- `filter_by_type(type_, predicate)` - Type-safe filtering with typed predicate
+- `first(predicate=None)` - Get first item optionally matching predicate
+- `first_of_type(type_, predicate=None)` - Get first item of type optionally matching predicate
+- `any(predicate)` - Check if any item matches predicate
+- `find_protocol(protocol)` - Find first item implementing a runtime-checkable Protocol
+- `has_protocol(protocol)` - Check if any item implements a Protocol
+- `count_protocol(protocol)` - Count items implementing a Protocol
+
+**Transformation methods:**
+
+- `__add__` and `__or__` - Combine collections (both operators supported for ergonomics)
+- `exclude(*types)` - Remove items of specified types
+- `unique()` - Remove duplicate items (preserves order)
+- `sorted(key=None)` - Sort items with optional key function
+- `reversed()` - Reverse item order
+- `map(func)` - Apply function to each item (terminal operation returning `list`)
+- `partition(predicate)` - Split into matching and non-matching collections
+
+**Introspection methods:**
+
+- `types()` - Get frozenset of all metadata types in collection
+- `by_type()` - Group metadata by type into a dict
+- `is_empty` - Property indicating if collection has no items
+- `is_hashable()` - Check if all items are hashable
+
+**Exceptions:**
+
+- `MetadataNotFoundError` - Raised by `get_required()` when metadata is not found
+- `ProtocolNotRuntimeCheckableError` - Raised when Protocol methods receive non-runtime-checkable protocols
+
+**Protocol:**
+
+- `SupportsLessThan` - Protocol for items supporting `<` comparison, used by `sorted()`
+
+### Changed
+
+#### Breaking changes
+
+- **`TypeNode.metadata` type changed from `tuple[Any, ...]` to `MetadataCollection[Any]`** - The metadata property on all TypeNode subclasses now returns a MetadataCollection instead of a plain tuple. MetadataCollection is fully backwards-compatible with tuple access patterns (indexing, iteration, length, containment), but code using tuple-specific methods may need updates. See the [migration guide](https://typing-graph.tbhb.dev/guides/metadata-queries/) for details.
+
+- **`FieldDef.metadata` type changed from `tuple[Any, ...]` to `MetadataCollection[Any]`** - Field definitions for dataclasses, TypedDict, NamedTuple, attrs, and Pydantic models now return MetadataCollection.
+
+- **`Parameter.metadata` type changed from `tuple[Any, ...]` to `MetadataCollection[Any]`** - Function parameter metadata now returns MetadataCollection.
+
+### Documentation
+
+Documentation has been reorganized following the [Diataxis framework](https://diataxis.fr/) with four distinct content types:
+
+**Tutorials (learning-oriented):**
+
+- First type inspection - Introduction to inspecting type annotations
+- Working with metadata - Using MetadataCollection for metadata queries
+- Structured types - Exploring dataclasses, TypedDict, and NamedTuple
+- Functions and signatures - Inspecting function types and parameters
+
+**How-to guides (goal-oriented):**
+
+- How to query metadata - Find, filter, and extract metadata from types
+- How to filter metadata - Narrow down metadata with predicates and protocols
+- How to transform metadata - Combine, sort, and reshape metadata collections
+- Metadata recipes - Common patterns and advanced techniques
+- How to walk the type graph - Traverse and analyze type structures
+- How to configure inspection - Customize inspection behavior
+
+**Explanations (understanding-oriented):**
+
+- Forward references - Reference resolution strategies and trade-offs
+- Architecture - Design principles and internal structure
+- Metadata and annotations - How metadata extraction and hoisting works
+- Union types - Union handling and normalization
+- Type aliases - PEP 695 type alias support
+- Generics - Generic type handling and variance
+- Qualifiers - Type qualifier extraction and representation
+
+**Reference (information-oriented):**
+
+- API reference reorganized into 11 logical sections with 122 public members
+- Glossary with comprehensive terminology definitions
+- Changelog with Keep a Changelog format
+
+**LLM context files:**
+
+- `llms.txt` - Concise project summary for LLM context windows
+- `llms-full.txt` - Comprehensive documentation dump for detailed LLM assistance
+
 ## [0.1.0](https://github.com/tbhb/typing-graph/releases/tag/v0.1.0) - 2025-11-27
 
 Initial release of typing-graph, a Python library for inspecting type annotations and building graph representations of type metadata.

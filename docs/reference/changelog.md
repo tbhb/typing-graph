@@ -4,9 +4,9 @@ toc_depth: 1
 
 # Changelog
 
-!!! tip "Unreleased changes"
+!!! info "Unreleased changes"
 
-    For changes that have not yet been released, see the [CHANGELOG.md](https://github.com/tbhb/typing-graph/blob/main/CHANGELOG.md) file in the repository.
+    Changes not yet released are tracked in [CHANGELOG.md](https://github.com/tbhb/typing-graph/blob/main/CHANGELOG.md) in the repository.
 
 ## v0.1.0 (2025-11-27) { data-toc-label="v0.1.0 (2025-11-27)" }
 

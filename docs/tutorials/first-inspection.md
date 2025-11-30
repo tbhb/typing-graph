@@ -1,107 +1,250 @@
 # Your first type inspection
 
-In this tutorial, you'll learn the fundamentals of using typing-graph to inspect Python type annotations.
+In this tutorial, you'll inspect Python type annotations and extract metadata from them using [`inspect_type()`][typing_graph.inspect_type]. By the end, you'll have a working script that traverses a [type graph](../reference/glossary.md#type-graph) and prints its structure.
 
-## What you'll learn
+??? info "Prerequisites"
+    Before starting, ensure you have:
 
-- How to install typing-graph
-- How to use `inspect_type()` to inspect any type
-- What type nodes are and how to work with them
-- How to access metadata from `Annotated` types
-- How to traverse child types with `children()`
+    - Python 3.10 or later installed
+    - A terminal or command prompt
+    - Basic familiarity with Python type hints
 
-## Prerequisites
+    You don't need prior experience with typing-graph.
 
-- Python 3.10 or later
-- Basic understanding of Python type hints
+## Step 1: Install typing-graph
 
-## Installation
+Install the package using pip:
 
-Install typing-graph using your preferred package manager:
+```bash title="Terminal"
+pip install typing-graph
+```
 
-=== "pip"
+You should see output indicating a successful installation:
 
-    ```bash
-    pip install typing-graph
-    ```
+```text title="Output"
+Successfully installed typing-graph-x.x.x
+```
 
-=== "uv"
+## Step 2: Create the script file
 
-    ```bash
-    uv add typing-graph
-    ```
+Create a new file called `inspect_types.py`:
 
-=== "Poetry"
+```python title="inspect_types.py"
+from typing_graph import inspect_type, ConcreteNode
+```
 
-    ```bash
-    poetry add typing-graph
-    ```
+## Step 3: Inspect a simple type
 
-## Inspecting simple types
+Add code to inspect the `int` type:
 
-The [`inspect_type()`][typing_graph.inspect_type] function is your primary entry point for type inspection. Pass any type and receive a structured node representation.
-
-```python
+```python title="inspect_types.py"
 from typing_graph import inspect_type, ConcreteNode
 
 # Inspect a simple type
 node = inspect_type(int)
-print(type(node))  # <class 'typing_graph.ConcreteNode'>
-print(node.cls)    # <class 'int'>
+print(f"Node type: {type(node).__name__}")
+print(f"Class: {node.cls}")
 ```
 
-Simple types like `int`, `str`, `float`, and custom classes return a [`ConcreteNode`][typing_graph.ConcreteNode] node. This node provides access to the underlying class through its `cls` attribute.
+Run the script:
 
-```python
-# Inspect a string type
-str_node = inspect_type(str)
-print(str_node.cls)  # <class 'str'>
+```bash title="Terminal"
+python inspect_types.py
+```
+
+You should see:
+
+```text title="Output"
+Node type: ConcreteNode
+Class: <class 'int'>
+```
+
+## Step 4: Verify the node type and class
+
+Simple types like `int`, `str`, and custom classes return a [`ConcreteNode`][typing_graph.ConcreteNode]. All [type nodes](../reference/glossary.md#type-node) inherit from [`TypeNode`][typing_graph.TypeNode]. The `cls` attribute gives you the underlying Python class.
+
+Update your script to also inspect a custom class:
+
+```python title="inspect_types.py"
+from typing_graph import inspect_type, ConcreteNode
+
+# Inspect a simple type
+node = inspect_type(int)
+print(f"Node type: {type(node).__name__}")
+print(f"Class: {node.cls}")
 
 # Inspect a custom class
 class User:
     pass
 
 user_node = inspect_type(User)
-print(user_node.cls)  # <class '__main__.User'>
+print(f"\nUser node type: {type(user_node).__name__}")
+print(f"User class: {user_node.cls}")
 ```
 
-## Inspecting generic types
+Run the script:
 
-Generic types like `list[int]` or `dict[str, float]` return a [`SubscriptedGenericNode`][typing_graph.SubscriptedGenericNode] node. This node captures both the origin type (for example, `list`) and the type arguments (for example, `int`).
+```bash title="Terminal"
+python inspect_types.py
+```
 
-```python
-from typing_graph import inspect_type, SubscriptedGenericNode, GenericTypeNode
+You should see:
+
+```text title="Output"
+Node type: ConcreteNode
+Class: <class 'int'>
+
+User node type: ConcreteNode
+User class: <class '__main__.User'>
+```
+
+!!! success "Checkpoint"
+    At this point, you have:
+
+    - Installed typing-graph
+    - Inspected simple types using `inspect_type()`
+    - Accessed the underlying class via the `cls` attribute
+
+## Step 5: Inspect a generic type
+
+Replace your script contents with code to inspect a generic type:
+
+```python title="inspect_types.py"
+from typing_graph import inspect_type, SubscriptedGenericNode
 
 # Inspect a generic type
 node = inspect_type(list[int])
-print(type(node))  # SubscriptedGenericNode
+print(f"Node type: {type(node).__name__}")
+```
+
+Run the script:
+
+```bash title="Terminal"
+python inspect_types.py
+```
+
+You should see:
+
+```text title="Output"
+Node type: SubscriptedGenericNode
+```
+
+## Step 6: Access generic origin and arguments
+
+Generic types like `list[int]` return a [`SubscriptedGenericNode`][typing_graph.SubscriptedGenericNode]. This node provides access to both the origin type and its type arguments.
+
+Update your script:
+
+```python title="inspect_types.py"
+from typing_graph import inspect_type, SubscriptedGenericNode
+
+# Inspect a generic type
+node = inspect_type(list[int])
+print(f"Node type: {type(node).__name__}")
 
 # Access the origin (the generic type itself)
-print(node.origin)      # GenericTypeNode for 'list'
-print(node.origin.cls)  # <class 'list'>
+print(f"Origin class: {node.origin.cls}")
 
 # Access the type arguments
-print(node.args)        # (ConcreteNode for 'int',)
-print(node.args[0].cls) # <class 'int'>
+print(f"Number of args: {len(node.args)}")
+print(f"First arg class: {node.args[0].cls}")
 ```
 
-More complex generics work the same way:
+Run the script:
 
-```python
-# A dictionary with string keys and float values
-dict_node = inspect_type(dict[str, float])
-print(dict_node.origin.cls)  # <class 'dict'>
-print(dict_node.args[0].cls) # <class 'str'>  (key type)
-print(dict_node.args[1].cls) # <class 'float'> (value type)
+```bash title="Terminal"
+python inspect_types.py
 ```
 
-## Working with annotated types
+You should see:
 
-The real power of typing-graph emerges when working with `Annotated` types. These allow you to attach metadata to types, and typing-graph extracts this metadata for you.
+```text title="Output"
+Node type: SubscriptedGenericNode
+Origin class: <class 'list'>
+Number of args: 1
+First arg class: <class 'int'>
+```
 
-```python
-from typing import Annotated
+!!! success "Checkpoint"
+    At this point, you have:
+
+    - Inspected generic types like `list[int]`
+    - Accessed the origin class via `node.origin.cls`
+    - Accessed type arguments via `node.args`
+
+## Step 7: Define metadata classes
+
+Now create metadata classes that you'll attach to types. Replace your script:
+
+```python title="inspect_types.py"
 from dataclasses import dataclass
+
+# Define some metadata classes
+@dataclass(frozen=True)
+class MinLen:
+    value: int
+
+@dataclass(frozen=True)
+class MaxLen:
+    value: int
+
+print("Metadata classes defined")
+```
+
+Run the script:
+
+```bash title="Terminal"
+python inspect_types.py
+```
+
+You should see:
+
+```text title="Output"
+Metadata classes defined
+```
+
+## Step 8: Create an annotated type
+
+Add an annotated type using your metadata classes:
+
+```python title="inspect_types.py"
+from dataclasses import dataclass
+from typing import Annotated
+
+# Define some metadata classes
+@dataclass(frozen=True)
+class MinLen:
+    value: int
+
+@dataclass(frozen=True)
+class MaxLen:
+    value: int
+
+# Create an annotated type
+ValidatedString = Annotated[str, MinLen(1), MaxLen(100)]
+print(f"Type alias created: {ValidatedString}")
+```
+
+Run the script:
+
+```bash title="Terminal"
+python inspect_types.py
+```
+
+You should see:
+
+```text title="Output"
+Type alias created: typing.Annotated[str, MinLen(value=1), MaxLen(value=100)]
+```
+
+## Step 9: Inspect the annotated type
+
+Add inspection of the annotated type:
+
+```python title="inspect_types.py"
+from dataclasses import dataclass
+from typing import Annotated
+
 from typing_graph import inspect_type
 
 # Define some metadata classes
@@ -118,59 +261,136 @@ ValidatedString = Annotated[str, MinLen(1), MaxLen(100)]
 
 # Inspect it
 node = inspect_type(ValidatedString)
+print(f"Node type: {type(node).__name__}")
+print(f"Class: {node.cls}")
 ```
 
-By default, typing-graph "hoists" metadata from `Annotated` wrappers to the base type node. This means you get a `ConcreteNode` for `str` with the metadata attached:
+Run the script:
 
-```python
-print(type(node))   # ConcreteNode
-print(node.cls)     # <class 'str'>
-print(node.metadata)  # (MinLen(value=1), MaxLen(value=100))
+```bash title="Terminal"
+python inspect_types.py
 ```
 
-You can iterate over the metadata to process it:
+You should see:
 
-```python
+```text title="Output"
+Node type: ConcreteNode
+Class: <class 'str'>
+```
+
+Notice that you get a `ConcreteNode` for `str`, not an `AnnotatedNode`. typing-graph "hoists" metadata from `Annotated` wrappers to the base type node. See [metadata hoisting](../reference/glossary.md#metadata-hoisting) for more details.
+
+## Step 10: Access metadata from the node
+
+Add code to access the metadata:
+
+```python title="inspect_types.py"
+from dataclasses import dataclass
+from typing import Annotated
+
+from typing_graph import inspect_type
+
+# Define some metadata classes
+@dataclass(frozen=True)
+class MinLen:
+    value: int
+
+@dataclass(frozen=True)
+class MaxLen:
+    value: int
+
+# Create an annotated type
+ValidatedString = Annotated[str, MinLen(1), MaxLen(100)]
+
+# Inspect it
+node = inspect_type(ValidatedString)
+print(f"Node type: {type(node).__name__}")
+print(f"Class: {node.cls}")
+
+# Access metadata
+print(f"\nMetadata: {node.metadata}")
 for meta in node.metadata:
     if isinstance(meta, MinLen):
-        print(f"Minimum length: {meta.value}")
+        print(f"  Minimum length: {meta.value}")
     elif isinstance(meta, MaxLen):
-        print(f"Maximum length: {meta.value}")
+        print(f"  Maximum length: {meta.value}")
 ```
 
-### Nested annotated types
+Run the script:
 
-Metadata hoisting works at each level of nested types, keeping metadata properly scoped:
+```bash title="Terminal"
+python inspect_types.py
+```
 
-```python
+You should see:
+
+```text title="Output"
+Node type: ConcreteNode
+Class: <class 'str'>
+
+Metadata: MetadataCollection([MinLen(value=1), MaxLen(value=100)])
+  Minimum length: 1
+  Maximum length: 100
+```
+
+!!! success "Checkpoint"
+    At this point, you have:
+
+    - Created metadata classes using frozen dataclasses
+    - Attached metadata to types using `Annotated`
+    - Extracted metadata from inspected type nodes
+
+## Step 11: Define a nested annotated type
+
+Replace your script with code that creates nested annotated types:
+
+```python title="inspect_types.py"
+from dataclasses import dataclass
 from typing import Annotated
+
 from typing_graph import inspect_type
 
 @dataclass(frozen=True)
 class Description:
     text: str
 
-# Metadata on the list itself
 # Metadata on the element type (via a type alias)
 URL = Annotated[str, Description("A URL string")]
+
+# Metadata on the list itself
 URLs = Annotated[list[URL], Description("A list of URLs")]
 
+# Inspect the outer type
 node = inspect_type(URLs)
 
 # The list node has its own metadata
-print(node.metadata)  # (Description(text='A list of URLs'),)
+print(f"List metadata: {list(node.metadata)}")
 
 # The element type has its metadata
 element = node.args[0]
-print(element.metadata)  # (Description(text='A URL string'),)
+print(f"Element metadata: {list(element.metadata)}")
 ```
 
-## Traversing child types
+Run the script:
 
-Every type node has a `children()` method that returns its child nodes. This enables recursive traversal of the type graph.
+```bash title="Terminal"
+python inspect_types.py
+```
 
-```python
+You should see:
+
+```text title="Output"
+List metadata: [Description(text='A list of URLs')]
+Element metadata: [Description(text='A URL string')]
+```
+
+## Step 12: Traverse the type tree
+
+Replace your script with a recursive traversal function:
+
+```python title="inspect_types.py"
 from typing_graph import inspect_type, ConcreteNode, SubscriptedGenericNode
+
 
 def print_type_tree(node, indent=0):
     """Recursively print a type tree."""
@@ -189,25 +409,49 @@ def print_type_tree(node, indent=0):
     for child in node.children():
         print_type_tree(child, indent + 1)
 
+
 # Try it out
 node = inspect_type(dict[str, list[int]])
 print_type_tree(node)
 ```
 
-Output:
+Run the script:
 
-```text
+```bash title="Terminal"
+python inspect_types.py
+```
+
+You should see:
+
+```text title="Output"
 SubscriptedGenericNode: dict[...]
   ConcreteNode: str
   SubscriptedGenericNode: list[...]
     ConcreteNode: int
 ```
 
-## Next steps
+!!! success "Checkpoint"
+    You've completed this tutorial. You can now:
 
-Now that you understand the basics, explore these topics:
+    - Inspect any Python type annotation
+    - Access the underlying class and type arguments
+    - Extract metadata from `Annotated` types
+    - Traverse nested type structures using `children()`
 
-- [Inspecting structured types](structured-types.md) - Work with dataclasses, TypedDict, and NamedTuple
-- [Inspecting functions](functions.md) - Analyze function signatures and parameters
-- [Extracting metadata](../guides/extracting-metadata.md) - Patterns for filtering and processing metadata
-- [Walking the type graph](../guides/walking-type-graph.md) - Advanced traversal techniques
+## Summary
+
+You've built a script that inspects Python type annotations and traverses the type graph. The key functions are:
+
+- [`inspect_type()`][typing_graph.inspect_type] inspects any type annotation
+- `node.cls` accesses the underlying class
+- `node.metadata` accesses attached metadata
+- `node.children()` returns child nodes for traversal
+
+!!! tip "Next steps"
+    Now that you understand the basics, explore:
+
+    - [Working with metadata](working-with-metadata.md) - Query and filter metadata collections
+    - [Inspecting structured types](structured-types.md) - Work with dataclasses, TypedDict, and NamedTuple
+    - [Inspecting functions](functions.md) - Analyze function signatures and parameters
+
+    For practical applications of type graph traversal, see [Walking the type graph](../guides/walking-type-graph.md).

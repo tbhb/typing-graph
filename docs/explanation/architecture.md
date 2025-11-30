@@ -1,6 +1,18 @@
 # Architecture overview
 
-This page explains the high-level architecture of typing-graph, how its components work together, and the design decisions behind them.
+This page explains the high-level architecture of typing-graph, how its components work together, and the reasoning behind the design decisions. Understanding the architecture helps you work effectively with the library and appreciate why certain choices were made.
+
+## Why typing-graph exists
+
+Python's `typing` module provides rich type annotation capabilities, but working with these annotations programmatically is surprisingly difficult. The standard library offers `get_origin()`, `get_args()`, and `get_type_hints()`, but these low-level primitives leave significant work for library authors:
+
+- Handling the many edge cases across Python versions
+- Traversing nested types recursively
+- Extracting metadata from `Annotated` wrappers
+- Managing forward reference resolution
+- Dealing with the subtle differences between `typing.Union` and `types.UnionType`
+
+typing-graph addresses these challenges by providing a unified, graph-based representation of type annotations. Rather than working with raw type objects and their quirks, you work with a consistent node hierarchy that handles the complexity internally.
 
 ## Core concepts
 
@@ -84,6 +96,12 @@ config = InspectConfig(hoist_metadata=False)
 node = inspect_type(Annotated[str, MaxLen(100)], config=config)
 # Returns: AnnotatedNode(base=ConcreteNode(cls=str), annotations=(MaxLen(100),))
 ```
+
+!!! note "Design trade-off: hoisting by default"
+
+    Hoisting is the default because most use cases want to work with the underlying type while having convenient access to metadata. The alternative (always preserving `AnnotatedNode` wrappers) would require consumers to constantly unwrap types to get to the actual type structure.
+
+    However, some use cases genuinely need to distinguish "a string with metadata" from "a string." Round-trip serialization and type reconstruction are examples where preserving the exact annotation structure matters. That's why `hoist_metadata=False` exists.
 
 ## The node layer
 
@@ -201,6 +219,36 @@ What counts as "children" depends on the node type:
 - `DataclassNode` → field types
 - `ConcreteNode` → empty (leaf node)
 
+<!-- vale Google.Headings = NO -->
+
+## MetadataCollection
+
+<!-- vale Google.Headings = YES -->
+
+Every [`TypeNode`][typing_graph.TypeNode] carries a `metadata` attribute containing any metadata attached via `Annotated`. The [`MetadataCollection`][typing_graph.MetadataCollection] class provides an immutable, type-safe container for this metadata.
+
+### Design principles
+
+`MetadataCollection` follows the same design principles as the node layer:
+
+- **Immutable**: All transformation methods return new collections
+- **Memory efficient**: The `EMPTY` singleton avoids allocating empty collections
+- **Thread-safe**: Immutability enables safe concurrent access
+- **Sequence protocol**: Works naturally with standard Python patterns
+
+### Rich query API
+
+The collection provides specialized methods for metadata operations:
+
+- **Query**: `find()`, `find_all()`, `find_first()`, `get()`, `get_required()`
+- **Existence**: `has()`, `count()`, `is_empty`
+- **Filter**: `filter()`, `filter_by_type()`, `first()`, `any()`
+- **Protocol**: `find_protocol()`, `has_protocol()`, `count_protocol()`
+- **Transform**: `exclude()`, `unique()`, `sorted()`, `reversed()`, `partition()`, `map()`
+- **Introspection**: `types()`, `by_type()`
+
+See [Metadata and Annotated](metadata.md) for details on how metadata flows through the inspection process.
+
 ## The configuration layer
 
 ### InspectConfig
@@ -266,6 +314,8 @@ The `Qualifier` Enum is re-exported from typing-inspection for convenience.
 
 ## Design principles
 
+The architecture reflects several deliberate design choices. Understanding these principles helps you predict how the library behaves and why.
+
 ### Standard library first
 
 The library minimizes dependencies, relying primarily on the standard library. External dependencies are carefully chosen:
@@ -274,9 +324,23 @@ The library minimizes dependencies, relying primarily on the standard library. E
 - **typing-extensions** - Backports of modern typing features
 - **annotated-types** (optional) - Standard constraint vocabulary
 
+!!! abstract "Why limit dependencies?"
+
+    Dependencies create maintenance burden, compatibility constraints, and security surface area. For a library that may be used transitively by many projects, each dependency multiplies the risk of version conflicts. The standard library is always available and evolves with Python itself.
+
+    The dependencies typing-graph does include are chosen for their stability and widespread adoption. typing-inspection comes from the Pydantic ecosystem and handles the gnarliest version-specific edge cases. typing-extensions is effectively part of the standard library with a different release cadence.
+
 ### Immutable by design
 
 The library freezes all TypeNode dataclasses, guaranteeing immutability after construction. Tuples store metadata (not lists), and qualifier sets use frozensets. This immutability enables nodes to be hashable, cached safely, and accessed concurrently without synchronization.
+
+??? info "The case for immutability"
+
+    Immutability might seem like an unnecessary constraint. Why not let consumers modify nodes if they want to? The answer lies in the caching system. typing-graph caches inspection results to avoid repeatedly analyzing the same types. If nodes were mutable, cached nodes could be modified unexpectedly by any code that received them, breaking the cache's integrity.
+
+    Immutability also enables safe sharing in concurrent code. Multiple threads can hold references to the same node without synchronization because no thread can modify the shared state.
+
+    The trade-off is that creating modified versions of nodes requires constructing new instances. In practice, this rarely matters because most consumers read from the type graph rather than transforming it.
 
 ### Lazy evaluation
 
@@ -286,6 +350,28 @@ The library uses lazy evaluation where possible:
 - Forward references can defer resolution
 - Children use computed properties, not eager materialization
 
+This approach keeps memory usage proportional to what you actually inspect, not to the theoretical size of the complete type graph.
+
 ### Type safety
 
 The library is fully typed and passes strict basedpyright checking. Type guard functions (`is_concrete_node()`, `is_union_type_node()`, etc.) enable type-safe node discrimination.
+
+## Relationship to the Python ecosystem
+
+typing-graph builds on Pydantic's [typing-inspection](https://typing-inspection.pydantic.dev/) library, which provides battle-tested utilities for low-level type introspection. This relationship is deliberate: rather than reimplementing complex version-specific logic, typing-graph uses typing-inspection for the foundational layer and focuses on providing the graph abstraction.
+
+The library also integrates with [annotated-types](https://github.com/annotated-types/annotated-types) for standard constraint types like `Gt`, `Le`, and `MaxLen`. This integration is optional (typing-graph works with any metadata objects) but provides convenient support for the emerging standard vocabulary of type constraints.
+
+## Practical application
+
+Now that you understand the architecture, apply this knowledge:
+
+- **Traverse the node hierarchy** with [Walking the type graph](../guides/walking-type-graph.md)
+- **Configure inspection behavior** with [Configuration options](../guides/configuration.md)
+- **Work with metadata** using [Metadata queries](../guides/metadata-queries.md)
+
+## See also
+
+- [Type node](../reference/glossary.md#type-node) - Glossary definition
+- [Type graph](../reference/glossary.md#type-graph) - Glossary definition
+- [Metadata hoisting](../reference/glossary.md#metadata-hoisting) - Glossary definition

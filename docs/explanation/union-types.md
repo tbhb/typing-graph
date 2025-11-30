@@ -1,6 +1,18 @@
 # Union types
 
-This page explains how Python represents union types and how typing-graph handles them.
+This page explains how Python represents union types and how typing-graph handles them. Union types have different runtime representations depending on how they are created, which typing-graph helps you navigate.
+
+## Why two union types exist
+
+Python has two different union representations due to how the type system evolved. This history explains the behavior you'll encounter when inspecting union types.
+
+Python's type system evolved in stages. PEP 484 (2014) introduced `typing.Union` as a way to express that a value could be one of several types. This worked through the typing module's special form machinery.
+
+Later, PEP 604 (2020) added the `|` operator syntax for unions: `int | str` instead of `Union[int, str]`. For concrete types, this operator creates a new `types.UnionType` object, which is a true Python type rather than a typing module construct.
+
+However, the `|` operator also needed to work with typing special forms like `Literal` and `Optional`. These types already had their own `__or__` methods that returned `typing.Union`. Changing this behavior would break backward compatibility.
+
+The result: `int | str` creates `types.UnionType`, but `Literal[1] | Literal[2]` creates `typing.Union`. Same operator, different result types.
 
 ## Two kinds of unions
 
@@ -105,11 +117,19 @@ print(get_union_members(node2))  # (LiteralNode(...), LiteralNode(...))
 
 ## Why typing-graph preserves the distinction
 
-typing-graph reflects what Python gives it rather than normalizing union forms. This design:
+typing-graph reflects what Python gives it rather than normalizing union forms. This design decision deserves explanation because the alternative (always producing `UnionNode`) would simplify the API.
 
-1. **Preserves round-trip fidelity** - You can reconstruct the original type annotation
-2. **Avoids information loss** - The underlying representation may matter for some use cases
-3. **Follows the principle of least surprise** - The library reports what Python provides
+!!! note "Design trade-off: preservation vs normalization"
+
+    We chose preservation because normalization loses information that some use cases need:
+
+    1. **Round-trip fidelity** - You can reconstruct the original type annotation
+    2. **Debugging accuracy** - The node structure matches what Python actually creates
+    3. **Future compatibility** - If Python's behavior changes, typing-graph reflects those changes
+
+    The trade-off is API complexity: code that handles unions must consider both forms on Python < 3.14. The helper functions `is_union_node()` and `get_union_members()` exist specifically to make this easier.
+
+    We considered automatic normalization but rejected it because it would hide real differences in Python's runtime behavior. These differences can matter for serialization, debugging, and understanding edge cases.
 
 ## Implications for type checking
 
@@ -119,6 +139,21 @@ This distinction rarely matters in practice because static type checkers treat b
 - `Literal[1] | Literal[2]` produces `SubscriptedGenericNode` with `origin.cls=typing.Union` and `args`
 
 On Python 3.14+, both forms produce `UnionNode`, so you only need to handle one case.
+
+??? info "Python 3.14: union unification"
+
+    Python 3.14 unifies `types.UnionType` and `typing.Union`. The `types.UnionType` type becomes an alias for `typing.Union`, and all union expressions produce the same runtime type.
+
+    This unification simplifies the landscape considerably. If you're writing new code that only needs to support Python 3.14+, you can ignore the distinction entirely and always use `UnionNode`.
+
+    For libraries that need to support older Python versions, the helper functions remain the best approach. They abstract over the version differences and will continue working correctly on Python 3.14+.
+
+## Practical application
+
+Now that you understand union types, apply this knowledge:
+
+- **Handle unions during traversal** with [Walking the type graph](../guides/walking-type-graph.md)
+- **Inspect union type parameters** in [Inspecting functions](../tutorials/functions.md)
 
 ## See also
 
@@ -132,6 +167,7 @@ On Python 3.14+, both forms produce `UnionNode`, so you only need to handle one 
 **Related:**
 
 - [Architecture overview](architecture.md) - How unions fit into the node hierarchy
+- [Type node](../reference/glossary.md#type-node) - Glossary definition
 - [Modernizing Union and Optional](https://typing.python.org/en/latest/guides/modernizing.html#typing-union-and-typing-optional) - Python typing docs on modern union syntax
 - [PEP 604](https://peps.python.org/pep-0604/) - Union types via `X | Y` syntax
 - [PEP 586](https://peps.python.org/pep-0586/) - Literal types

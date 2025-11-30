@@ -1,33 +1,73 @@
 # Glossary
 
-This glossary defines key terms used throughout the typing-graph documentation. Terms appear in alphabetical order.
+Definitions of key terms used throughout the typing-graph documentation. Terms appear in alphabetical order. Each term links to its primary explanation page and relevant API reference.
 
 Annotated type { #annotated-type }
-:   A type constructed with `typing.Annotated` that attaches metadata to a base type. For example, `Annotated[int, Gt(0)]` attaches a "greater than zero" constraint to an integer type. typing-graph extracts and processes this metadata through the inspection API. See [`AnnotatedNode`][typing_graph.AnnotatedNode].
+:   A type constructed with `typing.Annotated` that attaches metadata to a base type. Example: `Annotated[int, Gt(0)]` attaches a "greater than zero" constraint to an integer type.
+
+    **Learn more:** [Metadata and Annotated types](../explanation/metadata.md) | **API:** [`AnnotatedNode`][typing_graph.AnnotatedNode]
+
+EvalMode { #eval-mode }
+:   An enumeration controlling forward reference evaluation during [inspection](#inspection). Values: `EAGER` (resolve immediately, fail on error), `DEFERRED` (wrap in ForwardRef for lazy resolution), `STRINGIFIED` (keep as string).
+
+    **Learn more:** [Forward references](../explanation/forward-references.md) | **API:** [`EvalMode`][typing_graph.EvalMode]
 
 Forward reference { #forward-reference }
-:   A type annotation that references a class not yet defined at the point of annotation. Python represents forward references as strings (for example, `"Node"` or `Optional["Node"]`). typing-graph provides configurable strategies for evaluating forward references during inspection. See [`ForwardRefNode`][typing_graph.ForwardRefNode] and [`EvalMode`][typing_graph.EvalMode]. See also: [inspection](#inspection).
+:   A type annotation referencing a class not yet defined at the point of annotation. Python represents forward references as strings (for example, `"Node"` or `Optional["Node"]`).
+
+    **Learn more:** [Forward references](../explanation/forward-references.md) | **API:** [`ForwardRefNode`][typing_graph.ForwardRefNode], [`EvalMode`][typing_graph.EvalMode]
+
+GroupedMetadata { #grouped-metadata }
+:   A protocol from the annotated-types library for metadata containing other metadata items. Example: `Interval(ge=0, le=100)` groups `Ge(0)` and `Le(100)`.
+
+    **Learn more:** [GroupedMetadata flattening](../explanation/metadata.md#groupedmetadata-automatic-flattening) | **API:** [`MetadataCollection`][typing_graph.MetadataCollection]
+
+InspectConfig { #inspect-config }
+:   A frozen dataclass containing configuration options for type inspection. Controls forward reference evaluation mode, recursion depth, member inclusion, metadata hoisting, and source location tracking.
+
+    **Learn more:** [Configuration options](../guides/configuration.md) | **API:** [`InspectConfig`][typing_graph.InspectConfig]
 
 Inspection { #inspection }
-:   The process of analyzing a type annotation and producing a structured [type node](#type-node) representation. The [`inspect_type()`][typing_graph.inspect_type] function performs inspection, returning an appropriate node subclass based on the input type.
+:   The process of analyzing a type annotation to produce a [type node](#type-node) representation. The [`inspect_type()`][typing_graph.inspect_type] function performs inspection, returning an appropriate node subclass based on the input type.
+
+    **Learn more:** [Architecture overview](../explanation/architecture.md) | **Tutorial:** [Your first type inspection](../tutorials/first-inspection.md)
 
 Metadata hoisting { #metadata-hoisting }
-:   The process of propagating metadata from an [annotated type](#annotated-type) wrapper to its base [type node](#type-node). When typing-graph inspects `Annotated[list[int], SomeMetadata]`, it hoists `SomeMetadata` to the resulting node, making the metadata accessible on the node that represents the actual type. Configure this behavior with [`InspectConfig`][typing_graph.InspectConfig].
+:   The process of propagating metadata from an [annotated type](#annotated-type) wrapper to its base [type node](#type-node). Example: inspecting `Annotated[list[int], SomeMetadata]` hoists `SomeMetadata` to the resulting node.
+
+    **Learn more:** [Metadata and Annotated types](../explanation/metadata.md#metadata-hoisting) | **API:** [`InspectConfig.hoist_metadata`][typing_graph.InspectConfig]
+
+MetadataCollection { #metadata-collection }
+:   An immutable, type-safe container for metadata extracted from `Annotated` type annotations. Every [type node](#type-node) has a `metadata` attribute containing a `MetadataCollection`.
+
+    **Learn more:** [Metadata and Annotated types](../explanation/metadata.md) | **Tutorial:** [Working with metadata](../tutorials/working-with-metadata.md) | **API:** [`MetadataCollection`][typing_graph.MetadataCollection]
 
 Structured type { #structured-type }
-:   A type that defines named fields with associated types. Structured types include dataclasses, TypedDict, NamedTuple, and Protocol. typing-graph provides specialized node classes for each: [`DataclassNode`][typing_graph.DataclassNode], [`TypedDictNode`][typing_graph.TypedDictNode], [`NamedTupleNode`][typing_graph.NamedTupleNode], and [`ProtocolNode`][typing_graph.ProtocolNode].
+:   A type defining named fields with associated types. Includes dataclasses, TypedDict, NamedTuple, and Protocol.
+
+    **Tutorial:** [Inspecting structured types](../tutorials/structured-types.md) | **API:** [`DataclassNode`][typing_graph.DataclassNode], [`TypedDictNode`][typing_graph.TypedDictNode], [`NamedTupleNode`][typing_graph.NamedTupleNode], [`ProtocolNode`][typing_graph.ProtocolNode]
 
 Type alias { #type-alias }
-:   A named reference to another type, either using the `TypeAlias` annotation or PEP 695 `type` statement syntax. typing-graph unwraps type aliases during [inspection](#inspection) to analyze the underlying type structure. See [`TypeAliasNode`][typing_graph.TypeAliasNode] and [`inspect_type_alias()`][typing_graph.inspect_type_alias].
+:   A named reference to another type, using either `TypeAlias` annotation or PEP 695 `type` statement syntax.
+
+    **Learn more:** [Type aliases](../explanation/type-aliases.md) | **API:** [`TypeAliasNode`][typing_graph.TypeAliasNode], [`inspect_type_alias()`][typing_graph.inspect_type_alias]
 
 Type graph { #type-graph }
-:   The tree structure produced when inspecting a type annotation. The root node represents the top-level type, and child nodes represent nested types (like a list's element type or a dataclass's field types). Navigate the graph using each node's [`children()`][typing_graph.TypeNode.children] method. See also: [type node](#type-node).
+:   The tree structure produced when inspecting a type annotation. The root node represents the top-level type; child nodes represent nested types (element types, field types).
+
+    **Learn more:** [Architecture overview](../explanation/architecture.md) | **Guide:** [Walking the type graph](../guides/walking-type-graph.md) | **API:** [`TypeNode.children()`][typing_graph.TypeNode.children]
 
 Type node { #type-node }
-:   An immutable object representing an inspected type annotation. Each node class corresponds to a category of Python types: [`ConcreteNode`][typing_graph.ConcreteNode] for simple types, [`SubscriptedGenericNode`][typing_graph.SubscriptedGenericNode] for parameterized generics, [`UnionNode`][typing_graph.UnionNode] for unions, and so on. All nodes inherit from [`TypeNode`][typing_graph.TypeNode], which defines the common interface.
+:   An immutable object representing an inspected type annotation. Node classes correspond to type categories: [`ConcreteNode`][typing_graph.ConcreteNode] for simple types, [`SubscriptedGenericNode`][typing_graph.SubscriptedGenericNode] for parameterized generics, [`UnionNode`][typing_graph.UnionNode] for unions. All inherit from [`TypeNode`][typing_graph.TypeNode].
+
+    **Learn more:** [Architecture overview](../explanation/architecture.md) | **Tutorial:** [Your first type inspection](../tutorials/first-inspection.md)
 
 Type qualifier { #type-qualifier }
-:   A wrapper type that modifies how another type behaves in a specific context. Qualifiers include `ClassVar` (class-level attribute), `Final` (immutable binding), `Required`/`NotRequired` (TypedDict field optionality), `ReadOnly` (immutable field), and `InitVar` (dataclass init-only field). typing-graph extracts qualifiers and exposes them through the `Qualifier` enumeration (re-exported from typing-inspection).
+:   A wrapper type modifying how another type behaves in a specific context. Includes `ClassVar`, `Final`, `Required`, `NotRequired`, `ReadOnly`, and `InitVar`.
+
+    **Learn more:** [Qualifiers](../explanation/qualifiers.md)
 
 Type variable { #type-variable }
-:   A placeholder for a type that gets filled in when a generic type gets parameterized. For example, in `list[T]`, `T` is a type variable. typing-graph represents type variables with [`TypeVarNode`][typing_graph.TypeVarNode], [`ParamSpecNode`][typing_graph.ParamSpecNode], and [`TypeVarTupleNode`][typing_graph.TypeVarTupleNode]. See also: [type node](#type-node).
+:   A placeholder for a type filled in when a generic type is parameterized. Example: in `list[T]`, `T` is a type variable.
+
+    **Learn more:** [Generics and variance](../explanation/generics.md) | **API:** [`TypeVarNode`][typing_graph.TypeVarNode], [`ParamSpecNode`][typing_graph.ParamSpecNode], [`TypeVarTupleNode`][typing_graph.TypeVarTupleNode]
