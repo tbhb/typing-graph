@@ -8,10 +8,10 @@ authors:
     given-names: Tony
     orcid: "https://orcid.org/0009-0006-4480-2939"
 repository-code: "https://github.com/tbhb/typing-graph"
-url: "https://github.com/tbhb/typing-graph"
+url: "https://typing-graph.tbhb.dev"
 license: MIT
-version: "0.1.0"
-date-released: "2025-01-15"
+version: "0.2.0"
+date-released: "2025-11-30"
 keywords:
   - python
   - typing
