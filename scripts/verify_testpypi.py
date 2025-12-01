@@ -33,6 +33,7 @@ def main() -> int:
         )
 
         # Install from TestPyPI
+        # Use unsafe-best-match to allow TestPyPI version even when PyPI has the package
         env = {**os.environ, "VIRTUAL_ENV": str(venv_path)}
         _ = subprocess.run(  # noqa: S603
             [  # noqa: S607
@@ -43,6 +44,8 @@ def main() -> int:
                 "https://test.pypi.org/simple/",
                 "--extra-index-url",
                 "https://pypi.org/simple/",
+                "--index-strategy",
+                "unsafe-best-match",
                 f"typing-graph=={version}",
             ],
             env=env,
