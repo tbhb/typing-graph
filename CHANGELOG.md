@@ -79,7 +79,7 @@ A new immutable, sequence-like container for working with type annotation metada
 
 #### Breaking changes
 
-- **`TypeNode.metadata` type changed from `tuple[Any, ...]` to `MetadataCollection[Any]`** - The metadata property on all TypeNode subclasses now returns a MetadataCollection instead of a plain tuple. MetadataCollection is fully backwards-compatible with tuple access patterns (indexing, iteration, length, containment), but code using tuple-specific methods may need updates. See the [migration guide](https://typing-graph.tbhb.dev/guides/metadata-queries/) for details.
+- **`TypeNode.metadata` type changed from `tuple[Any, ...]` to `MetadataCollection[Any]`** - The metadata property on all TypeNode subclasses now returns a MetadataCollection instead of a plain tuple. MetadataCollection is fully backwards-compatible with tuple access patterns (indexing, iteration, length, containment), but code using tuple-specific methods may need updates.
 
 - **`FieldDef.metadata` type changed from `tuple[Any, ...]` to `MetadataCollection[Any]`** - Field definitions for dataclasses, TypedDict, NamedTuple, attrs, and Pydantic models now return MetadataCollection.
 
