@@ -75,14 +75,25 @@ jobs:
       - name: Lint documentation
         run: just lint-docs
 
+  lint-prose:
+    name: Lint prose
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+
       - name: Lint prose
         uses: errata-ai/vale-action@d89dee975228ae261d22c15adcd03578634d429c # v2.1.1
         with:
           version: 3.13.0
+          # yamllint disable-line rule:line-length
+          files: '["docs", "docs/llms.txt", "docs/llms-full.txt", "README.md", "CONTRIBUTING.md", "CODE_OF_CONDUCT.md", "SECURITY.md", "DEVELOPMENT.md", "TESTING.md", "RELEASING.md", ".github/pull_request_template.md"]'
 
   test:
     name: Test
-    needs: lint
+    needs: [lint, lint-prose]
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
