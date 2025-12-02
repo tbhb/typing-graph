@@ -330,7 +330,7 @@ For equality comparisons, different-length collections return immediately (O(1))
 
 ## The ecosystem context
 
-`Annotated` metadata has become a cornerstone of the Python ecosystem's approach to runtime type information. Libraries have converged on common patterns:
+`Annotated` metadata has become central to the Python ecosystem's approach to runtime type information. Libraries have converged on common patterns:
 
 - **annotated-types** provides standard constraint types (`Gt`, `Le`, `MaxLen`) that work across libraries
 - **Pydantic** uses `Annotated` metadata for field configuration and validation
