@@ -252,11 +252,12 @@ Full documentation is available at [typing-graph.tbhb.dev](https://typing-graph.
 
 This project uses [Claude Code][claude-code] as a development tool for:
 
-- Rubber ducking and exploring design alternatives
+- Rubber ducking and exploring architecture and design alternatives
 - Drafting documentation and docstrings
 - Generating test scaffolding and boilerplate
 - Code cleanup and refactoring suggestions
 - Researching Python typing edge cases
+- Running benchmarks and mutation testing
 
 All contributions undergo review and testing before inclusion, regardless of origin.
 
