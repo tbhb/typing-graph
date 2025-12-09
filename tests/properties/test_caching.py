@@ -105,11 +105,6 @@ def test_cache_disabled_produces_equivalent_results(annotation: Any) -> None:
     assert nodes_structurally_equal(result1, result2)
 
 
-# =============================================================================
-# Additional tests to kill mutation survivors
-# =============================================================================
-
-
 def test_default_caching_behavior_is_enabled() -> None:
     cache_clear()
 

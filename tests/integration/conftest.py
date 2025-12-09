@@ -14,8 +14,6 @@ if TYPE_CHECKING:
 import pytest
 from annotated_types import Gt, MaxLen, MinLen
 
-from typing_graph import cache_clear
-
 _THIS_DIR = Path(__file__).parent
 
 
@@ -24,18 +22,6 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
     for item in items:
         if Path(item.fspath).is_relative_to(_THIS_DIR):
             item.add_marker(pytest.mark.integration)
-
-
-if TYPE_CHECKING:
-    from collections.abc import Generator
-
-
-# ============================================================================
-# Validation constraint markers (from json_schema_generation.py)
-# Re-export from annotated-types for convenience
-# ============================================================================
-
-# Gt, Lt, Ge, Le, MinLen, MaxLen, doc, DocInfo are imported from annotated-types
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,11 +36,6 @@ class Format:
     """String format constraint (email, uri, uuid, etc.)."""
 
     format: str
-
-
-# ============================================================================
-# Domain types - Nested dataclass hierarchy (from recursive_validation.py)
-# ============================================================================
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,22 +76,12 @@ class Order:
     notes: str | None = None
 
 
-# ============================================================================
-# Recursive type (from json_schema_generation.py)
-# ============================================================================
-
-
 @dataclass(frozen=True, slots=True)
 class TreeNode:
     """Self-referencing tree node (recursive type)."""
 
     value: Annotated[str, MinLen(1)]
     children: "list[TreeNode]" = field(default_factory=list)
-
-
-# ============================================================================
-# Enums (from cli_parameter_conversion.py)
-# ============================================================================
 
 
 class LogLevel(str, Enum):
@@ -136,11 +107,6 @@ class Status(Enum):
     PENDING = auto()
     ACTIVE = auto()
     COMPLETED = auto()
-
-
-# ============================================================================
-# Helper functions for metadata access
-# ============================================================================
 
 
 _T = TypeVar("_T")
@@ -190,16 +156,3 @@ def has_metadata_of_type(metadata: "Iterable[object]", marker_type: type[_T]) ->
         True if a matching item exists.
     """
     return find_metadata_of_type(metadata, marker_type) is not None
-
-
-# ============================================================================
-# Pytest fixtures
-# ============================================================================
-
-
-@pytest.fixture(autouse=True)
-def clear_type_cache() -> "Generator[None]":
-    """Clear the type inspection cache before and after each test."""
-    cache_clear()
-    yield
-    cache_clear()

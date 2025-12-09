@@ -38,11 +38,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 
-# ============================================================================
-# Metadata markers - DI patterns (from dependency_injection.py example)
-# ============================================================================
-
-
 @dataclass(frozen=True, slots=True)
 class Inject:
     """Mark a parameter for dependency injection."""
@@ -87,11 +82,6 @@ class Lazy:
     """Defer instantiation until first access."""
 
 
-# ============================================================================
-# Protocol interfaces (from dependency_injection.py)
-# ============================================================================
-
-
 class Logger(Protocol):
     """Logging service interface."""
 
@@ -112,11 +102,6 @@ class Cache(Protocol):
 
     def get(self, key: str) -> object | None: ...
     def set(self, key: str, value: object, ttl: int | None = None) -> None: ...
-
-
-# ============================================================================
-# DI service classes (from dependency_injection.py)
-# ============================================================================
 
 
 @dataclass
@@ -143,10 +128,6 @@ class UserService:
     repo: Annotated[UserRepository, Inject()]
     logger: Annotated[Logger, Inject()]
 
-
-# ============================================================================
-# Generic types (from dependency_injection.py)
-# ============================================================================
 
 T = TypeVar("T")
 

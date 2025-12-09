@@ -237,11 +237,6 @@ def type_annotations() -> st.SearchStrategy[Any]:
     )
 
 
-# =============================================================================
-# Annotated Type Strategies
-# =============================================================================
-
-
 @composite
 def metadata_items(draw: "DrawFn") -> Any:
     """Generate metadata items for Annotated types."""
@@ -275,11 +270,6 @@ def nested_annotated_types(
     return _make_annotated(intermediate, *meta2)
 
 
-# =============================================================================
-# Configuration Strategies
-# =============================================================================
-
-
 @composite
 def inspect_configs(draw: "DrawFn") -> InspectConfig:
     """Generate valid InspectConfig instances.
@@ -298,11 +288,6 @@ def inspect_configs(draw: "DrawFn") -> InspectConfig:
         hoist_metadata=draw(st.booleans()),
         include_source_locations=draw(st.booleans()),
     )
-
-
-# =============================================================================
-# Round-Trippable Annotation Strategies
-# =============================================================================
 
 
 def roundtrippable_annotations() -> st.SearchStrategy[Any]:
@@ -361,11 +346,6 @@ def roundtrippable_callable_types(
     # (exists at runtime but not in type stubs)
     callable_getitem = Callable.__class_getitem__  # pyright: ignore[reportAttributeAccessIssue]
     return callable_getitem((params, return_type))
-
-
-# =============================================================================
-# Type Parameter Strategies
-# =============================================================================
 
 
 class _TypeParamCounter:
@@ -474,11 +454,6 @@ def type_param_annotations() -> st.SearchStrategy[Any]:
         paramspec_instances(),
         typevartuple_instances(),
     )
-
-
-# =============================================================================
-# Extended Type Annotations (including type parameters)
-# =============================================================================
 
 
 def extended_type_annotations() -> st.SearchStrategy[Any]:

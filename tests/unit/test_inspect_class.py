@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum, IntEnum, auto
 from typing import (
-    TYPE_CHECKING,
     ClassVar,
     Generic,
     NamedTuple,
@@ -21,7 +20,6 @@ import pytest
 
 from typing_graph import (
     InspectConfig,
-    cache_clear,
     inspect_class,
     inspect_dataclass,
     inspect_enum,
@@ -34,7 +32,6 @@ from typing_graph._inspect_class import (
 )
 from typing_graph._node import (
     is_class_node,
-    is_concrete_node,
     is_dataclass_node,
     is_enum_node,
     is_named_tuple_node,
@@ -43,8 +40,7 @@ from typing_graph._node import (
     is_union_type_node,
 )
 
-if TYPE_CHECKING:
-    from collections.abc import Generator
+from tests.conftest import assert_concrete_type
 
 
 @dataclass
@@ -238,13 +234,6 @@ class NotAnEnum:
     pass
 
 
-@pytest.fixture(autouse=True)
-def clear_type_cache() -> "Generator[None]":
-    cache_clear()
-    yield
-    cache_clear()
-
-
 class TestDataclassType:
     def test_simple_dataclass_has_cls_and_fields(self) -> None:
         result = inspect_dataclass(SimpleDataclass)
@@ -404,10 +393,8 @@ class TestNamedTupleType:
         x_field = result.fields[0]
         y_field = result.fields[1]
 
-        assert is_concrete_node(x_field.type)
-        assert x_field.type.cls is int
-        assert is_concrete_node(y_field.type)
-        assert y_field.type.cls is str
+        _ = assert_concrete_type(x_field.type, int)
+        _ = assert_concrete_type(y_field.type, str)
 
     def test_field_without_default_is_required(self) -> None:
         result = inspect_class(SimpleNamedTuple)

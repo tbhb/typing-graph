@@ -7,18 +7,16 @@ import pytest
 from typing_graph import (
     EvalMode,
     InspectConfig,
-    cache_clear,
     inspect_function,
     inspect_signature,
 )
 from typing_graph._node import (
     is_any_node,
-    is_concrete_node,
     is_function_node,
-    is_generic_node,
     is_signature_node,
-    is_subscripted_generic_node,
 )
+
+from tests.conftest import assert_concrete_type, assert_subscripted_generic
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -107,13 +105,6 @@ class MyClass:
         return str(x)
 
 
-@pytest.fixture(autouse=True)
-def clear_type_cache() -> "Generator[None]":
-    cache_clear()
-    yield
-    cache_clear()
-
-
 class TestFunctionNode:
     def test_simple_function_has_name_and_signature(self) -> None:
         result = inspect_function(simple_function)
@@ -184,32 +175,26 @@ class TestSignatureNode:
         result = inspect_signature(simple_function)
 
         assert is_signature_node(result)
-        assert is_concrete_node(result.parameters[0].type)
-        assert result.parameters[0].type.cls is int
-        assert is_concrete_node(result.parameters[1].type)
-        assert result.parameters[1].type.cls is str
+        _ = assert_concrete_type(result.parameters[0].type, int)
+        _ = assert_concrete_type(result.parameters[1].type, str)
 
     def test_return_type_is_concrete(self) -> None:
         result = inspect_signature(simple_function)
 
         assert is_signature_node(result)
-        assert is_concrete_node(result.returns)
-        assert result.returns.cls is bool
+        _ = assert_concrete_type(result.returns, bool)
 
     def test_none_return_type_inspected(self) -> None:
         result = inspect_signature(returns_none_explicit)
 
         assert is_signature_node(result)
-        assert is_concrete_node(result.returns)
-        assert result.returns.cls is type(None)
+        _ = assert_concrete_type(result.returns, type(None))
 
     def test_generic_return_type_inspected(self) -> None:
         result = inspect_signature(returns_list)
 
         assert is_signature_node(result)
-        assert is_subscripted_generic_node(result.returns)
-        assert is_generic_node(result.returns.origin)
-        assert result.returns.origin.cls is list
+        _ = assert_subscripted_generic(result.returns, list)
 
     def test_signature_children_includes_param_types_and_returns(self) -> None:
         result = inspect_signature(simple_function)
@@ -298,16 +283,14 @@ class TestParameterDetails:
 
         assert is_signature_node(result)
         args_param = result.parameters[0]
-        assert is_concrete_node(args_param.type)
-        assert args_param.type.cls is int
+        _ = assert_concrete_type(args_param.type, int)
 
     def test_var_keyword_type_is_str(self) -> None:
         result = inspect_signature(with_args)
 
         assert is_signature_node(result)
         kwargs_param = result.parameters[1]
-        assert is_concrete_node(kwargs_param.type)
-        assert kwargs_param.type.cls is str
+        _ = assert_concrete_type(kwargs_param.type, str)
 
 
 class TestUnannotatedFunctions:
@@ -371,8 +354,7 @@ class TestAnnotatedParameters:
 
         assert is_signature_node(result)
         x_param = result.parameters[0]
-        assert is_concrete_node(x_param.type)
-        assert x_param.type.cls is int
+        _ = assert_concrete_type(x_param.type, int)
         assert "metadata" in x_param.metadata
 
 

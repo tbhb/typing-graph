@@ -3,7 +3,7 @@
 # pyright: reportAny=false
 
 import sys
-from collections.abc import Callable, Callable as ABCCallable, Generator
+from collections.abc import Callable, Callable as ABCCallable
 from types import UnionType
 from typing import (
     Annotated,
@@ -42,7 +42,6 @@ from typing_graph import (
     NeverNode,
     SelfNode,
     Variance,
-    cache_clear,
     inspect_type,
     inspect_type_alias,
     to_runtime_type,
@@ -92,58 +91,49 @@ from typing_graph._node import (
     is_unpack_node,
 )
 
-
-@pytest.fixture(autouse=True)
-def clear_type_cache() -> Generator[None]:
-    cache_clear()
-    yield
-    cache_clear()
+from tests.conftest import (
+    assert_concrete_type,
+    assert_no_extras,
+    assert_subscripted_generic,
+)
 
 
 class TestConcreteType:
     def test_int_sets_cls_to_int(self) -> None:
         result = inspect_type(int)
 
-        assert is_concrete_node(result)
-        assert result.cls is int
-        assert not result.metadata
-        assert result.qualifiers == frozenset()
+        _ = assert_concrete_type(result, int)
+        assert_no_extras(result)
 
     def test_str_sets_cls_to_str(self) -> None:
         result = inspect_type(str)
 
-        assert is_concrete_node(result)
-        assert result.cls is str
+        _ = assert_concrete_type(result, str)
 
     def test_float_sets_cls_to_float(self) -> None:
         result = inspect_type(float)
 
-        assert is_concrete_node(result)
-        assert result.cls is float
+        _ = assert_concrete_type(result, float)
 
     def test_bool_sets_cls_to_bool(self) -> None:
         result = inspect_type(bool)
 
-        assert is_concrete_node(result)
-        assert result.cls is bool
+        _ = assert_concrete_type(result, bool)
 
     def test_bytes_sets_cls_to_bytes(self) -> None:
         result = inspect_type(bytes)
 
-        assert is_concrete_node(result)
-        assert result.cls is bytes
+        _ = assert_concrete_type(result, bytes)
 
     def test_none_literal_sets_cls_to_nonetype(self) -> None:
         result = inspect_type(None)
 
-        assert is_concrete_node(result)
-        assert result.cls is type(None)
+        _ = assert_concrete_type(result, type(None))
 
     def test_nonetype_sets_cls_to_nonetype(self) -> None:
         result = inspect_type(type(None))
 
-        assert is_concrete_node(result)
-        assert result.cls is type(None)
+        _ = assert_concrete_type(result, type(None))
 
     def test_custom_class_sets_cls_correctly(self) -> None:
         class MyClass:
@@ -151,8 +141,7 @@ class TestConcreteType:
 
         result = inspect_type(MyClass)
 
-        assert is_concrete_node(result)
-        assert result.cls is MyClass
+        _ = assert_concrete_type(result, MyClass)
 
 
 class TestAnyNode:
@@ -161,8 +150,7 @@ class TestAnyNode:
 
         assert is_any_node(result)
         assert isinstance(result, AnyNode)
-        assert not result.metadata
-        assert result.qualifiers == frozenset()
+        assert_no_extras(result)
 
 
 class TestSelfNode:
@@ -171,8 +159,7 @@ class TestSelfNode:
 
         assert is_self_node(result)
         assert isinstance(result, SelfNode)
-        assert not result.metadata
-        assert result.qualifiers == frozenset()
+        assert_no_extras(result)
 
 
 class TestNeverNode:
@@ -181,8 +168,7 @@ class TestNeverNode:
 
         assert is_never_node(result)
         assert isinstance(result, NeverNode)
-        assert not result.metadata
-        assert result.qualifiers == frozenset()
+        assert_no_extras(result)
 
     @pytest.mark.skipif(
         sys.version_info < (3, 11),
@@ -200,8 +186,7 @@ class TestLiteralStringType:
         result = inspect_type(LiteralString)
 
         assert is_literal_string_node(result)
-        assert not result.metadata
-        assert result.qualifiers == frozenset()
+        assert_no_extras(result)
 
 
 class TestTypeVarTupleNode:
@@ -222,11 +207,8 @@ class TestUnionType:
         assert is_union_type_node(result)
         assert len(result.members) == 2
 
-        assert is_concrete_node(result.members[0])
-        assert result.members[0].cls is int
-
-        assert is_concrete_node(result.members[1])
-        assert result.members[1].cls is str
+        _ = assert_concrete_type(result.members[0], int)
+        _ = assert_concrete_type(result.members[1], str)
 
     def test_three_types_creates_union_with_three_members(self) -> None:
         result = inspect_type(int | str | float)
@@ -259,8 +241,7 @@ class TestUnionType:
         result = inspect_type(int | str)
 
         assert is_union_type_node(result)
-        assert not result.metadata
-        assert result.qualifiers == frozenset()
+        assert_no_extras(result)
 
 
 class TestLiteralNode:
@@ -269,8 +250,7 @@ class TestLiteralNode:
 
         assert is_literal_node(result)
         assert result.values == ("a", "b")
-        assert not result.metadata
-        assert result.qualifiers == frozenset()
+        assert_no_extras(result)
 
     def test_int_literals_have_correct_values(self) -> None:
         result = inspect_type(Literal[1, 2, 3])
@@ -301,96 +281,58 @@ class TestSubscriptedGeneric:
     def test_list_int_has_list_origin_and_int_arg(self) -> None:
         result = inspect_type(list[int])
 
-        assert is_subscripted_generic_node(result)
-        assert is_generic_node(result.origin)
-        assert result.origin.cls is list
-
-        assert len(result.args) == 1
-        assert is_concrete_node(result.args[0])
-        assert result.args[0].cls is int
+        subscripted = assert_subscripted_generic(result, list, 1)
+        _ = assert_concrete_type(subscripted.args[0], int)
 
     def test_dict_str_int_has_dict_origin_and_two_args(self) -> None:
         result = inspect_type(dict[str, int])
 
-        assert is_subscripted_generic_node(result)
-        assert is_generic_node(result.origin)
-        assert result.origin.cls is dict
-
-        assert len(result.args) == 2
-        assert is_concrete_node(result.args[0])
-        assert result.args[0].cls is str
-        assert is_concrete_node(result.args[1])
-        assert result.args[1].cls is int
+        subscripted = assert_subscripted_generic(result, dict, 2)
+        _ = assert_concrete_type(subscripted.args[0], str)
+        _ = assert_concrete_type(subscripted.args[1], int)
 
     def test_set_str_has_set_origin_and_str_arg(self) -> None:
         result = inspect_type(set[str])
 
-        assert is_subscripted_generic_node(result)
-        assert is_generic_node(result.origin)
-        assert result.origin.cls is set
-
-        assert len(result.args) == 1
-        assert is_concrete_node(result.args[0])
-        assert result.args[0].cls is str
+        subscripted = assert_subscripted_generic(result, set, 1)
+        _ = assert_concrete_type(subscripted.args[0], str)
 
     def test_frozenset_int_has_frozenset_origin(self) -> None:
         result = inspect_type(frozenset[int])
 
-        assert is_subscripted_generic_node(result)
-        assert is_generic_node(result.origin)
-        assert result.origin.cls is frozenset
+        _ = assert_subscripted_generic(result, frozenset)
 
     def test_nested_list_of_list_of_int(self) -> None:
         result = inspect_type(list[list[int]])
 
-        assert is_subscripted_generic_node(result)
-        assert is_generic_node(result.origin)
-        assert result.origin.cls is list
-
-        assert len(result.args) == 1
-        inner = result.args[0]
-        assert is_subscripted_generic_node(inner)
-        assert is_generic_node(inner.origin)
-        assert inner.origin.cls is list
-
-        assert len(inner.args) == 1
-        assert is_concrete_node(inner.args[0])
-        assert inner.args[0].cls is int
+        outer = assert_subscripted_generic(result, list, 1)
+        inner = assert_subscripted_generic(outer.args[0], list, 1)
+        _ = assert_concrete_type(inner.args[0], int)
 
     def test_nested_dict_with_list_value(self) -> None:
         result = inspect_type(dict[str, list[int]])
 
-        assert is_subscripted_generic_node(result)
-        assert is_generic_node(result.origin)
-        assert result.origin.cls is dict
-        assert len(result.args) == 2
+        subscripted = assert_subscripted_generic(result, dict, 2)
+        _ = assert_concrete_type(subscripted.args[0], str)
 
-        assert is_concrete_node(result.args[0])
-        assert result.args[0].cls is str
-
-        value_type = result.args[1]
-        assert is_subscripted_generic_node(value_type)
-        assert is_generic_node(value_type.origin)
-        assert value_type.origin.cls is list
-        assert is_concrete_node(value_type.args[0])
-        assert value_type.args[0].cls is int
+        value_type = assert_subscripted_generic(subscripted.args[1], list, 1)
+        _ = assert_concrete_type(value_type.args[0], int)
 
     def test_children_includes_origin_and_args(self) -> None:
         result = inspect_type(list[int])
 
-        assert is_subscripted_generic_node(result)
-        children = result.children()
+        subscripted = assert_subscripted_generic(result, list)
+        children = subscripted.children()
 
         assert len(children) == 2
-        assert children[0] is result.origin
-        assert children[1] is result.args[0]
+        assert children[0] is subscripted.origin
+        assert children[1] is subscripted.args[0]
 
     def test_metadata_and_qualifiers_default_empty(self) -> None:
         result = inspect_type(list[int])
 
-        assert is_subscripted_generic_node(result)
-        assert not result.metadata
-        assert result.qualifiers == frozenset()
+        subscripted = assert_subscripted_generic(result, list)
+        assert_no_extras(subscripted)
 
 
 class TestTupleType:

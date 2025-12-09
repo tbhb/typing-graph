@@ -187,11 +187,6 @@ def test_inspect_type_is_idempotent(annotation: Any) -> None:
     assert node1 is node2
 
 
-# =============================================================================
-# Error Boundary Tests
-# =============================================================================
-
-
 # Explicit edge case examples from unit tests
 @example(None)  # None literal
 @example(type(None))  # NoneType
@@ -224,11 +219,6 @@ def test_inspect_type_never_raises_unexpectedly(annotation: Any) -> None:
     except NameError:
         # Expected for EAGER mode with unresolvable forward refs
         pass
-
-
-# =============================================================================
-# Edge Case Examples from Unit Tests
-# =============================================================================
 
 
 @example(None)

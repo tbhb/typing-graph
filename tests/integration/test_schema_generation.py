@@ -48,11 +48,6 @@ if TYPE_CHECKING:
     from typing_extensions import NotRequired, Required
 
 
-# ============================================================================
-# TypedDict variations
-# ============================================================================
-
-
 class SimpleTypedDict(TypedDict):
     """Basic TypedDict with required fields."""
 
@@ -65,11 +60,6 @@ class MixedTypedDict(TypedDict, total=False):
 
     required_field: "Required[int]"
     optional_field: "NotRequired[str]"
-
-
-# ============================================================================
-# NamedTuple variations
-# ============================================================================
 
 
 class SimpleNamedTuple(NamedTuple):

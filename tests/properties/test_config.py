@@ -184,11 +184,6 @@ def test_eval_mode_affects_unresolvable_ref_state(
         assert is_ref_state_failed(node.state), "DEFERRED should produce Failed state"
 
 
-# =============================================================================
-# Tests for mutation testing gaps
-# =============================================================================
-
-
 @settings(deadline=None)
 @example(max_depth=1)
 @given(max_depth=st.integers(min_value=1, max_value=3))

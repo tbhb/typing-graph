@@ -7,11 +7,13 @@ from typing_extensions import override
 import pytest
 from annotated_types import Ge, GroupedMetadata, Interval, Le
 
-from typing_graph._metadata import (
+from typing_graph import (
     MetadataCollection,
     MetadataNotFoundError,
     ProtocolNotRuntimeCheckableError,
     SupportsLessThan,
+)
+from typing_graph._metadata import (
     _ensure_runtime_checkable,
     _is_grouped_metadata,
 )
@@ -20,7 +22,6 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
 
-# Helper protocols for protocol-based filtering tests
 @runtime_checkable
 class HasValue(Protocol):
     value: int
@@ -37,7 +38,6 @@ class NotAProtocol:
         self.value = value
 
 
-# Helper dataclass for typed predicate tests
 @dataclass
 class ItemWithValue:
     value: int

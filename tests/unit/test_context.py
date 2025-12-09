@@ -10,10 +10,6 @@ from typing_graph._context import (
 )
 from typing_graph._node import (
     AnnotatedNode,
-    ParamSpecNode,
-    TypeVarNode,
-    TypeVarTupleNode,
-    is_type_param_node,
 )
 
 
@@ -188,30 +184,3 @@ class TestGetSourceLocation:
 
         # 42 has no useful source location attributes
         assert result is None
-
-
-class TestIsTypeParamNode:
-    def test_returns_true_for_typevar_node(self) -> None:
-        node = TypeVarNode(name="T")
-
-        assert is_type_param_node(node) is True
-
-    def test_returns_true_for_paramspec_node(self) -> None:
-        node = ParamSpecNode(name="P")
-
-        assert is_type_param_node(node) is True
-
-    def test_returns_true_for_typevartuple_node(self) -> None:
-        node = TypeVarTupleNode(name="Ts")
-
-        assert is_type_param_node(node) is True
-
-    def test_returns_false_for_concrete_type(self) -> None:
-        node = ConcreteNode(cls=int)
-
-        assert is_type_param_node(node) is False
-
-    def test_returns_false_for_annotated_type(self) -> None:
-        node = AnnotatedNode(base=ConcreteNode(cls=int), annotations=("meta",))
-
-        assert is_type_param_node(node) is False

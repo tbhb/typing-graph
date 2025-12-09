@@ -35,11 +35,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 
-# ============================================================================
-# Metadata markers - CLI patterns (from cli_parameter_conversion.py)
-# ============================================================================
-
-
 @dataclass(frozen=True, slots=True)
 class CLIArg:
     """CLI argument configuration."""
@@ -61,11 +56,6 @@ class Converter:
     """Custom converter function for parsing."""
 
     func: "Callable[[str], object]"
-
-
-# ============================================================================
-# Config structures (from cli_parameter_conversion.py)
-# ============================================================================
 
 
 @dataclass(frozen=True, slots=True)

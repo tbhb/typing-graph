@@ -1,12 +1,18 @@
 from enum import Enum
+from typing import TYPE_CHECKING
+
+import pytest
 
 from typing_graph import (
+    AnnotatedNode,
     AnyNode,
     CallableNode,
     ClassNode,
+    ConcatenateNode,
     ConcreteNode,
     DataclassFieldDef,
     DataclassNode,
+    DiscriminatedUnionNode,
     EllipsisNode,
     EnumNode,
     FieldDef,
@@ -14,7 +20,10 @@ from typing_graph import (
     FunctionNode,
     GenericAliasNode,
     GenericTypeNode,
+    IntersectionNode,
     LiteralNode,
+    LiteralStringNode,
+    MetaNode,
     MethodSig,
     NamedTupleNode,
     NeverNode,
@@ -31,20 +40,12 @@ from typing_graph import (
     TupleNode,
     TypeAliasNode,
     TypedDictNode,
+    TypeGuardNode,
+    TypeIsNode,
     TypeNode,
     TypeVarNode,
     TypeVarTupleNode,
     UnionNode,
-)
-from typing_graph._node import (
-    AnnotatedNode,
-    ConcatenateNode,
-    DiscriminatedUnionNode,
-    IntersectionNode,
-    LiteralStringNode,
-    MetaNode,
-    TypeGuardNode,
-    TypeIsNode,
     UnpackNode,
     is_annotated_node,
     is_any_node,
@@ -82,12 +83,16 @@ from typing_graph._node import (
     is_type_guard_node,
     is_type_is_node,
     is_type_node,
+    is_type_param_node,
     is_type_var_node,
     is_type_var_tuple_node,
     is_typed_dict_node,
     is_union_type_node,
     is_unpack_node,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class TestTypeVarNode:
@@ -112,156 +117,309 @@ class TestUnionType:
 
 
 class TestTypeGuards:
-    def test_is_type_node(self) -> None:
-        assert is_type_node(ConcreteNode(cls=int)) is True
-        assert is_type_node(int) is False
-
-    def test_is_concrete_node(self) -> None:
-        assert is_concrete_node(ConcreteNode(cls=int)) is True
-        assert is_concrete_node(AnyNode()) is False
-
-    def test_is_any_node(self) -> None:
-        assert is_any_node(AnyNode()) is True
-        assert is_any_node(ConcreteNode(cls=int)) is False
-
-    def test_is_never_node(self) -> None:
-        assert is_never_node(NeverNode()) is True
-        assert is_never_node(AnyNode()) is False
-
-    def test_is_self_node(self) -> None:
-        assert is_self_node(SelfNode()) is True
-        assert is_self_node(AnyNode()) is False
-
-    def test_is_type_var_node(self) -> None:
-        assert is_type_var_node(TypeVarNode(name="T")) is True
-        assert is_type_var_node(ConcreteNode(cls=int)) is False
-
-    def test_is_union_type_node(self) -> None:
-        members = (ConcreteNode(cls=int), ConcreteNode(cls=str))
-        assert is_union_type_node(UnionNode(members=members)) is True
-        assert is_union_type_node(ConcreteNode(cls=int)) is False
-
-    def test_is_tuple_node(self) -> None:
-        elements = (ConcreteNode(cls=int),)
-        assert is_tuple_node(TupleNode(elements=elements)) is True
-        assert is_tuple_node(ConcreteNode(cls=int)) is False
-
-    def test_is_callable_node(self) -> None:
-        params = (ConcreteNode(cls=int),)
-        returns = ConcreteNode(cls=str)
-        node = CallableNode(params=params, returns=returns)
-        assert is_callable_node(node) is True
-        assert is_callable_node(ConcreteNode(cls=int)) is False
-
-    def test_is_literal_node(self) -> None:
-        assert is_literal_node(LiteralNode(values=(1,))) is True
-        assert is_literal_node(ConcreteNode(cls=int)) is False
-
-    def test_is_forward_ref_node(self) -> None:
-        assert is_forward_ref_node(ForwardRefNode(ref="X")) is True
-        assert is_forward_ref_node(ConcreteNode(cls=int)) is False
-
-    def test_is_subscripted_generic_node(self) -> None:
-        origin = ConcreteNode(cls=list)
-        args = (ConcreteNode(cls=int),)
-        node = SubscriptedGenericNode(origin=origin, args=args)
-        assert is_subscripted_generic_node(node) is True
-        assert is_subscripted_generic_node(ConcreteNode(cls=int)) is False
-
-    def test_is_type_var_tuple_node(self) -> None:
-        assert is_type_var_tuple_node(TypeVarTupleNode(name="Ts")) is True
-        assert is_type_var_tuple_node(TypeVarNode(name="T")) is False
-
-    def test_is_param_spec_node(self) -> None:
-        assert is_param_spec_node(ParamSpecNode(name="P")) is True
-        assert is_param_spec_node(TypeVarNode(name="T")) is False
-
-    def test_is_concatenate_node(self) -> None:
-        prefix = (ConcreteNode(cls=int),)
-        param_spec = ParamSpecNode(name="P")
-        node = ConcatenateNode(prefix=prefix, param_spec=param_spec)
-        assert is_concatenate_node(node) is True
-        assert is_concatenate_node(ConcreteNode(cls=int)) is False
-
-    def test_is_unpack_node(self) -> None:
-        ts = TypeVarTupleNode(name="Ts")
-        node = UnpackNode(target=ts)
-        assert is_unpack_node(node) is True
-        assert is_unpack_node(ConcreteNode(cls=int)) is False
-
-    def test_is_generic_node(self) -> None:
-        assert is_generic_node(GenericTypeNode(cls=list)) is True
-        assert is_generic_node(ConcreteNode(cls=int)) is False
-
-    def test_is_ellipsis_node(self) -> None:
-        assert is_ellipsis_node(EllipsisNode()) is True
-        assert is_ellipsis_node(ConcreteNode(cls=int)) is False
-
-    def test_is_generic_alias_node(self) -> None:
-        tv = TypeVarNode(name="T")
-        node = GenericAliasNode(
-            name="Vector",
-            type_params=(tv,),
-            value=SubscriptedGenericNode(origin=GenericTypeNode(cls=list), args=(tv,)),
-        )
-        assert is_generic_alias_node(node) is True
-        assert is_generic_alias_node(ConcreteNode(cls=int)) is False
-
-    def test_is_type_alias_node(self) -> None:
-        node = TypeAliasNode(name="MyInt", value=ConcreteNode(cls=int))
-        assert is_type_alias_node(node) is True
-        assert is_type_alias_node(ConcreteNode(cls=int)) is False
-
-    def test_is_discriminated_union_node(self) -> None:
-        node = DiscriminatedUnionNode(
-            discriminant="kind",
-            variants={"a": ConcreteNode(cls=dict), "b": ConcreteNode(cls=list)},
-        )
-        assert is_discriminated_union_node(node) is True
-        assert is_discriminated_union_node(UnionNode(members=())) is False
-
-    def test_is_intersection_node(self) -> None:
-        node = IntersectionNode(
-            members=(ConcreteNode(cls=dict), ConcreteNode(cls=list))
-        )
-        assert is_intersection_node(node) is True
-        assert is_intersection_node(UnionNode(members=())) is False
-
-    def test_is_named_tuple_node(self) -> None:
-        node = NamedTupleNode(
-            name="Point",
-            fields=(
-                FieldDef(name="x", type=ConcreteNode(cls=int)),
-                FieldDef(name="y", type=ConcreteNode(cls=int)),
+    @pytest.mark.parametrize(
+        ("guard_func", "node_true", "node_false"),
+        [
+            pytest.param(
+                is_type_node,
+                ConcreteNode(cls=int),
+                int,
+                id="is_type_node",
             ),
-        )
-        assert is_named_tuple_node(node) is True
-        assert is_named_tuple_node(TupleNode(elements=())) is False
-
-    def test_is_typed_dict_node(self) -> None:
-        node = TypedDictNode(
-            name="MyDict",
-            fields=(FieldDef(name="key", type=ConcreteNode(cls=str)),),
-        )
-        assert is_typed_dict_node(node) is True
-        assert is_typed_dict_node(ConcreteNode(cls=dict)) is False
-
-    def test_is_structured_node(self) -> None:
-        td = TypedDictNode(
-            name="MyDict",
-            fields=(FieldDef(name="key", type=ConcreteNode(cls=str)),),
-        )
-        nt = NamedTupleNode(
-            name="Point",
-            fields=(FieldDef(name="x", type=ConcreteNode(cls=int)),),
-        )
-        assert is_structured_node(td) is True
-        assert is_structured_node(nt) is True
-        assert is_structured_node(ConcreteNode(cls=dict)) is False
-
-    def test_is_literal_string_node(self) -> None:
-        assert is_literal_string_node(LiteralStringNode()) is True
-        assert is_literal_string_node(ConcreteNode(cls=str)) is False
+            pytest.param(
+                is_concrete_node,
+                ConcreteNode(cls=int),
+                AnyNode(),
+                id="is_concrete_node",
+            ),
+            pytest.param(
+                is_any_node,
+                AnyNode(),
+                ConcreteNode(cls=int),
+                id="is_any_node",
+            ),
+            pytest.param(
+                is_never_node,
+                NeverNode(),
+                AnyNode(),
+                id="is_never_node",
+            ),
+            pytest.param(
+                is_self_node,
+                SelfNode(),
+                AnyNode(),
+                id="is_self_node",
+            ),
+            pytest.param(
+                is_type_var_node,
+                TypeVarNode(name="T"),
+                ConcreteNode(cls=int),
+                id="is_type_var_node",
+            ),
+            pytest.param(
+                is_union_type_node,
+                UnionNode(members=(ConcreteNode(cls=int), ConcreteNode(cls=str))),
+                ConcreteNode(cls=int),
+                id="is_union_type_node",
+            ),
+            pytest.param(
+                is_tuple_node,
+                TupleNode(elements=(ConcreteNode(cls=int),)),
+                ConcreteNode(cls=int),
+                id="is_tuple_node",
+            ),
+            pytest.param(
+                is_callable_node,
+                CallableNode(
+                    params=(ConcreteNode(cls=int),), returns=ConcreteNode(cls=str)
+                ),
+                ConcreteNode(cls=int),
+                id="is_callable_node",
+            ),
+            pytest.param(
+                is_literal_node,
+                LiteralNode(values=(1,)),
+                ConcreteNode(cls=int),
+                id="is_literal_node",
+            ),
+            pytest.param(
+                is_forward_ref_node,
+                ForwardRefNode(ref="X"),
+                ConcreteNode(cls=int),
+                id="is_forward_ref_node",
+            ),
+            pytest.param(
+                is_subscripted_generic_node,
+                SubscriptedGenericNode(
+                    origin=ConcreteNode(cls=list),
+                    args=(ConcreteNode(cls=int),),
+                ),
+                ConcreteNode(cls=int),
+                id="is_subscripted_generic_node",
+            ),
+            pytest.param(
+                is_type_var_tuple_node,
+                TypeVarTupleNode(name="Ts"),
+                TypeVarNode(name="T"),
+                id="is_type_var_tuple_node",
+            ),
+            pytest.param(
+                is_param_spec_node,
+                ParamSpecNode(name="P"),
+                TypeVarNode(name="T"),
+                id="is_param_spec_node",
+            ),
+            pytest.param(
+                is_concatenate_node,
+                ConcatenateNode(
+                    prefix=(ConcreteNode(cls=int),),
+                    param_spec=ParamSpecNode(name="P"),
+                ),
+                ConcreteNode(cls=int),
+                id="is_concatenate_node",
+            ),
+            pytest.param(
+                is_unpack_node,
+                UnpackNode(target=TypeVarTupleNode(name="Ts")),
+                ConcreteNode(cls=int),
+                id="is_unpack_node",
+            ),
+            pytest.param(
+                is_generic_node,
+                GenericTypeNode(cls=list),
+                ConcreteNode(cls=int),
+                id="is_generic_node",
+            ),
+            pytest.param(
+                is_ellipsis_node,
+                EllipsisNode(),
+                ConcreteNode(cls=int),
+                id="is_ellipsis_node",
+            ),
+            pytest.param(
+                is_generic_alias_node,
+                GenericAliasNode(
+                    name="Vector",
+                    type_params=(TypeVarNode(name="T"),),
+                    value=SubscriptedGenericNode(
+                        origin=GenericTypeNode(cls=list),
+                        args=(TypeVarNode(name="T"),),
+                    ),
+                ),
+                ConcreteNode(cls=int),
+                id="is_generic_alias_node",
+            ),
+            pytest.param(
+                is_type_alias_node,
+                TypeAliasNode(name="MyInt", value=ConcreteNode(cls=int)),
+                ConcreteNode(cls=int),
+                id="is_type_alias_node",
+            ),
+            pytest.param(
+                is_discriminated_union_node,
+                DiscriminatedUnionNode(
+                    discriminant="kind",
+                    variants={"a": ConcreteNode(cls=dict), "b": ConcreteNode(cls=list)},
+                ),
+                UnionNode(members=()),
+                id="is_discriminated_union_node",
+            ),
+            pytest.param(
+                is_intersection_node,
+                IntersectionNode(
+                    members=(ConcreteNode(cls=dict), ConcreteNode(cls=list))
+                ),
+                UnionNode(members=()),
+                id="is_intersection_node",
+            ),
+            pytest.param(
+                is_named_tuple_node,
+                NamedTupleNode(
+                    name="Point",
+                    fields=(
+                        FieldDef(name="x", type=ConcreteNode(cls=int)),
+                        FieldDef(name="y", type=ConcreteNode(cls=int)),
+                    ),
+                ),
+                TupleNode(elements=()),
+                id="is_named_tuple_node",
+            ),
+            pytest.param(
+                is_typed_dict_node,
+                TypedDictNode(
+                    name="MyDict",
+                    fields=(FieldDef(name="key", type=ConcreteNode(cls=str)),),
+                ),
+                ConcreteNode(cls=dict),
+                id="is_typed_dict_node",
+            ),
+            pytest.param(
+                is_literal_string_node,
+                LiteralStringNode(),
+                ConcreteNode(cls=str),
+                id="is_literal_string_node",
+            ),
+            pytest.param(
+                is_annotated_node,
+                AnnotatedNode(base=ConcreteNode(cls=int), annotations=("metadata",)),
+                ConcreteNode(cls=int),
+                id="is_annotated_node",
+            ),
+            pytest.param(
+                is_meta_node,
+                MetaNode(of=ConcreteNode(cls=int)),
+                ConcreteNode(cls=type),
+                id="is_meta_node",
+            ),
+            pytest.param(
+                is_type_guard_node,
+                TypeGuardNode(narrows_to=ConcreteNode(cls=int)),
+                ConcreteNode(cls=bool),
+                id="is_type_guard_node",
+            ),
+            pytest.param(
+                is_type_is_node,
+                TypeIsNode(narrows_to=ConcreteNode(cls=int)),
+                ConcreteNode(cls=bool),
+                id="is_type_is_node",
+            ),
+            pytest.param(
+                is_dataclass_node,
+                DataclassNode(
+                    cls=object,
+                    fields=(DataclassFieldDef(name="x", type=ConcreteNode(cls=int)),),
+                ),
+                ConcreteNode(cls=object),
+                id="is_dataclass_node",
+            ),
+            pytest.param(
+                is_enum_node,
+                EnumNode(
+                    cls=Enum,
+                    value_type=ConcreteNode(cls=int),
+                    members=(("RED", 1), ("GREEN", 2)),
+                ),
+                ConcreteNode(cls=Enum),
+                id="is_enum_node",
+            ),
+            pytest.param(
+                is_new_type_node,
+                NewTypeNode(name="UserId", supertype=ConcreteNode(cls=int)),
+                ConcreteNode(cls=int),
+                id="is_new_type_node",
+            ),
+            pytest.param(
+                is_signature_node,
+                SignatureNode(
+                    parameters=(Parameter(name="x", type=ConcreteNode(cls=int)),),
+                    returns=ConcreteNode(cls=str),
+                ),
+                CallableNode(params=(), returns=AnyNode()),
+                id="is_signature_node",
+            ),
+            pytest.param(
+                is_method_sig,
+                MethodSig(
+                    name="my_method",
+                    signature=SignatureNode(
+                        parameters=(Parameter(name="self", type=AnyNode()),),
+                        returns=ConcreteNode(cls=type(None)),
+                    ),
+                ),
+                SignatureNode(
+                    parameters=(Parameter(name="self", type=AnyNode()),),
+                    returns=ConcreteNode(cls=type(None)),
+                ),
+                id="is_method_sig",
+            ),
+            pytest.param(
+                is_protocol_node,
+                ProtocolNode(
+                    name="MyProtocol",
+                    methods=(
+                        MethodSig(
+                            name="do_something",
+                            signature=SignatureNode(
+                                parameters=(Parameter(name="self", type=AnyNode()),),
+                                returns=AnyNode(),
+                            ),
+                        ),
+                    ),
+                ),
+                ConcreteNode(cls=object),
+                id="is_protocol_node",
+            ),
+            pytest.param(
+                is_function_node,
+                FunctionNode(
+                    name="my_func",
+                    signature=SignatureNode(
+                        parameters=(Parameter(name="x", type=ConcreteNode(cls=int)),),
+                        returns=ConcreteNode(cls=str),
+                    ),
+                ),
+                SignatureNode(
+                    parameters=(Parameter(name="x", type=ConcreteNode(cls=int)),),
+                    returns=ConcreteNode(cls=str),
+                ),
+                id="is_function_node",
+            ),
+            pytest.param(
+                is_class_node,
+                ClassNode(cls=object, name="MyClass"),
+                ConcreteNode(cls=type),
+                id="is_class_node",
+            ),
+        ],
+    )
+    def test_type_guards(
+        self,
+        guard_func: "Callable[[object], bool]",
+        node_true: object,
+        node_false: object,
+    ) -> None:
+        assert guard_func(node_true) is True
+        assert guard_func(node_false) is False
 
     def test_is_ref_state_resolved(self) -> None:
         resolved = RefResolved(node=ConcreteNode(cls=int))
@@ -287,94 +445,18 @@ class TestTypeGuards:
         assert is_ref_state_failed(resolved) is False
         assert is_ref_state_failed(unresolved) is False
 
-    def test_is_annotated_node(self) -> None:
-        node = AnnotatedNode(base=ConcreteNode(cls=int), annotations=("metadata",))
-        assert is_annotated_node(node) is True
-        assert is_annotated_node(ConcreteNode(cls=int)) is False
-
-    def test_is_meta_node(self) -> None:
-        node = MetaNode(of=ConcreteNode(cls=int))
-        assert is_meta_node(node) is True
-        assert is_meta_node(ConcreteNode(cls=type)) is False
-
-    def test_is_type_guard_node(self) -> None:
-        node = TypeGuardNode(narrows_to=ConcreteNode(cls=int))
-        assert is_type_guard_node(node) is True
-        assert is_type_guard_node(ConcreteNode(cls=bool)) is False
-
-    def test_is_type_is_node(self) -> None:
-        node = TypeIsNode(narrows_to=ConcreteNode(cls=int))
-        assert is_type_is_node(node) is True
-        assert is_type_is_node(ConcreteNode(cls=bool)) is False
-
-    def test_is_dataclass_node(self) -> None:
-        node = DataclassNode(
-            cls=object,
-            fields=(DataclassFieldDef(name="x", type=ConcreteNode(cls=int)),),
+    def test_is_structured_node(self) -> None:
+        td = TypedDictNode(
+            name="MyDict",
+            fields=(FieldDef(name="key", type=ConcreteNode(cls=str)),),
         )
-        assert is_dataclass_node(node) is True
-        assert is_dataclass_node(ConcreteNode(cls=object)) is False
-
-    def test_is_enum_node(self) -> None:
-        class Color(Enum):
-            RED = 1
-            GREEN = 2
-
-        node = EnumNode(
-            cls=Color,
-            value_type=ConcreteNode(cls=int),
-            members=(("RED", 1), ("GREEN", 2)),
+        nt = NamedTupleNode(
+            name="Point",
+            fields=(FieldDef(name="x", type=ConcreteNode(cls=int)),),
         )
-        assert is_enum_node(node) is True
-        assert is_enum_node(ConcreteNode(cls=Enum)) is False
-
-    def test_is_new_type_node(self) -> None:
-        node = NewTypeNode(name="UserId", supertype=ConcreteNode(cls=int))
-        assert is_new_type_node(node) is True
-        assert is_new_type_node(ConcreteNode(cls=int)) is False
-
-    def test_is_signature_node(self) -> None:
-        node = SignatureNode(
-            parameters=(Parameter(name="x", type=ConcreteNode(cls=int)),),
-            returns=ConcreteNode(cls=str),
-        )
-        assert is_signature_node(node) is True
-        assert is_signature_node(CallableNode(params=(), returns=AnyNode())) is False
-
-    def test_is_method_sig(self) -> None:
-        sig = SignatureNode(
-            parameters=(Parameter(name="self", type=AnyNode()),),
-            returns=ConcreteNode(cls=type(None)),
-        )
-        node = MethodSig(name="my_method", signature=sig)
-        assert is_method_sig(node) is True
-        assert is_method_sig(sig) is False
-
-    def test_is_protocol_node(self) -> None:
-        sig = SignatureNode(
-            parameters=(Parameter(name="self", type=AnyNode()),),
-            returns=AnyNode(),
-        )
-        node = ProtocolNode(
-            name="MyProtocol",
-            methods=(MethodSig(name="do_something", signature=sig),),
-        )
-        assert is_protocol_node(node) is True
-        assert is_protocol_node(ConcreteNode(cls=object)) is False
-
-    def test_is_function_node(self) -> None:
-        sig = SignatureNode(
-            parameters=(Parameter(name="x", type=ConcreteNode(cls=int)),),
-            returns=ConcreteNode(cls=str),
-        )
-        node = FunctionNode(name="my_func", signature=sig)
-        assert is_function_node(node) is True
-        assert is_function_node(sig) is False
-
-    def test_is_class_node(self) -> None:
-        node = ClassNode(cls=object, name="MyClass")
-        assert is_class_node(node) is True
-        assert is_class_node(ConcreteNode(cls=type)) is False
+        assert is_structured_node(td) is True
+        assert is_structured_node(nt) is True
+        assert is_structured_node(ConcreteNode(cls=dict)) is False
 
 
 class TestNodeHashability:
@@ -742,3 +824,30 @@ class TestNodeChildrenMethods:
         assert sig in children
         assert class_var.type in children
         assert instance_var.type in children
+
+
+class TestIsTypeParamNode:
+    def test_returns_true_for_typevar_node(self) -> None:
+        node = TypeVarNode(name="T")
+
+        assert is_type_param_node(node) is True
+
+    def test_returns_true_for_paramspec_node(self) -> None:
+        node = ParamSpecNode(name="P")
+
+        assert is_type_param_node(node) is True
+
+    def test_returns_true_for_typevartuple_node(self) -> None:
+        node = TypeVarTupleNode(name="Ts")
+
+        assert is_type_param_node(node) is True
+
+    def test_returns_false_for_concrete_type(self) -> None:
+        node = ConcreteNode(cls=int)
+
+        assert is_type_param_node(node) is False
+
+    def test_returns_false_for_annotated_type(self) -> None:
+        node = AnnotatedNode(base=ConcreteNode(cls=int), annotations=("meta",))
+
+        assert is_type_param_node(node) is False

@@ -1,14 +1,11 @@
 import sys
 import types
-from typing import TYPE_CHECKING, ParamSpec, TypeVar
+from typing import ParamSpec, TypeVar
 from typing_extensions import TypeAliasType, TypeVarTuple
-
-import pytest
 
 from typing_graph import (
     InspectConfig,
     ModuleTypes,
-    cache_clear,
     inspect_module,
 )
 from typing_graph._node import (
@@ -20,16 +17,6 @@ from typing_graph._node import (
     is_type_var_node,
     is_type_var_tuple_node,
 )
-
-if TYPE_CHECKING:
-    from collections.abc import Generator
-
-
-@pytest.fixture(autouse=True)
-def clear_type_cache() -> "Generator[None]":
-    cache_clear()
-    yield
-    cache_clear()
 
 
 def _create_sample_module() -> types.ModuleType:

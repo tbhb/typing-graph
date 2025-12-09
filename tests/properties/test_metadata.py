@@ -234,19 +234,8 @@ def test_metadata_with_complex_type(inner_type: object, metadata: str) -> None:
     )
 
 
-# =============================================================================
-# Qualifier Merging Tests (mutation gap coverage)
-# =============================================================================
-
-
 def test_classvar_annotated_preserves_qualifier() -> None:
-    """Test that ClassVar qualifier is preserved when combined with Annotated.
-
-    This test kills the mutation that changes qualifier merging from union (|)
-    to XOR (^) at _inspect_type.py:665. With XOR, the qualifier would be lost
-    when both sides have the same qualifier.
-    """
-    # ClassVar around Annotated
+    # Kills mutation: qualifier merge | -> ^ at _inspect_type.py:665
     from typing_graph import cache_clear
 
     cache_clear()
@@ -263,7 +252,6 @@ def test_classvar_annotated_preserves_qualifier() -> None:
 
 
 def test_final_annotated_preserves_qualifier() -> None:
-    """Test that Final qualifier is preserved when combined with Annotated."""
     from typing_graph import cache_clear
 
     cache_clear()
@@ -280,7 +268,6 @@ def test_final_annotated_preserves_qualifier() -> None:
 
 
 def test_annotated_classvar_preserves_qualifier() -> None:
-    """Test that ClassVar inside Annotated preserves qualifier."""
     from typing_graph import cache_clear
 
     cache_clear()
