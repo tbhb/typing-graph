@@ -13,6 +13,9 @@ Each page explores a concept in depth. You don't need to read them in order, tho
 [Architecture overview](architecture.md)
 :   Why typing-graph exists, how its components work together, and the reasoning behind key design decisions. Start here to understand the library's structure.
 
+[Graph edges](graph-edges.md)
+:   Edge semantics in the type graph: what `TypeEdgeKind` values represent, when to use `children()` versus `edges()`, and how edges enable schema generation and serialization.
+
 [Forward references](forward-references.md)
 :   The evolution of forward reference handling in Python, from string annotations to PEP 649's lazy evaluation. Explains typing-graph's evaluation modes and why they exist.
 

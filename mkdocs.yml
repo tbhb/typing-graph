@@ -194,6 +194,7 @@ nav:
   - Explanation:
       - explanation/index.md
       - Architecture overview: explanation/architecture.md
+      - Graph edges: explanation/graph-edges.md
       - Forward references: explanation/forward-references.md
       - Metadata and Annotated: explanation/metadata.md
       - Qualifiers: explanation/qualifiers.md

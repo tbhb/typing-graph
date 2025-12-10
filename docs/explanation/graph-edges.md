@@ -1,6 +1,6 @@
 # Graph edges and semantic relationships
 
-When you traverse a type graph, knowing that a node has children is only part of the story. The real power comes from understanding what each child represents. This page explains edge semantics in the type graph: what relationships exist between nodes, how [`TypeEdgeKind`][typing_graph.TypeEdgeKind] values encode those relationships, and when to use [`edges()`][typing_graph.edges] versus [`children()`][typing_graph.children] for traversal.
+When you traverse a type graph, knowing that a node has children is only part of the story. The real power comes from understanding what each child represents. This page explains edge semantics in the type graph: what relationships exist between nodes, how [`TypeEdgeKind`][typing_graph.TypeEdgeKind] values encode those relationships, and when to use [`edges()`][typing_graph.TypeNode.edges] versus [`children()`][typing_graph.TypeNode.children] for traversal.
 
 ## Why edges exist
 
