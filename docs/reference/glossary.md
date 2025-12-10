@@ -7,6 +7,16 @@ Annotated type { #annotated-type }
 
     **Learn more:** [Metadata and Annotated types](../explanation/metadata.md) | **API:** [`AnnotatedNode`][typing_graph.AnnotatedNode]
 
+Depth-first traversal { #depth-first-traversal }
+:   A graph traversal strategy that visits each node before its children, exploring as deep as possible along each branch before backtracking. The [`walk()`][typing_graph.walk] function uses this approach.
+
+    **Guide:** [Walking the type graph](../guides/walking-type-graph.md) | **API:** [`walk()`][typing_graph.walk]
+
+Edge { #edge }
+:   A semantic relationship between a parent [type node](#type-node) and a child node in a [type graph](#type-graph). Edges describe how nodes relate (for example, `KEY` for dict key types, `FIELD` for class fields, `ELEMENT` for tuple elements).
+
+    **API:** [`TypeEdge`][typing_graph.TypeEdge], [`TypeEdgeKind`][typing_graph.TypeEdgeKind], [`TypeEdgeConnection`][typing_graph.TypeEdgeConnection]
+
 EvalMode { #eval-mode }
 :   An enumeration controlling forward reference evaluation during [inspection](#inspection). Values: `EAGER` (resolve immediately, fail on error), `DEFERRED` (wrap in ForwardRef for lazy resolution), `STRINGIFIED` (keep as string).
 
@@ -71,3 +81,8 @@ Type variable { #type-variable }
 :   A placeholder for a type filled in when a generic type is parameterized. Example: in `list[T]`, `T` is a type variable.
 
     **Learn more:** [Generics and variance](../explanation/generics.md) | **API:** [`TypeVarNode`][typing_graph.TypeVarNode], [`ParamSpecNode`][typing_graph.ParamSpecNode], [`TypeVarTupleNode`][typing_graph.TypeVarTupleNode]
+
+Walk { #walk }
+:   An iterator-based traversal of a [type graph](#type-graph) using [depth-first traversal](#depth-first-traversal). The [`walk()`][typing_graph.walk] function yields unique nodes, supports predicate filtering with type narrowing, and allows depth limiting.
+
+    **Guide:** [Walking the type graph](../guides/walking-type-graph.md) | **API:** [`walk()`][typing_graph.walk]
