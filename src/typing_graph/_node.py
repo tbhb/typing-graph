@@ -238,15 +238,21 @@ class ParamSpecNode(TypeNode):
 
     name: str
     default: TypeNode | None = None  # PEP 696
+    _children: tuple[TypeNode, ...] = field(
+        init=False, repr=False, compare=False, hash=False
+    )
     _edges: tuple["TypeEdgeConnection", ...] = field(
         init=False, repr=False, compare=False, hash=False
     )
 
     def __post_init__(self) -> None:
         if self.default:
+            children: tuple[TypeNode, ...] = (self.default,)
             edges = (TypeEdgeConnection(TypeEdge(TypeEdgeKind.DEFAULT), self.default),)
         else:
+            children = ()
             edges = ()
+        object.__setattr__(self, "_children", children)
         object.__setattr__(self, "_edges", edges)
 
     @override
@@ -255,9 +261,7 @@ class ParamSpecNode(TypeNode):
 
     @override
     def children(self) -> "Sequence[TypeNode]":
-        if self.default:
-            return (self.default,)
-        return ()
+        return self._children
 
 
 def is_param_spec_node(obj: object) -> TypeIs[ParamSpecNode]:
@@ -276,15 +280,21 @@ class TypeVarTupleNode(TypeNode):
 
     name: str
     default: TypeNode | None = None  # PEP 696
+    _children: tuple[TypeNode, ...] = field(
+        init=False, repr=False, compare=False, hash=False
+    )
     _edges: tuple["TypeEdgeConnection", ...] = field(
         init=False, repr=False, compare=False, hash=False
     )
 
     def __post_init__(self) -> None:
         if self.default:
+            children: tuple[TypeNode, ...] = (self.default,)
             edges = (TypeEdgeConnection(TypeEdge(TypeEdgeKind.DEFAULT), self.default),)
         else:
+            children = ()
             edges = ()
+        object.__setattr__(self, "_children", children)
         object.__setattr__(self, "_edges", edges)
 
     @override
@@ -293,9 +303,7 @@ class TypeVarTupleNode(TypeNode):
 
     @override
     def children(self) -> "Sequence[TypeNode]":
-        if self.default:
-            return (self.default,)
-        return ()
+        return self._children
 
 
 def is_type_var_tuple_node(obj: object) -> TypeIs[TypeVarTupleNode]:
@@ -375,11 +383,15 @@ class UnpackNode(TypeNode):
     """
 
     target: TypeVarTupleNode | TypeNode  # TypeVarTuple or a tuple type
+    _children: tuple[TypeNode, ...] = field(
+        init=False, repr=False, compare=False, hash=False
+    )
     _edges: tuple["TypeEdgeConnection", ...] = field(
         init=False, repr=False, compare=False, hash=False
     )
 
     def __post_init__(self) -> None:
+        object.__setattr__(self, "_children", (self.target,))
         object.__setattr__(
             self,
             "_edges",
@@ -392,7 +404,7 @@ class UnpackNode(TypeNode):
 
     @override
     def children(self) -> "Sequence[TypeNode]":
-        return (self.target,)
+        return self._children
 
 
 def is_unpack_node(obj: object) -> TypeIs[UnpackNode]:
@@ -597,17 +609,23 @@ class ForwardRefNode(TypeNode):
 
     ref: str
     state: RefState = field(default_factory=RefUnresolved)
+    _children: tuple[TypeNode, ...] = field(
+        init=False, repr=False, compare=False, hash=False
+    )
     _edges: tuple["TypeEdgeConnection", ...] = field(
         init=False, repr=False, compare=False, hash=False
     )
 
     def __post_init__(self) -> None:
         if isinstance(self.state, RefResolved):
+            children: tuple[TypeNode, ...] = (self.state.node,)
             edges = (
                 TypeEdgeConnection(TypeEdge(TypeEdgeKind.RESOLVED), self.state.node),
             )
         else:
+            children = ()
             edges = ()
+        object.__setattr__(self, "_children", children)
         object.__setattr__(self, "_edges", edges)
 
     @override
@@ -616,9 +634,7 @@ class ForwardRefNode(TypeNode):
 
     @override
     def children(self) -> "Sequence[TypeNode]":
-        if isinstance(self.state, RefResolved):
-            return (self.state.node,)
-        return ()
+        return self._children
 
     @override
     def __str__(self) -> str:
@@ -742,11 +758,15 @@ class TypeAliasNode(TypeNode):
 
     name: str
     value: TypeNode
+    _children: tuple[TypeNode, ...] = field(
+        init=False, repr=False, compare=False, hash=False
+    )
     _edges: tuple["TypeEdgeConnection", ...] = field(
         init=False, repr=False, compare=False, hash=False
     )
 
     def __post_init__(self) -> None:
+        object.__setattr__(self, "_children", (self.value,))
         object.__setattr__(
             self,
             "_edges",
@@ -759,7 +779,7 @@ class TypeAliasNode(TypeNode):
 
     @override
     def children(self) -> "Sequence[TypeNode]":
-        return (self.value,)
+        return self._children
 
 
 def is_type_alias_node(obj: object) -> TypeIs[TypeAliasNode]:
@@ -974,11 +994,15 @@ class AnnotatedNode(TypeNode):
     # Note: metadata is on base TypeNode, but annotations here are the raw
     # Annotated arguments, which may include type-system extensions
     annotations: tuple[object, ...] = ()
+    _children: tuple[TypeNode, ...] = field(
+        init=False, repr=False, compare=False, hash=False
+    )
     _edges: tuple["TypeEdgeConnection", ...] = field(
         init=False, repr=False, compare=False, hash=False
     )
 
     def __post_init__(self) -> None:
+        object.__setattr__(self, "_children", (self.base,))
         object.__setattr__(
             self,
             "_edges",
@@ -991,7 +1015,7 @@ class AnnotatedNode(TypeNode):
 
     @override
     def children(self) -> "Sequence[TypeNode]":
-        return (self.base,)
+        return self._children
 
 
 def is_annotated_node(obj: object) -> TypeIs[AnnotatedNode]:
@@ -1004,11 +1028,15 @@ class MetaNode(TypeNode):
     """Type[T] or type[T] - the class object itself, not an instance."""
 
     of: TypeNode
+    _children: tuple[TypeNode, ...] = field(
+        init=False, repr=False, compare=False, hash=False
+    )
     _edges: tuple["TypeEdgeConnection", ...] = field(
         init=False, repr=False, compare=False, hash=False
     )
 
     def __post_init__(self) -> None:
+        object.__setattr__(self, "_children", (self.of,))
         object.__setattr__(
             self,
             "_edges",
@@ -1021,7 +1049,7 @@ class MetaNode(TypeNode):
 
     @override
     def children(self) -> "Sequence[TypeNode]":
-        return (self.of,)
+        return self._children
 
 
 def is_meta_node(obj: object) -> TypeIs[MetaNode]:
@@ -1034,11 +1062,15 @@ class TypeGuardNode(TypeNode):
     """typing.TypeGuard[T] - narrows type in true branch (PEP 647)."""
 
     narrows_to: TypeNode
+    _children: tuple[TypeNode, ...] = field(
+        init=False, repr=False, compare=False, hash=False
+    )
     _edges: tuple["TypeEdgeConnection", ...] = field(
         init=False, repr=False, compare=False, hash=False
     )
 
     def __post_init__(self) -> None:
+        object.__setattr__(self, "_children", (self.narrows_to,))
         object.__setattr__(
             self,
             "_edges",
@@ -1051,7 +1083,7 @@ class TypeGuardNode(TypeNode):
 
     @override
     def children(self) -> "Sequence[TypeNode]":
-        return (self.narrows_to,)
+        return self._children
 
 
 def is_type_guard_node(obj: object) -> TypeIs[TypeGuardNode]:
@@ -1064,11 +1096,15 @@ class TypeIsNode(TypeNode):
     """typing.TypeIs[T] - narrows type bidirectionally (PEP 742)."""
 
     narrows_to: TypeNode
+    _children: tuple[TypeNode, ...] = field(
+        init=False, repr=False, compare=False, hash=False
+    )
     _edges: tuple["TypeEdgeConnection", ...] = field(
         init=False, repr=False, compare=False, hash=False
     )
 
     def __post_init__(self) -> None:
+        object.__setattr__(self, "_children", (self.narrows_to,))
         object.__setattr__(
             self,
             "_edges",
@@ -1081,7 +1117,7 @@ class TypeIsNode(TypeNode):
 
     @override
     def children(self) -> "Sequence[TypeNode]":
-        return (self.narrows_to,)
+        return self._children
 
 
 def is_type_is_node(obj: object) -> TypeIs[TypeIsNode]:
@@ -1259,11 +1295,15 @@ class EnumNode(TypeNode):
     cls: type
     value_type: TypeNode  # The type of enum values (int, str, etc.)
     members: tuple[tuple[str, object], ...]  # (name, value) pairs
+    _children: tuple[TypeNode, ...] = field(
+        init=False, repr=False, compare=False, hash=False
+    )
     _edges: tuple["TypeEdgeConnection", ...] = field(
         init=False, repr=False, compare=False, hash=False
     )
 
     def __post_init__(self) -> None:
+        object.__setattr__(self, "_children", (self.value_type,))
         object.__setattr__(
             self,
             "_edges",
@@ -1276,7 +1316,7 @@ class EnumNode(TypeNode):
 
     @override
     def children(self) -> "Sequence[TypeNode]":
-        return (self.value_type,)
+        return self._children
 
 
 def is_enum_node(obj: object) -> TypeIs[EnumNode]:
@@ -1290,11 +1330,15 @@ class NewTypeNode(TypeNode):
 
     name: str
     supertype: TypeNode
+    _children: tuple[TypeNode, ...] = field(
+        init=False, repr=False, compare=False, hash=False
+    )
     _edges: tuple["TypeEdgeConnection", ...] = field(
         init=False, repr=False, compare=False, hash=False
     )
 
     def __post_init__(self) -> None:
+        object.__setattr__(self, "_children", (self.supertype,))
         object.__setattr__(
             self,
             "_edges",
@@ -1307,7 +1351,7 @@ class NewTypeNode(TypeNode):
 
     @override
     def children(self) -> "Sequence[TypeNode]":
-        return (self.supertype,)
+        return self._children
 
 
 def is_new_type_node(obj: object) -> TypeIs[NewTypeNode]:
@@ -1453,11 +1497,15 @@ class FunctionNode(TypeNode):
     is_async: bool = False
     is_generator: bool = False
     decorators: tuple[str, ...] = ()  # Decorator names for reference
+    _children: tuple[TypeNode, ...] = field(
+        init=False, repr=False, compare=False, hash=False
+    )
     _edges: tuple["TypeEdgeConnection", ...] = field(
         init=False, repr=False, compare=False, hash=False
     )
 
     def __post_init__(self) -> None:
+        object.__setattr__(self, "_children", (self.signature,))
         object.__setattr__(
             self,
             "_edges",
@@ -1470,7 +1518,7 @@ class FunctionNode(TypeNode):
 
     @override
     def children(self) -> "Sequence[TypeNode]":
-        return (self.signature,)
+        return self._children
 
 
 def is_function_node(obj: object) -> TypeIs[FunctionNode]:
