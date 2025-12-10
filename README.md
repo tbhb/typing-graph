@@ -44,7 +44,7 @@ typing-graph provides the foundation for frameworks that derive behavior from ty
 pip install typing-graph  # or: uv add typing-graph
 ```
 
-Requires Python 3.10+.
+Requires Python 3.10+. See [Installation](https://typing-graph.tbhb.dev/install/) for package manager options and optional dependencies.
 
 ## Quick start
 
