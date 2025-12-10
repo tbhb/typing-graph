@@ -25,6 +25,19 @@ Built on [Pydantic's typing-inspection][typing-inspection] and designed for comp
 
 **Planned:** annotated-types integration, visitor pattern, attrs/Pydantic support. See the [roadmap](https://typing-graph.tbhb.dev/roadmap/).
 
+## Use cases
+
+typing-graph provides the foundation for frameworks that derive behavior from type annotations:
+
+| Use case                    | Description                                                                                                               |
+|-----------------------------|---------------------------------------------------------------------------------------------------------------------------|
+| **Validation frameworks**   | Extract constraints from `Annotated` metadata and generate validation logic based on type structure                       |
+| **Type conversion**         | Convert values between types by inspecting source and target type structures, handling nested generics and union types    |
+| **Command-line interfaces** | Parse command-line arguments by inspecting function signatures and generating appropriate parsers for each parameter type |
+| **ORM mapping**             | Map Python classes to database schemas by analyzing field types, extracting column metadata from annotations              |
+| **Feature flags**           | Extract feature flag definitions from type metadata to configure runtime behavior based on annotated types                |
+| **Code generation**         | Generate serializers, API clients, or documentation by traversing the type graph and emitting code for each node type     |
+
 ## Installation
 
 ```bash
