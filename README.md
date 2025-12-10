@@ -6,62 +6,32 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
-typing-graph is a building block for Python libraries and frameworks that derive runtime behavior from type annotations. If you're building validation frameworks, CLI tools, serializers, ORMs, or similar tools that inspect types to generate code or configure behavior, typing-graph provides the structured type introspection layer so you can focus on your domain logic.
+A building block for Python libraries that derive runtime behavior from type annotations. Pass any type (generics, `Annotated`, dataclasses, `TypedDict`, [PEP 695][pep-695] aliases) and get back a graph of nodes with metadata hoisting, qualifier detection, and semantic edge information.
 
 > [!WARNING]
-> This project is in early development. APIs may change without notice. Not yet recommended for production use.
+> Early development. APIs may change. Not yet recommended for production use.
 
-Pass any type (generics, `Annotated`, dataclasses, `TypedDict`, [PEP 695][pep-695] aliases) and get back a graph of nodes representing the type structure and its metadata. The library handles metadata hoisting (extracting annotations from `Annotated` wrappers), qualifier detection (`ClassVar`, `Final`, `Required`), forward reference resolution, and caching. Each node exposes a `children()` method for recursive traversal.
-
-Built on [Pydantic's typing-inspection][typing-inspection] library and designed for compatibility with [annotated-types][annotated-types].
-
-## Why I built this
-
-After studying how projects like Pydantic, SQLAlchemy, and Typer derive behavior from type annotations, I became fascinated with the pattern and started experimenting with it in my own projects, and after writing similar introspection code across many of them, I decided to extract the common plumbing into a reusable library.
-
-typing-graph provides a consistent graph representation that handles the edge cases of Python's typing system, so projects can focus on their domain logic instead of reinventing type introspection and metadata extraction.
+Built on [Pydantic's typing-inspection][typing-inspection] and designed for compatibility with [annotated-types][annotated-types].
 
 ## Features
 
-- [x] **Comprehensive type introspection**: Inspect any Python type annotation and receive a structured, type-safe node representation
-- [x] **Graph-based representation**: Every type node exposes a `children()` method for recursive traversal
-- [x] **Metadata hoisting**: Automatically extract `Annotated` metadata and attach it to base types
-- [x] **Qualifier extraction**: Detect `ClassVar`, `Final`, `Required`, `NotRequired`, `ReadOnly`, and `InitVar` qualifiers
-- [x] **Caching**: Global cache for efficient repeated introspection
-- [x] **Forward reference handling**: Configurable evaluation modes for forward references (eager, deferred, or stringified)
-- [x] **Modern Python support**: [PEP 695][pep-695] type parameters, [PEP 696][pep-696] defaults, [PEP 647][pep-647] `TypeGuard`, [PEP 742][pep-742] `TypeIs`
-- [x] **Structured type support**: `dataclass`, `TypedDict`, `NamedTuple`, `Protocol`, `Enum`
-- [ ] **Metadata querying API**: Predicate-based filtering, type-based extraction, scoped queries
-- [ ] **annotated-types integration**: `GroupedMetadata` flattening and convenience methods for constraint extraction
-- [ ] **Type inspection controls**: Allowlists/blocklists, configurable depth boundaries
-- [x] **Graph traversal API**: `walk()` for depth-first traversal, `edges()` for semantic edge metadata
-- [ ] **Visitor pattern and path tracking**: Type-dispatched visitors, breadth-first traversal
-- [ ] **[attrs] support**: Field metadata, validators, converters
-- [ ] **[Pydantic][pydantic] support**: Field metadata, validators, serializers
+- [x] **Type introspection**: Inspect any type annotation (generics, `Annotated`, `TypedDict`, PEP 695 aliases) into structured nodes
+- [x] **Metadata hoisting**: Extract `Annotated` metadata and attach to base types
+- [x] **Metadata querying**: `MetadataCollection` with `find()`, `filter()`, `get()`, and protocol matching
+- [x] **Qualifier extraction**: Detect `ClassVar`, `Final`, `Required`, `NotRequired`, `ReadOnly`, `InitVar`
+- [x] **Graph traversal**: `walk()` for depth-first iteration, `edges()` for semantic relationships with `TypeEdgeKind`
+- [x] **Structured types**: `dataclass`, `TypedDict`, `NamedTuple`, `Protocol`, `Enum`
+- [x] **Modern Python**: PEP 695 type parameters, PEP 696 defaults, `TypeGuard`, `TypeIs`
 
-See the [roadmap](https://typing-graph.tbhb.dev/roadmap/) for details on planned features.
+**Planned:** annotated-types integration, visitor pattern, attrs/Pydantic support. See the [roadmap](https://typing-graph.tbhb.dev/roadmap/).
 
 ## Installation
 
-Requires Python 3.10 or later.
-
-### pip
-
 ```bash
-pip install typing-graph
+pip install typing-graph  # or: uv add typing-graph
 ```
 
-### uv
-
-```bash
-uv add typing-graph
-```
-
-### Poetry
-
-```bash
-poetry add typing-graph
-```
+Requires Python 3.10+.
 
 ## Quick start
 
@@ -87,21 +57,19 @@ poetry add typing-graph
 
 >>> # Inspect the type graph
 >>> node = inspect_type(Urls)
->>> node  # doctest: +SKIP
-SubscriptedGenericNode(metadata=(MinLen(value=1),), origin=GenericTypeNode(cls=list), args=(ConcreteNode(metadata=(Pattern(regex='^https?://'),), cls=str),))
 
 >>> # The outer node is a SubscriptedGenericNode (list) with container-level metadata
 >>> node.origin.cls
 <class 'list'>
->>> node.metadata
-(MinLen(value=1),)
+>>> node.metadata.find(MinLen)
+MinLen(value=1)
 
 >>> # Traverse to the element type - it carries its own metadata
 >>> element = node.args[0]
 >>> element.cls
 <class 'str'>
->>> element.metadata
-(Pattern(regex='^https?://'),)
+>>> element.metadata.find(Pattern)
+Pattern(regex='^https?://')
 
 ```
 
@@ -151,95 +119,48 @@ print(types.functions)    # Dict of function names to FunctionNodes
 print(types.type_aliases) # Dict of type alias names to alias nodes
 ```
 
-## Type node hierarchy
+## Graph traversal
 
-All type representations inherit from `TypeNode`, which provides:
+Use `walk()` for depth-first traversal with optional filtering and depth limits:
 
-- `source`: Optional source location where the code defines the type
-- `metadata`: Tuple of metadata from `Annotated` wrappers (when hoisted)
-- `qualifiers`: Set of type qualifiers (`ClassVar`, `Final`, etc.)
-- `children()`: Method returning child nodes for graph traversal
+```python
+from typing_graph import inspect_type, is_concrete_node, walk, ConcreteNode
+from typing_extensions import TypeIs
 
-### Core type nodes
+node = inspect_type(dict[str, list[int]])
 
-| Node                    | Represents                                               |
-|-------------------------|----------------------------------------------------------|
-| `ConcreteNode`          | Non-generic nominal types (`int`, `str`, custom classes) |
-| `GenericTypeNode`       | Unsubscripted generics (`list`, `Dict`)                  |
-| `SubscriptedGenericNode`| Applied type arguments (`list[int]`, `Dict[str, T]`)     |
-| `UnionNode`             | Union types (`Union[A, B]`, `A \| B`)                    |
-| `TupleNode`             | Tuple types (heterogeneous and homogeneous)              |
-| `CallableNode`          | Callable types with parameter and return type info       |
-| `AnnotatedNode`         | `Annotated[T, ...]` when metadata is not hoisted         |
+# Iterate all nodes
+for n in walk(node):
+    print(n)
 
-### Special forms
+for n in walk(node, predicate=is_concrete_node):
+    print(n.cls)  # str, int
+```
 
-| Node                  | Represents                          |
-|-----------------------|-------------------------------------|
-| `AnyNode`             | `typing.Any`                        |
-| `NeverNode`           | `typing.Never` / `typing.NoReturn`  |
-| `SelfNode`            | `typing.Self`                       |
-| `LiteralNode`         | `Literal[...]` with specific values |
-| `LiteralStringNode`   | `typing.LiteralString`              |
+Use `edges()` on any node for semantic relationship information:
 
-### Type variables
+```python
+for conn in node.edges():
+    print(conn.edge.kind, conn.target)
+# TypeEdgeKind.ORIGIN SubscriptedGenericNode(...)
+# TypeEdgeKind.TYPE_ARG ConcreteNode(cls=str)
+# TypeEdgeKind.TYPE_ARG SubscriptedGenericNode(...)
+```
 
-| Node               | Represents                                            |
-|--------------------|-------------------------------------------------------|
-| `TypeVarNode`      | Type variables with bounds, constraints, and variance |
-| `ParamSpecNode`    | Parameter specification variables (PEP 612)           |
-| `TypeVarTupleNode` | Variadic type variables (PEP 646)                     |
-
-### Structured types
-
-| Node                  | Represents                           |
-|-----------------------|--------------------------------------|
-| `DataclassNode`       | Dataclasses with field metadata      |
-| `TypedDictNode`       | TypedDict with field definitions     |
-| `NamedTupleNode`      | NamedTuple with named fields         |
-| `ProtocolNode`        | Protocol with methods and attributes |
-| `EnumNode`            | Enum with typed members              |
-| `AttrsNode`           | attrs classes                        |
-| `PydanticModelNode`   | Pydantic models                      |
+`TypeEdgeKind` describes relationships: `ORIGIN`, `TYPE_ARG`, `ELEMENT`, `FIELD`, `PARAM`, `RETURN`, `UNION_MEMBER`, and more.
 
 ## Configuration
-
-Control inspection behavior with `InspectConfig`:
 
 ```python
 from typing_graph import inspect_type, InspectConfig, EvalMode
 
 config = InspectConfig(
-    eval_mode=EvalMode.DEFERRED,  # How to handle forward references
-    max_depth=50,                  # Maximum recursion depth
-    hoist_metadata=True,           # Move Annotated metadata to base type
-    include_source_locations=False, # Track where types are defined
+    eval_mode=EvalMode.DEFERRED,  # EAGER, DEFERRED (default), or STRINGIFIED
+    max_depth=50,
+    hoist_metadata=True,
 )
-
 node = inspect_type(SomeType, config=config)
 ```
-
-### Forward reference evaluation modes
-
-- `EvalMode.EAGER`: Fully resolve annotations; fail on errors
-- `EvalMode.DEFERRED`: Use `ForwardRefNode` for unresolvable annotations (default)
-- `EvalMode.STRINGIFIED`: Keep annotations as strings, resolve lazily
-
-## Inspection functions
-
-| Function                    | Purpose                                     |
-|-----------------------------|---------------------------------------------|
-| `inspect_type()`            | Inspect any type annotation                 |
-| `inspect_function()`        | Inspect a function's signature and metadata |
-| `inspect_signature()`       | Inspect a callable's signature              |
-| `inspect_class()`           | Auto-detect and inspect a class             |
-| `inspect_dataclass()`       | Inspect a dataclass specifically            |
-| `inspect_enum()`            | Inspect an Enum specifically                |
-| `inspect_module()`          | Discover all public types in a module       |
-| `inspect_type_alias()`      | Inspect a type alias                        |
-| `to_runtime_type()`         | Convert a node back to runtime type hints   |
-| `cache_clear()`             | Clear the global inspection cache           |
-| `cache_info()`              | Get cache statistics                        |
 
 ## Documentation
 
@@ -259,6 +180,7 @@ This project uses [Claude Code][claude-code] as a development tool for:
 - Code cleanup and refactoring suggestions
 - Researching Python typing edge cases
 - Running benchmarks and mutation testing
+- Release automation
 
 All contributions undergo review and testing before inclusion, regardless of origin.
 
@@ -267,11 +189,7 @@ All contributions undergo review and testing before inclusion, regardless of ori
 MIT License. See [LICENSE](LICENSE) for details.
 
 [annotated-types]: https://github.com/annotated-types/annotated-types
-[attrs]: https://www.attrs.org/
-[claude-code]: https://code.claude.com/docs
-[pep-647]: https://peps.python.org/pep-0647/
+[claude-code]: https://docs.anthropic.com/en/docs/claude-code
 [pep-695]: https://peps.python.org/pep-0695/
-[pep-696]: https://peps.python.org/pep-0696/
-[pep-742]: https://peps.python.org/pep-0742/
 [pydantic]: https://pydantic.dev
 [typing-inspection]: https://typing-inspection.pydantic.dev/latest/
