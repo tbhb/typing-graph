@@ -7,13 +7,15 @@ Complete reference for all public classes and functions in the typing-graph libr
 ## Contents
 
 - [Core inspection functions](#core-inspection-functions) - Entry points for type inspection
+- [Traversal](#traversal) - Graph traversal function
 - [Configuration](#configuration) - Classes for controlling inspection behavior
 - [Type nodes](#type-nodes) - Base classes and node types for representing types
 - [Structured type nodes](#structured-type-nodes) - Classes, dataclasses, TypedDicts, and similar
 - [Function and callable nodes](#function-and-callable-nodes) - Functions and signatures
 - [Helper types](#helper-types) - Supporting types for fields, parameters, and locations
 - [Metadata collection](#metadata-collection) - Working with type metadata
-- [Exceptions](#exceptions) - Exception classes for error handling
+- [Edge types](#edge-types) - Edge types for graph relationships
+- [Exceptions](#exceptions) - Base, metadata, and traversal exceptions
 - [Type guards](#type-guards) - Type narrowing functions
 - [Utility functions](#utility-functions) - Helpers for unions and optional types
 - [Cache management](#cache-management) - Managing the inspection cache
@@ -26,6 +28,8 @@ Entry points for inspecting type annotations, classes, functions, modules, and t
 
 ::: typing_graph
     options:
+      show_root_heading: false
+      show_docstring_description: false
       heading_level: 3
       members:
         - inspect_type
@@ -41,12 +45,26 @@ Entry points for inspecting type annotations, classes, functions, modules, and t
         - inspect_type_alias
         - inspect_type_param
 
+## Traversal
+
+The primary traversal function for depth-first iteration over type graphs.
+
+::: typing_graph
+    options:
+      show_root_heading: false
+      show_docstring_description: false
+      heading_level: 3
+      members:
+        - walk
+
 ## Configuration
 
 Classes for controlling inspection behavior.
 
 ::: typing_graph
     options:
+      show_root_heading: false
+      show_docstring_description: false
       heading_level: 3
       members:
         - InspectConfig
@@ -60,6 +78,8 @@ The foundational type node class and type variable.
 
 ::: typing_graph
     options:
+      show_root_heading: false
+      show_docstring_description: false
       heading_level: 4
       members:
         - TypeNode
@@ -71,6 +91,8 @@ Nodes representing concrete types, generics, and annotated types.
 
 ::: typing_graph
     options:
+      show_root_heading: false
+      show_docstring_description: false
       heading_level: 4
       members:
         - ConcreteNode
@@ -87,6 +109,8 @@ Nodes representing type unions and intersections.
 
 ::: typing_graph
     options:
+      show_root_heading: false
+      show_docstring_description: false
       heading_level: 4
       members:
         - UnionNode
@@ -99,6 +123,8 @@ Nodes representing type parameters and variance.
 
 ::: typing_graph
     options:
+      show_root_heading: false
+      show_docstring_description: false
       heading_level: 4
       members:
         - TypeVarNode
@@ -113,6 +139,8 @@ Nodes for special typing constructs.
 
 ::: typing_graph
     options:
+      show_root_heading: false
+      show_docstring_description: false
       heading_level: 4
       members:
         - AnyNode
@@ -135,6 +163,8 @@ Types representing forward reference resolution states.
 
 ::: typing_graph
     options:
+      show_root_heading: false
+      show_docstring_description: false
       heading_level: 4
       members:
         - RefState
@@ -148,6 +178,8 @@ Nodes representing classes, dataclasses, TypedDicts, and other structured types.
 
 ::: typing_graph
     options:
+      show_root_heading: false
+      show_docstring_description: false
       heading_level: 3
       members:
         - StructuredNode
@@ -164,6 +196,8 @@ Nodes representing functions, callables, and signatures.
 
 ::: typing_graph
     options:
+      show_root_heading: false
+      show_docstring_description: false
       heading_level: 3
       members:
         - FunctionNode
@@ -177,6 +211,8 @@ Supporting types for field definitions, parameters, and source locations.
 
 ::: typing_graph
     options:
+      show_root_heading: false
+      show_docstring_description: false
       heading_level: 3
       members:
         - FieldDef
@@ -192,21 +228,61 @@ Classes for working with type metadata.
 
 ::: typing_graph
     options:
+      show_root_heading: false
+      show_docstring_description: false
       heading_level: 3
       members:
         - MetadataCollection
         - SupportsLessThan
 
+## Edge types
+
+Types representing edges between nodes in the type graph.
+
+::: typing_graph
+    options:
+      show_root_heading: false
+      show_docstring_description: false
+      heading_level: 3
+      members:
+        - TypeEdge
+        - TypeEdgeKind
+        - TypeEdgeConnection
+
 ## Exceptions
 
 Exception classes for error handling.
 
+### Base exception
+
 ::: typing_graph
     options:
-      heading_level: 3
+      show_root_heading: false
+      show_docstring_description: false
+      heading_level: 4
+      members:
+        - TypingGraphError
+
+### Metadata exceptions
+
+::: typing_graph
+    options:
+      show_root_heading: false
+      show_docstring_description: false
+      heading_level: 4
       members:
         - MetadataNotFoundError
         - ProtocolNotRuntimeCheckableError
+
+### Traversal exceptions
+
+::: typing_graph
+    options:
+      show_root_heading: false
+      show_docstring_description: false
+      heading_level: 4
+      members:
+        - TraversalError
 
 ## Type guards
 
@@ -216,6 +292,8 @@ Type guard functions for type narrowing on node types.
 
 ::: typing_graph
     options:
+      show_root_heading: false
+      show_docstring_description: false
       heading_level: 4
       members:
         - is_type_node
@@ -267,6 +345,8 @@ Functions for detecting special class types at runtime.
 
 ::: typing_graph
     options:
+      show_root_heading: false
+      show_docstring_description: false
       heading_level: 4
       members:
         - is_dataclass_class
@@ -281,6 +361,8 @@ Helper functions for working with union types and optional values.
 
 ::: typing_graph
     options:
+      show_root_heading: false
+      show_docstring_description: false
       heading_level: 3
       members:
         - get_union_members
@@ -295,6 +377,8 @@ Functions for managing the type inspection cache.
 
 ::: typing_graph
     options:
+      show_root_heading: false
+      show_docstring_description: false
       heading_level: 3
       members:
         - cache_info

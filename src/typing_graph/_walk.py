@@ -66,7 +66,7 @@ def walk(
         accidental positional usage and to allow future parameters to be
         added without breaking changes.
 
-    Example:
+    Examples:
         Basic traversal of all nodes:
 
         >>> from typing_graph import inspect_type
