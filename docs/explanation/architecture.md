@@ -219,6 +219,51 @@ What counts as "children" depends on the node type:
 - `DataclassNode` → field types
 - `ConcreteNode` → empty (leaf node)
 
+## Graph traversal
+
+The [`children()`][typing_graph.TypeNode.children] method provides structural traversal, but many use cases require semantic context: knowing whether a child is a dictionary key versus value, or a function parameter versus return type. The [`edges()`][typing_graph.TypeNode.edges] method complements `children()` by providing this relationship metadata through [`TypeEdgeConnection`][typing_graph.TypeEdgeConnection] objects.
+
+### Edges caching
+
+Both `children()` and `edges()` return pre-computed results with no allocation overhead at call time. The library computes these values once during node construction in `__post_init__`, storing them as tuples:
+
+```python
+# snippet - simplified internal pattern
+@dataclass(slots=True, frozen=True)
+class SubscriptedGenericNode(TypeNode):
+    origin: GenericTypeNode
+    args: tuple[TypeNode, ...]
+    _children: tuple[TypeNode, ...] = field(init=False, repr=False)
+    _edges: tuple[TypeEdgeConnection, ...] = field(init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        # Compute once at construction, before freeze
+        object.__setattr__(self, "_children", self.args)
+        object.__setattr__(self, "_edges", self._build_edges())
+
+    def children(self) -> Sequence[TypeNode]:
+        return self._children  # Direct return, no computation
+
+    def edges(self) -> Sequence[TypeEdgeConnection]:
+        return self._edges  # Direct return, no computation
+```
+
+This design follows the principle of paying for what you use: `children()` returns the lightweight tuple directly for simple traversal, while `edges()` provides the richer semantic context when needed. Neither method performs work at call time because both return pre-built results.
+
+!!! info "Why tuples instead of lists?"
+
+    Tuples provide three benefits over lists. First, they are immutable, which aligns with the frozen dataclass design. Second, they are hashable, enabling nodes to participate in sets and dictionary keys. Third, they consume slightly less memory than equivalent lists. For collections that never change after construction, tuples are the natural choice.
+
+### Thread safety
+
+The combination of frozen dataclasses and immutable tuples makes type nodes safe for concurrent read access without synchronization. Multiple threads can call `children()` and `edges()` simultaneously on the same node with no risk of data races or inconsistent views.
+
+This thread safety emerges from the design rather than explicit locking. Because nodes cannot change after construction and the returned tuples are also immutable, there is no shared mutable state to protect. Each thread receives a reference to the same unchanging data.
+
+The global inspection cache also benefits from this design. Once a node is cached, any thread can retrieve and traverse it safely. The only synchronization needed is in the cache insertion path, which the library handles internally.
+
+For more on how edges encode semantic relationships like key/value and parameter/return, see [Graph edges and semantic relationships](graph-edges.md).
+
 <!-- vale Google.Headings = NO -->
 
 ## MetadataCollection
