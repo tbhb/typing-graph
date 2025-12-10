@@ -91,15 +91,27 @@ Each node in the graph carries its own metadata, enabling frameworks to apply di
 ### Inspecting functions
 
 ```python
+from typing import Annotated
 from typing_graph import inspect_function
 
-def greet(name: str, times: int = 1) -> str:
-    return name * times
+def fetch_users(
+    limit: Annotated[int, "max results"] = 10,
+    tags: list[str] | None = None,
+) -> list[dict[str, str]]:
+    ...
 
-func = inspect_function(greet)
-print(func.name)  # "greet"
-print(func.signature.parameters[0].name)  # "name"
-print(func.signature.returns.cls)  # str
+func = inspect_function(fetch_users)
+print(func.name)  # "fetch_users"
+
+# Parameters carry their type nodes and metadata
+limit_param = func.signature.parameters[0]
+print(limit_param.name)  # "limit"
+print(limit_param.metadata.get(str))  # "max results"
+
+# Return type is fully inspected
+returns = func.signature.returns
+print(returns.origin.cls)  # list
+print(returns.args[0].origin.cls)  # dict
 ```
 
 See the [functions tutorial](https://typing-graph.tbhb.dev/tutorials/functions/) for more details.
@@ -107,19 +119,29 @@ See the [functions tutorial](https://typing-graph.tbhb.dev/tutorials/functions/)
 ### Inspecting classes
 
 ```python
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Annotated
 from typing_graph import inspect_class, DataclassNode
 
 @dataclass(frozen=True, slots=True)
 class User:
     name: str
-    age: int
+    email: Annotated[str, "unique"]
+    roles: list[str] = field(default_factory=list)
 
 node = inspect_class(User)
 assert isinstance(node, DataclassNode)
 assert node.frozen is True
 assert node.slots is True
-assert len(node.fields) == 2
+
+# Fields preserve type structure and metadata
+email_field = node.fields[1]
+print(email_field.name)  # "email"
+print(email_field.metadata.get(str))  # "unique"
+
+roles_field = node.fields[2]
+print(roles_field.type.origin.cls)  # list
+print(roles_field.default_factory)  # True
 ```
 
 See the [structured types tutorial](https://typing-graph.tbhb.dev/tutorials/structured-types/) for dataclasses, TypedDict, NamedTuple, and more.
