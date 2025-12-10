@@ -551,3 +551,80 @@ class TestWalkThreadSafety:
         for result in results[1:]:
             result_ids = [id(n) for n in result]
             assert result_ids == first_ids, "Different results"
+
+    @given(type_annotations())
+    @settings(deadline=None, max_examples=50)
+    @example(dict[str, list[int]])
+    @example(tuple[int, str, float])
+    @example(int | str | float | None)
+    def test_walk_concurrent_high_thread_count(self, annotation: Any) -> None:
+        import threading
+
+        node = inspect_type(annotation)
+        results: list[list[TypeNode]] = []
+        errors: list[BaseException] = []
+        lock = threading.Lock()
+
+        def walk_graph() -> None:
+            try:
+                walked = list(walk(node))
+                with lock:
+                    results.append(walked)
+            except BaseException as e:  # noqa: BLE001 - need to catch any thread exception
+                with lock:
+                    errors.append(e)
+
+        threads = [threading.Thread(target=walk_graph) for _ in range(16)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert not errors, f"Concurrent walk raised errors: {errors}"
+        assert len(results) == 16
+
+        first_ids = [id(n) for n in results[0]]
+        for result in results[1:]:
+            result_ids = [id(n) for n in result]
+            assert result_ids == first_ids, "Different results"
+
+
+class TestChildrenThreadSafety:
+    @given(type_annotations())
+    @settings(deadline=None)
+    @example(dict[str, list[int]])
+    @example(tuple[int, str, float])
+    def test_children_concurrent_access(self, annotation: Any) -> None:
+        import threading
+
+        node = inspect_type(annotation)
+        all_nodes = list(walk(node))
+        errors: list[BaseException] = []
+        results_per_thread: list[list[tuple[int, int]]] = []
+        lock = threading.Lock()
+
+        def access_children() -> None:
+            try:
+                thread_results: list[tuple[int, int]] = []
+                for n in all_nodes:
+                    for _ in range(100):
+                        children = n.children()
+                        thread_results.append((id(n), len(children)))
+                with lock:
+                    results_per_thread.append(thread_results)
+            except BaseException as e:  # noqa: BLE001 - need to catch any thread exception
+                with lock:
+                    errors.append(e)
+
+        threads = [threading.Thread(target=access_children) for _ in range(16)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert not errors, f"Concurrent children() raised errors: {errors}"
+        assert len(results_per_thread) == 16
+
+        first_result = results_per_thread[0]
+        for result in results_per_thread[1:]:
+            assert result == first_result, "Children results differ across threads"

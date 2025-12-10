@@ -1,7 +1,5 @@
 from enum import IntEnum
 
-import pytest
-
 from typing_graph._node import (
     AnnotatedNode,
     AnyNode,
@@ -49,51 +47,6 @@ from typing_graph._node import (
     UnionNode,
     UnpackNode,
 )
-
-
-@pytest.fixture
-def int_node() -> ConcreteNode:
-    return ConcreteNode(cls=int)
-
-
-@pytest.fixture
-def str_node() -> ConcreteNode:
-    return ConcreteNode(cls=str)
-
-
-@pytest.fixture
-def float_node() -> ConcreteNode:
-    return ConcreteNode(cls=float)
-
-
-@pytest.fixture
-def bool_node() -> ConcreteNode:
-    return ConcreteNode(cls=bool)
-
-
-@pytest.fixture
-def any_node() -> AnyNode:
-    return AnyNode()
-
-
-@pytest.fixture
-def never_node() -> NeverNode:
-    return NeverNode()
-
-
-@pytest.fixture
-def typevar_t(int_node: ConcreteNode) -> TypeVarNode:
-    return TypeVarNode(name="T", bound=int_node)
-
-
-@pytest.fixture
-def paramspec_p() -> ParamSpecNode:
-    return ParamSpecNode(name="P")
-
-
-@pytest.fixture
-def typevartuple_ts() -> TypeVarTupleNode:
-    return TypeVarTupleNode(name="Ts")
 
 
 class TestAnyNodeEdges:
