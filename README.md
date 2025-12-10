@@ -86,7 +86,7 @@ Pattern(regex='^https?://')
 
 ```
 
-Each node in the graph carries its own metadata, enabling frameworks to apply different validation or transformation logic at each level of the type structure.
+Each node in the graph carries its own metadata, enabling frameworks to apply different validation or transformation logic at each level of the type structure. See the [first inspection tutorial](https://typing-graph.tbhb.dev/tutorials/first-inspection/) for a complete walkthrough.
 
 ### Inspecting functions
 
@@ -101,6 +101,8 @@ print(func.name)  # "greet"
 print(func.signature.parameters[0].name)  # "name"
 print(func.signature.returns.cls)  # str
 ```
+
+See the [functions tutorial](https://typing-graph.tbhb.dev/tutorials/functions/) for more details.
 
 ### Inspecting classes
 
@@ -119,6 +121,8 @@ assert node.frozen is True
 assert node.slots is True
 assert len(node.fields) == 2
 ```
+
+See the [structured types tutorial](https://typing-graph.tbhb.dev/tutorials/structured-types/) for dataclasses, TypedDict, NamedTuple, and more.
 
 ### Inspecting modules
 
@@ -160,7 +164,7 @@ for conn in node.edges():
 # TypeEdgeKind.TYPE_ARG SubscriptedGenericNode(...)
 ```
 
-`TypeEdgeKind` describes relationships: `ORIGIN`, `TYPE_ARG`, `ELEMENT`, `FIELD`, `PARAM`, `RETURN`, `UNION_MEMBER`, and more.
+`TypeEdgeKind` describes relationships: `ORIGIN`, `TYPE_ARG`, `ELEMENT`, `FIELD`, `PARAM`, `RETURN`, `UNION_MEMBER`, and more. See the [traversing type graphs tutorial](https://typing-graph.tbhb.dev/tutorials/traversing-type-graphs/) and [graph edges explanation](https://typing-graph.tbhb.dev/explanation/graph-edges/) for details.
 
 ## Configuration
 
@@ -174,6 +178,8 @@ config = InspectConfig(
 )
 node = inspect_type(SomeType, config=config)
 ```
+
+See the [configuration guide](https://typing-graph.tbhb.dev/guides/configuration/) for all available options.
 
 ## Documentation
 
