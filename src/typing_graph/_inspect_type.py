@@ -228,9 +228,6 @@ class TypeInspector:
 _TYPE_INSPECTORS: list[Callable[[Any, InspectContext], TypeNode | None]] = []
 _inspectors_initialized: bool = False
 
-# =============================================================================
-# Origin-based dispatch tables for O(1) lookup optimization
-# =============================================================================
 
 # Type alias for dispatch functions that receive pre-computed origin/args.
 # Returns TypeNode | None to allow dispatch functions to signal "no match".
@@ -454,9 +451,7 @@ def _inspect_plain_type_handler(
     return None
 
 
-# =============================================================================
 # Origin-based dispatch wrapper functions
-# =============================================================================
 # These thin wrappers receive pre-computed origin/args to avoid redundant calls
 
 
