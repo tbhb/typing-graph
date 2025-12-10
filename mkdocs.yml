@@ -180,6 +180,7 @@ nav:
       - tutorials/index.md
       - Your first type inspection: tutorials/first-inspection.md
       - Working with metadata: tutorials/working-with-metadata.md
+      - Traversing type graphs: tutorials/traversing-type-graphs.md
       - Inspecting structured types: tutorials/structured-types.md
       - Inspecting functions: tutorials/functions.md
   - Guides:
