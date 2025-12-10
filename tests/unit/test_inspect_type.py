@@ -1175,6 +1175,10 @@ class TestGetTypeHintsForNodeEdgeCases:
             ) -> tuple[()]:  # type: ignore[override]
                 return ()
 
+            @override
+            def edges(self) -> tuple[()]:  # type: ignore[override]
+                return ()
+
         node = UnknownTypeNode()
         result = to_runtime_type(node)
 

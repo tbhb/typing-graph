@@ -37,7 +37,6 @@ def _make_annotated(base_type: Any, *metadata: object) -> Any:
     ),
 )
 @settings(deadline=None)
-# Migrated from TestAnnotatedMetadata - single and multiple metadata
 @example(inner_type=int, metadata=["metadata"])
 @example(inner_type=int, metadata=["meta1", "meta2"])
 @example(inner_type=str, metadata=["description"])
@@ -93,7 +92,6 @@ def test_nested_annotated_flattens_correctly(annotation: object) -> None:
 
 @given(inner_type=primitive_types())
 @settings(deadline=None)
-# Migrated from TestTypeQualifiers
 @example(inner_type=int)
 @example(inner_type=str)
 @example(inner_type=float)
@@ -111,7 +109,6 @@ def test_classvar_qualifier_extracted(inner_type: type) -> None:
 
 @given(inner_type=primitive_types())
 @settings(deadline=None)
-# Migrated from TestTypeQualifiers
 @example(inner_type=int)
 @example(inner_type=str)
 @example(inner_type=float)
@@ -186,7 +183,6 @@ def test_qualifier_combinations(include_classvar: bool, include_final: bool) -> 
         assert "class_var" not in final_node.qualifiers
 
 
-# Migrated from TestTypeQualifiers.test_classvar_with_complex_type
 @given(
     inner_type=st.sampled_from([list[int], dict[str, int], set[str], tuple[int, ...]]),
 )
@@ -210,7 +206,6 @@ def test_classvar_with_complex_type(inner_type: object) -> None:
     )
 
 
-# Migrated from TestAnnotatedMetadata.test_metadata_with_complex_type
 @given(
     inner_type=st.sampled_from([list[int], dict[str, int], set[str], tuple[int, ...]]),
     metadata=st.text(min_size=1, max_size=20),
