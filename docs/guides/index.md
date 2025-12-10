@@ -20,6 +20,7 @@ These guides cover [`MetadataCollection`][typing_graph.MetadataCollection] opera
 | Task                         | Guide                                                   |
 | ---------------------------- | ------------------------------------------------------- |
 | Visit all nodes in a type    | [Walking the type graph](walking-type-graph.md)         |
+| Filter with type narrowing   | [Filtering with walk()](filtering-with-walk.md)         |
 | Control inspection behavior  | [Configuration options](configuration.md)               |
 
 ## All guides
@@ -38,6 +39,9 @@ These guides cover [`MetadataCollection`][typing_graph.MetadataCollection] opera
 
 [Walking the type graph](walking-type-graph.md)
 :   Traverse the [type graph](../reference/glossary.md#type-graph) recursively using the [`children()`][typing_graph.TypeNode.children] method to process nested types.
+
+[Filtering with walk()](filtering-with-walk.md)
+:   Filter type graphs using [`walk()`][typing_graph.walk] with built-in type guards, custom [`TypeIs`][typing_extensions.TypeIs] predicates, and depth limits.
 
 [Configuration options](configuration.md)
 :   Customize inspection behavior with [`InspectConfig`][typing_graph.InspectConfig], [forward reference](../reference/glossary.md#forward-reference) modes, and cache management.

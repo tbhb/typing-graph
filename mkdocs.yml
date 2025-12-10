@@ -103,6 +103,7 @@ plugins:
             summary: true
           inventories:
             - https://docs.python.org/3/objects.inv
+            - https://typing-extensions.readthedocs.io/en/latest/objects.inv
             - https://typing-inspection.pydantic.dev/latest/objects.inv
   - privacy:
       enabled: !ENV [CI, false]
@@ -188,6 +189,7 @@ nav:
       - Transforming metadata: guides/metadata-transformations.md
       - Metadata recipes: guides/metadata-recipes.md
       - Walking the type graph: guides/walking-type-graph.md
+      - Filtering with walk(): guides/filtering-with-walk.md
       - Configuration options: guides/configuration.md
   - Explanation:
       - explanation/index.md
