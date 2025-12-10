@@ -1,12 +1,109 @@
 # How to traverse a type graph
 
-This guide shows you how to traverse [type graphs](../reference/glossary.md#type-graph) recursively to visit all nodes, collect information, and process nested type structures. You'll learn to write recursive traversal functions, handle different [node types](../reference/glossary.md#type-node), track paths, and collect metadata during traversal.
+This guide shows you how to traverse [type graphs](../reference/glossary.md#type-graph) to visit nodes, collect information, and process nested type structures. You'll learn to use the [`walk()`][typing_graph.walk] iterator for efficient depth-first traversal, filter nodes with predicates, control traversal depth, and fall back to manual recursion when needed.
 
-!!! note "Upcoming API improvements"
+## Using the walk() iterator
 
-    A dedicated **graph traversal API** is coming soon with a `walk()` generator, visitor pattern support, and path tracking. The patterns shown here use the current stable `children()` method. See the [roadmap](../roadmap.md#graph-traversal-api) for details on planned features.
+The [`walk()`][typing_graph.walk] function provides depth-first traversal of type graphs. It handles visited-node tracking internally and supports filtering and depth limits.
 
-## The children method
+### Basic traversal
+
+Iterate over all nodes in a type graph:
+
+```python
+from typing_graph import inspect_type, walk
+
+node = inspect_type(dict[str, list[int]])
+for n in walk(node):
+    print(type(n).__name__)
+```
+
+Output:
+
+```text
+SubscriptedGenericNode
+GenericTypeNode
+ConcreteNode
+SubscriptedGenericNode
+GenericTypeNode
+ConcreteNode
+```
+
+### Filtering with predicates
+
+Pass a predicate function to yield only matching nodes. When using a type guard with [`TypeIs`][typing_extensions.TypeIs], the return type narrows automatically:
+
+```python
+from typing_graph import inspect_type, walk, ConcreteNode, is_concrete_node
+
+node = inspect_type(dict[str, list[int]])
+
+# Filter to concrete nodes only
+for concrete in walk(node, predicate=is_concrete_node):
+    print(concrete.cls.__name__)  # Type narrowed to ConcreteNode
+```
+
+Output:
+
+```text
+str
+int
+```
+
+You can also use custom predicates:
+
+```python
+from typing_graph import inspect_type, walk, TypeNode
+
+def has_metadata(n: TypeNode) -> bool:
+    return len(n.metadata) > 0
+
+from typing import Annotated
+
+Inner = Annotated[int, "inner"]
+Outer = Annotated[list[Inner], "outer"]
+
+node = inspect_type(Outer)
+annotated_nodes = list(walk(node, predicate=has_metadata))
+print(len(annotated_nodes))  # 2
+```
+
+### Limiting traversal depth
+
+Use `max_depth` to limit how deep the traversal goes:
+
+```python
+from typing_graph import inspect_type, walk
+
+node = inspect_type(dict[str, list[tuple[int, float]]])
+
+# Depth 0: only root node
+print(len(list(walk(node, max_depth=0))))  # 1
+
+# Depth 1: root + immediate children
+print(len(list(walk(node, max_depth=1))))  # 3
+
+# Depth 2: root + children + grandchildren
+print(len(list(walk(node, max_depth=2))))  # 5
+```
+
+### Combining predicate and depth limit
+
+Filter and limit depth together:
+
+```python
+from typing_graph import inspect_type, walk, is_concrete_node
+
+node = inspect_type(dict[str, list[tuple[int, float]]])
+
+# Only concrete nodes within 2 levels
+shallow_concrete = list(walk(node, predicate=is_concrete_node, max_depth=2))
+print([n.cls.__name__ for n in shallow_concrete])  # ['str']
+```
+
+## Manual traversal with children()
+
+When you need fine-grained control over traversal order, path construction, or custom visited-node tracking, use the [`children()`][typing_graph.TypeNode.children] method directly.
 
 Every [`TypeNode`][typing_graph.TypeNode] has a `children()` method that returns an iterable of its child nodes. What counts as a "child" depends on the node type:
 
@@ -33,7 +130,14 @@ str_node = inspect_type(str)
 print(list(str_node.children()))  # []
 ```
 
-## Writing a recursive traversal
+## Writing recursive traversal functions
+
+For cases where `walk()` doesn't fit your needs, write your own recursive traversal. This gives you control over:
+
+- Custom path tracking (building path strings as you recurse)
+- Non-standard traversal order (breadth-first, post-order)
+- Selective recursion (skip certain branches)
+- Accumulating results during traversal
 
 Here's a basic depth-first traversal function:
 
@@ -59,8 +163,10 @@ Output:
 
 ```text
 Visiting: SubscriptedGenericNode
+Visiting: GenericTypeNode
 Visiting: ConcreteNode
 Visiting: SubscriptedGenericNode
+Visiting: GenericTypeNode
 Visiting: ConcreteNode
 ```
 
@@ -178,124 +284,130 @@ root.emails -> SubscriptedGenericNode
 root.emails[0] -> str
 ```
 
-## Limiting recursion depth
-
-Prevent infinite recursion or excessive depth with a limit:
-
-```python
-from typing_graph import TypeNode, inspect_type
-
-def traverse_limited(
-    node: TypeNode,
-    max_depth: int = 10,
-    current_depth: int = 0,
-) -> None:
-    """Traverse with a depth limit."""
-    if current_depth >= max_depth:  # (1)!
-        print(f"{'  ' * current_depth}... (max depth reached)")
-        return
-
-    print(f"{'  ' * current_depth}{type(node).__name__}")
-
-    for child in node.children():
-        traverse_limited(child, max_depth, current_depth + 1)  # (2)!
-
-# Limit to 2 levels
-node = inspect_type(dict[str, list[tuple[int, float]]])
-traverse_limited(node, max_depth=2)
-```
-
-1. Base case: stop recursion when depth limit reached.
-2. Increment depth counter with each recursive call.
-
-Output:
-
-```text
-SubscriptedGenericNode
-  ConcreteNode
-  SubscriptedGenericNode
-    ... (max depth reached)
-```
-
 ## Practical example: collecting all types
 
-Here's a complete example that collects all concrete types in a graph:
+Use `walk()` for the simplest approach:
 
 ```python
-from typing_graph import TypeNode, inspect_type, is_concrete_node
-
-def collect_concrete_types(node: TypeNode) -> set[type]:
-    """Collect all concrete types in a type graph."""
-    types: set[type] = set()
-
-    def walk(n: TypeNode) -> None:
-        if is_concrete_node(n):
-            types.add(n.cls)
-        for child in n.children():
-            walk(child)
-
-    walk(node)
-    return types
-
-# Example
 from typing import Callable
+from typing_graph import inspect_type, walk, is_concrete_node
+
 node = inspect_type(Callable[[str, int], dict[str, list[float]]])
-types = collect_concrete_types(node)
+types = {n.cls for n in walk(node, predicate=is_concrete_node)}
 print(types)  # {<class 'str'>, <class 'int'>, <class 'dict'>, <class 'list'>, <class 'float'>}
 ```
 
+??? note "Alternative: manual recursion"
+    If you need custom behavior during collection, use manual recursion:
+
+    ```python
+    from typing_graph import TypeNode, inspect_type, is_concrete_node
+
+    def collect_concrete_types(node: TypeNode) -> set[type]:
+        """Collect all concrete types in a type graph."""
+        types: set[type] = set()
+
+        def recurse(n: TypeNode) -> None:
+            if is_concrete_node(n):
+                types.add(n.cls)
+            for child in n.children():
+                recurse(child)
+
+        recurse(node)
+        return types
+
+    # Example
+    from typing import Callable
+    node = inspect_type(Callable[[str, int], dict[str, list[float]]])
+    types = collect_concrete_types(node)
+    print(types)  # {<class 'str'>, <class 'int'>, <class 'dict'>, <class 'list'>, <class 'float'>}
+    ```
+
 ## Collecting metadata during traversal
 
-Combine traversal with metadata extraction:
+Use `walk()` to find nodes with metadata:
 
 ```python
-from typing import Annotated, Any
+from typing import Annotated
 from dataclasses import dataclass
-from typing_graph import TypeNode, inspect_type
+from typing_graph import inspect_type, walk, TypeNode
 
 @dataclass(frozen=True)
 class Constraint:
     name: str
 
-def collect_constraints(node: TypeNode) -> list[tuple[str, Constraint]]:
-    """Collect all constraints with their paths."""
-    results: list[tuple[str, Constraint]] = []
+def has_constraint(n: TypeNode) -> bool:
+    return any(isinstance(m, Constraint) for m in n.metadata)
 
-    def walk(n: TypeNode, path: str) -> None:
-        # Check metadata at this node
-        for meta in n.metadata:
-            if isinstance(meta, Constraint):
-                results.append((path, meta))
-
-        # Recurse
-        for i, child in enumerate(n.children()):
-            walk(child, f"{path}[{i}]")
-
-    walk(node, "root")
-    return results
-
-# Example
 Inner = Annotated[int, Constraint("inner")]
 Outer = Annotated[list[Inner], Constraint("outer")]
 
 node = inspect_type(Outer)
-for path, constraint in collect_constraints(node):
-    print(f"{path}: {constraint.name}")
+for n in walk(node, predicate=has_constraint):
+    for meta in n.metadata:
+        if isinstance(meta, Constraint):
+            print(meta.name)
 ```
 
 Output:
 
 ```text
-root: outer
-root[0]: inner
+outer
+inner
 ```
+
+??? note "Alternative: manual recursion with path tracking"
+    When you need to track the path to each constraint:
+
+    ```python
+    from typing import Annotated, Any
+    from dataclasses import dataclass
+    from typing_graph import TypeNode, inspect_type
+
+    @dataclass(frozen=True)
+    class Constraint:
+        name: str
+
+    def collect_constraints(node: TypeNode) -> list[tuple[str, Constraint]]:
+        """Collect all constraints with their paths."""
+        results: list[tuple[str, Constraint]] = []
+
+        def recurse(n: TypeNode, path: str) -> None:
+            # Check metadata at this node
+            for meta in n.metadata:
+                if isinstance(meta, Constraint):
+                    results.append((path, meta))
+
+            # Recurse
+            for i, child in enumerate(n.children()):
+                recurse(child, f"{path}[{i}]")
+
+        recurse(node, "root")
+        return results
+
+    # Example
+    Inner = Annotated[int, Constraint("inner")]
+    Outer = Annotated[list[Inner], Constraint("outer")]
+
+    node = inspect_type(Outer)
+    for path, constraint in collect_constraints(node):
+        print(f"{path}: {constraint.name}")
+    ```
+
+    Output:
+
+    ```text
+    root: outer
+    root[0]: inner
+    ```
 
 ## Result
 
-You can now write recursive traversal functions using `children()`, handle different node types with type guards, track paths through the graph, limit recursion depth, and collect both types and metadata during traversal.
+You can now traverse type graphs using `walk()` for standard depth-first iteration with predicates and depth limits. For advanced cases requiring custom path tracking or non-standard traversal order, you know how to write recursive functions using `children()`.
 
 ## See also
 
+- [`walk()`][typing_graph.walk] - API reference for the walk iterator
 - [Your first type inspection](../tutorials/first-inspection.md) - Basics of `children()`
 - [Metadata queries](metadata-queries.md) - Processing metadata during traversal
 - [Inspecting structured types](../tutorials/structured-types.md) - Dataclass field traversal
