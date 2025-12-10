@@ -34,7 +34,8 @@ typing-graph provides a consistent graph representation that handles the edge ca
 - [ ] **Metadata querying API**: Predicate-based filtering, type-based extraction, scoped queries
 - [ ] **annotated-types integration**: `GroupedMetadata` flattening and convenience methods for constraint extraction
 - [ ] **Type inspection controls**: Allowlists/blocklists, configurable depth boundaries
-- [ ] **Graph traversal API**: Walk function, visitor pattern, path tracking
+- [x] **Graph traversal API**: `walk()` for depth-first traversal, `edges()` for semantic edge metadata
+- [ ] **Visitor pattern and path tracking**: Type-dispatched visitors, breadth-first traversal
 - [ ] **[attrs] support**: Field metadata, validators, converters
 - [ ] **[Pydantic][pydantic] support**: Field metadata, validators, serializers
 

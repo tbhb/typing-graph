@@ -10,8 +10,8 @@ authors:
 repository-code: "https://github.com/tbhb/typing-graph"
 url: "https://typing-graph.tbhb.dev"
 license: MIT
-version: "0.2.0"
-date-released: "2025-11-30"
+version: "0.3.0"
+date-released: "2025-12-10"
 keywords:
   - python
   - typing

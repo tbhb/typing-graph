@@ -8,6 +8,114 @@ toc_depth: 1
 
     Changes not yet released are tracked in [CHANGELOG.md](https://github.com/tbhb/typing-graph/blob/main/CHANGELOG.md) in the repository.
 
+## v0.3.0 (2025-12-10) { data-toc-label="v0.3.0 (2025-12-10)" }
+
+[:material-github: GitHub release](https://github.com/tbhb/typing-graph/releases/tag/v0.3.0) · [:material-package: PyPI](https://pypi.org/project/typing-graph/0.3.0/)
+
+This release introduces graph traversal capabilities with the `walk()` function and semantic edge metadata via `edges()`.
+
+### Added
+
+#### Graph traversal with `walk()`
+
+A new `walk()` function for depth-first traversal of type graphs with predicate filtering and depth limiting.
+
+**Key features:**
+
+- Depth-first iteration yielding unique nodes (by object identity)
+- Iterative implementation prevents recursion depth errors
+- Optional `predicate` filter with `TypeIs` support for type narrowing
+- Optional `max_depth` parameter to limit traversal depth
+
+#### Semantic edge metadata with `edges()`
+
+A new `edges()` method on `TypeNode` that returns semantic edge metadata describing the relationship between parent and child nodes.
+
+**New types:**
+
+- `TypeEdge` — Frozen dataclass containing edge metadata (kind, optional name, optional index)
+- `TypeEdgeKind` — Enum with 25 semantic edge kinds (`ELEMENT`, `KEY`, `VALUE`, `FIELD`, `PARAM`, `RETURN`, etc.)
+- `TypeEdgeConnection` — Frozen dataclass pairing a `TypeEdge` with its target `TypeNode`
+
+**Edge kinds by category:**
+
+=== "Structural/container"
+
+    | Kind | Description |
+    |------|-------------|
+    | `ELEMENT` | Tuple element (positional) |
+    | `KEY` | Dict key type |
+    | `VALUE` | Dict value type |
+    | `UNION_MEMBER` | Union variant |
+    | `ALIAS_TARGET` | Type alias target definition |
+    | `INTERSECTION_MEMBER` | Intersection member |
+    | `VARIANT` | Discriminated union variant |
+
+=== "Named/attribute"
+
+    | Kind | Description |
+    |------|-------------|
+    | `FIELD` | Class/TypedDict field |
+    | `METHOD` | Class method |
+    | `PARAM` | Callable parameter |
+    | `RETURN` | Callable return type |
+
+=== "Secondary/meta-type"
+
+    | Kind | Description |
+    |------|-------------|
+    | `ORIGIN` | Generic origin (`list` in `list[int]`) |
+    | `BOUND` | TypeVar bound |
+    | `CONSTRAINT` | TypeVar constraint |
+    | `DEFAULT` | TypeParam default |
+    | `BASE` | Class base class |
+    | `TYPE_PARAM` | TypeVar definition |
+    | `TYPE_ARG` | Applied type argument |
+    | `SIGNATURE` | Function signature |
+    | `NARROWS` | TypeGuard/TypeIs target |
+    | `SUPERTYPE` | NewType supertype |
+    | `ANNOTATED_BASE` | `Annotated[T, ...]` base type |
+    | `META_OF` | `Type[T]` target |
+    | `TARGET` | `Unpack[T]` target |
+    | `PREFIX` | `Concatenate` prefix types |
+    | `PARAM_SPEC` | `Concatenate` ParamSpec |
+    | `RESOLVED` | ForwardRef resolved type |
+    | `VALUE_TYPE` | Enum value type |
+
+**Helper constructors:**
+
+- `TypeEdge.field(name)` — Create a `FIELD` edge with the given name
+- `TypeEdge.element(index)` — Create an `ELEMENT` edge with the given index
+
+#### TraversalError exception
+
+A new `TraversalError` exception raised when `walk()` encounters invalid parameters (e.g., negative `max_depth`).
+
+### Changed
+
+- **`children()` is now O(1)** — The `children()` method on all `TypeNode` subclasses is now backed by a pre-computed tuple, making repeated access constant-time rather than recomputing the child list on each call.
+
+### Documentation
+
+**Tutorials:**
+
+- [Traversing type graphs](../tutorials/traversing-type-graphs.md) — Introduction to graph traversal with `walk()`
+
+**How-to guides:**
+
+- [Filtering with walk()](../guides/filtering-with-walk.md) — Using predicates and depth limits to filter traversal
+
+**Explanations:**
+
+- [Graph edges](../explanation/graph-edges.md) — Understanding semantic edge metadata and relationships
+
+**Updates to existing docs:**
+
+- Added `walk()` reference to "Your first type inspection" tutorial
+- Added graph traversal section to "Architecture overview" explanation
+
+---
+
 ## v0.2.0 (2025-11-30) { data-toc-label="v0.2.0 (2025-11-30)" }
 
 [:material-github: GitHub release](https://github.com/tbhb/typing-graph/releases/tag/v0.2.0) · [:material-package: PyPI](https://pypi.org/project/typing-graph/0.2.0/)

@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "typing-graph"
-version = "0.2.0"
+version = "0.3.0"
 description = "A Python library for inspecting type annotations and building graph representations of type metadata"
 readme = "README.md"
 license = "MIT"
