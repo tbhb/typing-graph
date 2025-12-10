@@ -33,7 +33,7 @@ if [[ "$first" == "all" ]]; then
         echo "Usage: uv-run all <command...>" >&2
         exit 1
     fi
-    for ver in "" 3.11 3.12 3.13 3.13t 3.14 3.14t; do
+    for ver in "" 3.11 3.12 3.13 3.14 3.14t; do
         if [[ -z "$ver" ]]; then
             echo "=== Running with default Python ==="
         else
