@@ -438,6 +438,9 @@ SubscriptedGenericNode: dict[...]
     - Extract metadata from `Annotated` types
     - Traverse nested type structures using `children()`
 
+!!! tip "Prefer walk() for traversal"
+    The `children()` method gives you direct access to child nodes, but for most traversal tasks, the [`walk()`][typing_graph.walk] iterator is simpler. It handles depth-first traversal automatically and supports filtering with predicates. See [How to filter type graphs with walk()](../guides/filtering-with-walk.md) for practical examples.
+
 ## Summary
 
 You've built a script that inspects Python type annotations and traverses the type graph. The key functions are:
@@ -453,5 +456,6 @@ You've built a script that inspects Python type annotations and traverses the ty
     - [Working with metadata](working-with-metadata.md) - Query and filter metadata collections
     - [Inspecting structured types](structured-types.md) - Work with dataclasses, TypedDict, and NamedTuple
     - [Inspecting functions](functions.md) - Analyze function signatures and parameters
+    - [Filtering with walk()](../guides/filtering-with-walk.md) - Use the walk() iterator for efficient graph traversal
 
     For practical applications of type graph traversal, see [Walking the type graph](../guides/walking-type-graph.md).
