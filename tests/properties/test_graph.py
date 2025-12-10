@@ -1,8 +1,6 @@
 # pyright: reportAny=false, reportExplicitAny=false
 
-from collections import deque
 from typing import (
-    TYPE_CHECKING,
     Annotated,
     Any,
     ClassVar,
@@ -14,9 +12,6 @@ from typing import (
 from typing_extensions import TypeVarTuple
 
 from hypothesis import HealthCheck, example, given, settings
-
-if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator
 
 from typing_graph import (
     AnnotatedNode,
@@ -37,6 +32,7 @@ from typing_graph import (
     UnpackNode,
     cache_clear,
     inspect_type,
+    walk,
 )
 from typing_graph._node import LiteralStringNode
 
@@ -100,42 +96,6 @@ def _count_nodes(node: TypeNode, max_nodes: int) -> int:
         stack.extend(current.children())
 
     return count
-
-
-def _walk(
-    node: TypeNode,
-    *,
-    predicate: "Callable[[TypeNode], bool] | None" = None,
-    max_depth: int | None = None,
-) -> "Iterator[TypeNode]":
-    """Local implementation of walk() following the graph-traversal specification.
-
-    This function matches the spec in .internal/specs/graph-traversal.md.
-    It will be replaced by the public walk() function when implemented.
-    """
-    if max_depth is not None and max_depth < 0:
-        msg = f"max_depth must be non-negative, got {max_depth}"
-        raise ValueError(msg)
-
-    visited: set[int] = set()
-    stack: deque[tuple[TypeNode, int]] = deque([(node, 0)])
-
-    while stack:
-        current, depth = stack.pop()
-        node_id = id(current)
-
-        if node_id in visited:
-            continue
-        visited.add(node_id)
-
-        if predicate is None or predicate(current):
-            yield current
-
-        if max_depth is None or depth < max_depth:
-            # Push children in reverse order for DFS ordering
-            children = list(current.children())
-            for child in reversed(children):
-                stack.append((child, depth + 1))
 
 
 def _verify_children_content(node: TypeNode, visited: set[int]) -> None:
@@ -292,7 +252,7 @@ def test_none_variants_all_produce_valid_nodes(annotation: Any) -> None:
 @example(dict[str, list[tuple[int, str] | None]])
 def test_walk_visits_all_unique_nodes(annotation: Any) -> None:
     node = inspect_type(annotation)
-    walked_nodes = list(_walk(node))
+    walked_nodes = list(walk(node))
     count_via_manual = _count_nodes(node, max_nodes=1000)
 
     # walk() should yield exactly count_nodes unique nodes
@@ -311,7 +271,7 @@ def test_walk_visits_all_unique_nodes(annotation: Any) -> None:
 @example(tuple[int, str, float])
 def test_walk_always_includes_root_node(annotation: Any) -> None:
     root = inspect_type(annotation)
-    walked_nodes = list(_walk(root))
+    walked_nodes = list(walk(root))
 
     # Root node must always be visited
     assert root in walked_nodes
@@ -327,7 +287,7 @@ def test_walk_always_includes_root_node(annotation: Any) -> None:
 @example(tuple[int, str])
 def test_walk_yields_no_duplicates(annotation: Any) -> None:
     node = inspect_type(annotation)
-    walked_nodes = list(_walk(node))
+    walked_nodes = list(walk(node))
 
     # No node should appear more than once (by identity)
     seen_ids: set[int] = set()
@@ -344,7 +304,7 @@ def test_walk_yields_no_duplicates(annotation: Any) -> None:
 @example(dict[str, int])
 def test_walk_depth_zero_yields_only_root(annotation: Any) -> None:
     root = inspect_type(annotation)
-    walked_nodes = list(_walk(root, max_depth=0))
+    walked_nodes = list(walk(root, max_depth=0))
 
     # Depth 0 should yield only the root
     assert len(walked_nodes) == 1
@@ -359,8 +319,8 @@ def test_walk_depth_zero_yields_only_root(annotation: Any) -> None:
 @example(int | str)
 def test_walk_depth_limiting_reduces_or_equals_full_traversal(annotation: Any) -> None:
     root = inspect_type(annotation)
-    full_count = len(list(_walk(root)))
-    limited_count = len(list(_walk(root, max_depth=1)))
+    full_count = len(list(walk(root)))
+    limited_count = len(list(walk(root, max_depth=1)))
 
     # Limited depth should visit fewer or equal nodes
     assert limited_count <= full_count
@@ -374,5 +334,5 @@ def test_walk_depth_limiting_reduces_or_equals_full_traversal(annotation: Any) -
 def test_walk_terminates_on_all_inputs(annotation: Any) -> None:
     node = inspect_type(annotation)
     # Ensure walk terminates within reasonable bounds
-    for count, _ in enumerate(_walk(node), start=1):
+    for count, _ in enumerate(walk(node), start=1):
         assert count < 1000, "walk() did not terminate within expected bounds"

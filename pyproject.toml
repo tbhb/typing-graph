@@ -43,6 +43,7 @@ dev = [
   "codespell>=2.4.1",
   "cosmic-ray>=8.4.3",
   "hypothesis>=6.148.1",
+  "memray>=1.19.1",
   "prek>=0.2.19",
   "py-spy>=0.4.1",
   "pytest>=9.0.1",

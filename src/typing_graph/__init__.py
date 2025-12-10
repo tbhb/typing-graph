@@ -3,6 +3,7 @@
 from importlib.metadata import version
 
 from ._config import EvalMode, InspectConfig
+from ._exceptions import TraversalError, TypingGraphError
 from ._helpers import (
     get_union_members,
     is_optional_node,
@@ -133,6 +134,7 @@ from ._node import (
     is_union_type_node,
     is_unpack_node,
 )
+from ._walk import walk
 
 __all__ = [
     "AnnotatedNode",
@@ -179,6 +181,7 @@ __all__ = [
     "StructuredNode",
     "SubscriptedGenericNode",
     "SupportsLessThan",
+    "TraversalError",
     "TupleNode",
     "TypeAliasNode",
     "TypeGuardNode",
@@ -189,6 +192,7 @@ __all__ = [
     "TypeVarNode",
     "TypeVarTupleNode",
     "TypedDictNode",
+    "TypingGraphError",
     "UnionNode",
     "UnpackNode",
     "Variance",
@@ -259,6 +263,7 @@ __all__ = [
     "is_unpack_node",
     "to_runtime_type",
     "unwrap_optional",
+    "walk",
 ]
 
 __version__ = version("typing-graph")
