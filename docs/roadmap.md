@@ -52,24 +52,19 @@ Forward reference resolution depends on namespace context. Different evaluation 
 
 ## Graph traversal API
 
-### Walk function
+The `walk()` function provides depth-first pre-order traversal with predicate filtering and depth limits. This section covers planned enhancements beyond the shipped functionality.
 
-A generator-based API for iterating through type graphs with control over traversal order and strategy.
+### Additional traversal strategies
 
 **Goals:**
 
-- Pre-order and post-order traversal modes
-- Depth-first and breadth-first strategies
-- Configurable depth limits with safe defaults
-- Predicate-based filtering without interrupting traversal
-- Cycle detection to handle recursive types safely
+- Post-order traversal mode for bottom-up processing
+- Breadth-first traversal strategy for level-by-level inspection
 
 **Use cases:**
 
-- Collecting all metadata annotations in a type hierarchy
-- Finding the first occurrence of a specific type pattern
-- Transforming types bottom-up (post-order) or top-down (pre-order)
-- Early termination when the traversal finds a target
+- Transforming types bottom-up (post-order)
+- Processing types by depth level (breadth-first)
 
 ### Visitor pattern
 
@@ -143,5 +138,3 @@ While typing-graph can inspect any Python type, certain libraries have rich type
 - Analyzing Pydantic models alongside plain dataclasses in unified tooling
 - Extracting validation rules for schema generation
 - Building adapters between Pydantic and other validation frameworks
-
-[annotated-types]: https://github.com/annotated-types/annotated-types
