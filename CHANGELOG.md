@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased](https://github.com/tbhb/typing-graph/compare/v0.3.0...HEAD)
 
+### Added
+
+- New "Common helper functions" how-to guide for `is_optional_node()`, `unwrap_optional()`, `get_union_members()`, and class type checks
+- Quick start section in forward references explanation for common self-referential patterns
+- Union check order warning in union types explanation
+
+### Changed
+
+- Clarified library scope with "What typing-graph is not" section in README and documentation landing page
+- Fixed PEP 695 code examples to indicate Python 3.12+ requirement instead of "not yet implemented"
+
 ### Removed
 
 - `DiscriminatedUnionNode` class and `is_discriminated_union_node()` type guard

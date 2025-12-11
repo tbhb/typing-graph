@@ -74,7 +74,7 @@ typing-graph provides the foundation for frameworks that derive behavior from ty
 
 :material-check-circle:{ .lg .middle } __Validation frameworks__
 
-Build validators that extract constraints from `Annotated` metadata and generate validation logic based on type structure.
+Build validators that extract constraints from `Annotated` metadata and generate validation logic based on type structure. typing-graph provides inspection; your framework provides the validation.
 
 :material-swap-horizontal:{ .lg .middle } __Type conversion__
 
@@ -97,6 +97,18 @@ Extract feature flag definitions from type metadata to configure runtime behavio
 Generate serializers, API clients, or documentation by traversing the type graph and emitting code for each node type.
 
 </div>
+
+### What typing-graph is not
+
+typing-graph is __not__ a runtime type checker or validation library. It provides the introspection layer that such tools can build on.
+
+| If you want to         | Use instead                                                                                                                              |
+|------------------------|------------------------------------------------------------------------------------------------------------------------------------------|
+| Check types at runtime | [beartype](https://beartype.readthedocs.io/), [typeguard](https://typeguard.readthedocs.io/)                                             |
+| Validate data          | [pydantic](https://pydantic.dev/), [attrs](https://www.attrs.org/)                                                                       |
+| Static type checking   | [basedpyright](https://docs.basedpyright.com/), [mypy](https://mypy-lang.org/), [pyrefly](https://pyrefly.org/), [ty](https://ty.dev/)   |
+
+typing-graph helps you __build__ validation frameworks by inspecting type structures; it doesn't validate data itself.
 
 ## Next steps
 

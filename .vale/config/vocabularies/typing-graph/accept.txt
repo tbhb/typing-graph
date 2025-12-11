@@ -83,3 +83,10 @@ inspect_class
 [rR]equirement(s)?
 [hH]owever
 [iI]mplement(s|ed|ing|ation)?
+beartype
+mypy
+pyrefly
+ty
+typeguard
+[wW]alkthrough(s)?
+[oO]ptionals?

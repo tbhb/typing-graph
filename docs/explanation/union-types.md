@@ -95,6 +95,31 @@ print(type(node2).__name__)  # UnionNode
 print(node2.members)         # (LiteralNode(...), LiteralNode(...))
 ```
 
+!!! warning "Check order matters on Python < 3.14"
+
+    When handling unions in conditional logic, always check `is_union_node()` **before**
+    `is_subscripted_generic_node()`. Both `UnionNode` and `typing.Union`
+    (represented as `SubscriptedGenericNode`) are valid union forms.
+
+    ```python
+    # snippet - illustrative pattern
+    from typing_graph import (
+        is_union_node,
+        is_subscripted_generic_node,
+        get_union_members,
+    )
+
+    # Correct order
+    if is_union_node(node):
+        members = get_union_members(node)
+    elif is_subscripted_generic_node(node):
+        # Handle other subscripted generics like list[int]
+        ...
+    ```
+
+    Using the helper functions `is_union_node()` and `get_union_members()` handles
+    both union forms uniformly and is the recommended approach.
+
 ### Working with both forms
 
 Use the helper functions to handle both union forms uniformly:

@@ -38,6 +38,18 @@ typing-graph provides the foundation for frameworks that derive behavior from ty
 | **Feature flags**           | Extract feature flag definitions from type metadata to configure runtime behavior based on annotated types                |
 | **Code generation**         | Generate serializers, API clients, or documentation by traversing the type graph and emitting code for each node type     |
 
+### What typing-graph is not
+
+typing-graph is **not** a runtime type checker or validation library. It provides the introspection layer that such tools can build on.
+
+| If you want to         | Use instead                                                                                                                              |
+|------------------------|------------------------------------------------------------------------------------------------------------------------------------------|
+| Check types at runtime | [beartype](https://beartype.readthedocs.io/), [typeguard](https://typeguard.readthedocs.io/)                                             |
+| Validate data          | [pydantic](https://pydantic.dev/), [attrs](https://www.attrs.org/)                                                                       |
+| Static type checking   | [basedpyright](https://docs.basedpyright.com/), [mypy](https://mypy-lang.org/), [pyrefly](https://pyrefly.org/), [ty](https://ty.dev/)   |
+
+typing-graph helps you **build** validation frameworks by inspecting type structures; it doesn't validate data itself.
+
 ## Installation
 
 ```bash

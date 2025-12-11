@@ -8,20 +8,26 @@ This section contains task-oriented guides that show how to achieve specific goa
 
 These guides cover [`MetadataCollection`][typing_graph.MetadataCollection] operations:
 
-| Task                         | Guide                                                   |
-| ---------------------------- | ------------------------------------------------------- |
-| Find metadata by type        | [Querying metadata](metadata-queries.md)                |
-| Apply custom predicates      | [Filtering metadata](metadata-filtering.md)             |
-| Combine and sort collections | [Transforming metadata](metadata-transformations.md)    |
-| Real-world patterns          | [Metadata recipes](metadata-recipes.md)                 |
+| Task                         | Guide                                                |
+|------------------------------|------------------------------------------------------|
+| Find metadata by type        | [Querying metadata](metadata-queries.md)             |
+| Apply custom predicates      | [Filtering metadata](metadata-filtering.md)          |
+| Combine and sort collections | [Transforming metadata](metadata-transformations.md) |
+| Real-world patterns          | [Metadata recipes](metadata-recipes.md)              |
 
 ### Traversing and configuring
 
-| Task                         | Guide                                                   |
-| ---------------------------- | ------------------------------------------------------- |
-| Visit all nodes in a type    | [Walking the type graph](walking-type-graph.md)         |
-| Filter with type narrowing   | [Filtering with walk()](filtering-with-walk.md)         |
-| Control inspection behavior  | [Configuration options](configuration.md)               |
+| Task                        | Guide                                           |
+|-----------------------------|-------------------------------------------------|
+| Visit all nodes in a type   | [Walking the type graph](walking-type-graph.md) |
+| Filter with type narrowing  | [Filtering with walk()](filtering-with-walk.md) |
+| Control inspection behavior | [Configuration options](configuration.md)       |
+
+### Helper functions
+
+| Task                        | Guide                                        |
+|-----------------------------|----------------------------------------------|
+| Work with optionals, unions | [Common helper functions](common-helpers.md) |
 
 ## All guides
 
@@ -45,6 +51,9 @@ These guides cover [`MetadataCollection`][typing_graph.MetadataCollection] opera
 
 [Configuration options](configuration.md)
 :   Customize inspection behavior with [`InspectConfig`][typing_graph.InspectConfig], [forward reference](../reference/glossary.md#forward-reference) modes, and cache management.
+
+[Common helper functions](common-helpers.md)
+:   Use built-in helpers for optional types, union extraction, and class detection.
 
 ## Related resources
 

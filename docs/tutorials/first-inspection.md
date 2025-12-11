@@ -459,3 +459,5 @@ You've built a script that inspects Python type annotations and traverses the ty
     - [Filtering with walk()](../guides/filtering-with-walk.md) - Use the walk() iterator for efficient graph traversal
 
     For practical applications of type graph traversal, see [Walking the type graph](../guides/walking-type-graph.md).
+
+    For helper functions like [`is_optional_node()`][typing_graph.is_optional_node], [`unwrap_optional()`][typing_graph.unwrap_optional], and [`get_union_members()`][typing_graph.get_union_members], see [Common helper functions](../guides/common-helpers.md).

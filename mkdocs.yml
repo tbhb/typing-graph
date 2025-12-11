@@ -185,6 +185,7 @@ nav:
       - Inspecting functions: tutorials/functions.md
   - Guides:
       - guides/index.md
+      - Common helper functions: guides/common-helpers.md
       - Querying metadata: guides/metadata-queries.md
       - Filtering metadata: guides/metadata-filtering.md
       - Transforming metadata: guides/metadata-transformations.md

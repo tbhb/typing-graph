@@ -8,6 +8,30 @@ Python evaluates type annotations at definition time by default. This creates a 
 
 This problem has driven design changes in Python's typing system, from PEP 484's string annotations through PEP 563's deferred evaluation to PEP 649's lazy evaluation. typing-graph works correctly across all these approaches.
 
+## Quick start: common self-referential pattern
+
+If you just need to handle a common self-referential type like a tree node:
+
+```python
+from dataclasses import dataclass
+from typing_graph import inspect_dataclass, InspectConfig
+
+@dataclass
+class TreeNode:
+    value: int
+    children: list["TreeNode"]
+
+# Provide the namespace containing the class
+config = InspectConfig(globalns={"TreeNode": TreeNode})
+node = inspect_dataclass(TreeNode, config=config)
+
+# Forward references are now resolved
+children_field = node.fields[1]
+print(children_field.type)  # SubscriptedGenericNode for list[TreeNode]
+```
+
+For more complex scenarios involving multiple modules or deferred evaluation modes, read on.
+
 ## What are forward references?
 
 In Python, the interpreter evaluates type annotations at definition time by default. This creates a problem when you need to reference a class before defining it:

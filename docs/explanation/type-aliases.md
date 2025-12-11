@@ -104,7 +104,7 @@ This syntax offers key advantages:
 typing-graph represents PEP 695 type aliases as [`GenericAliasNode`][typing_graph.GenericAliasNode] when they have type parameters:
 
 ```python
-# snippet - PEP 695 alias inspection not yet implemented
+# snippet - requires Python 3.12+
 from typing_graph import inspect_type_alias, GenericAliasNode
 
 type Vector[T] = list[T]
@@ -119,7 +119,7 @@ print(node.value)           # SubscriptedGenericNode referencing T
 Simple PEP 695 aliases without type parameters still produce `GenericAliasNode` nodes with empty `type_params`:
 
 ```python
-# snippet - PEP 695 alias inspection not yet implemented
+# snippet - requires Python 3.12+
 type UserId = int
 
 node = inspect_type_alias(UserId)
@@ -177,7 +177,7 @@ type Mapping[T, U] = dict[T, U]
 typing-graph captures these scoped parameters in the [`GenericAliasNode.type_params`][typing_graph.GenericAliasNode] tuple. Each parameter becomes a [`TypeVarNode`][typing_graph.TypeVarNode], [`ParamSpecNode`][typing_graph.ParamSpecNode], or [`TypeVarTupleNode`][typing_graph.TypeVarTupleNode]:
 
 ```python
-# snippet - PEP 695 alias inspection not yet implemented
+# snippet - requires Python 3.12+
 type Transform[T, **P, *Ts] = Callable[P, tuple[T, *Ts]]
 
 node = inspect_type_alias(Transform)
@@ -209,7 +209,7 @@ type Number[T: (int, float, complex)] = T
 typing-graph captures these on the [`TypeVarNode`][typing_graph.TypeVarNode]:
 
 ```python
-# snippet - PEP 695 alias inspection not yet implemented
+# snippet - requires Python 3.12+
 type SortedList[T: Comparable] = list[T]
 
 node = inspect_type_alias(SortedList)
