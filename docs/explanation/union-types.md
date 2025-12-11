@@ -69,25 +69,32 @@ This normalization simplifies your code by providing a consistent interface for 
 Set [`normalize_unions=False`][typing_graph.InspectConfig] when you need to see exactly what Python created at runtime:
 
 ```python
+import sys
 from typing import Literal
 from typing_graph import InspectConfig, inspect_type
 
 config = InspectConfig(normalize_unions=False)
 
-# types.UnionType → UnionNode (unchanged)
+# types.UnionType → UnionNode (unchanged on all versions)
 node1 = inspect_type(int | str, config=config)
 print(type(node1).__name__)  # UnionNode
 
-# typing.Union → SubscriptedGenericNode (preserved)
+# typing.Union behavior depends on Python version
 node2 = inspect_type(Literal['a'] | Literal['b'], config=config)
-print(type(node2).__name__)  # SubscriptedGenericNode
-print(node2.origin.cls)      # typing.Union
-print(node2.args)            # (LiteralNode(...), LiteralNode(...))
+print(type(node2).__name__)  # SubscriptedGenericNode (< 3.14), UnionNode (3.14+)
+if sys.version_info < (3, 14):
+    # Pre-3.14: preserved as SubscriptedGenericNode
+    print(node2.origin.cls)  # typing.Union
+    print(node2.args)        # (LiteralNode(...), LiteralNode(...))
 ```
+
+!!! warning "Python 3.14 changes union behavior"
+
+    Python 3.14 unified `typing.Union` and `types.UnionType` at runtime. All union forms now become `types.UnionType`, so `normalize_unions=False` has no effect—unions always produce `UnionNode`.
 
 !!! tip "When to turn off normalization"
 
-    - **Round-trip fidelity** - Reconstruct the exact original type annotation
+    - **Round-trip fidelity** - Reconstruct the exact original type annotation (Python < 3.14 only)
     - **Debugging** - See exactly what Python created at runtime
     - **Legacy compatibility** - Match behavior of typing-graph < 1.0
 
@@ -108,9 +115,10 @@ The result: `int | str` creates `types.UnionType`, but `Literal[1] | Literal[2]`
 | `types.UnionType` | [PEP 604](https://peps.python.org/pep-0604/) `\|` with concrete types | `int \| str`                                  |
 | `typing.Union`    | `typing.Union[...]` or `\|` with typing special forms                 | `Union[int, str]`, `Literal[1] \| Literal[2]` |
 
-You can see this directly in Python:
+You can see this directly in Python (< 3.14):
 
 ```python
+import sys
 from typing import Literal, get_origin, Union
 import types
 
@@ -118,10 +126,14 @@ import types
 concrete_union = int | str
 print(isinstance(concrete_union, types.UnionType))  # True
 
-# Literal types → typing.Union (!)
+# Literal types → typing.Union (!) on Python < 3.14
 literal_union = Literal['a'] | Literal['b']
-print(isinstance(literal_union, types.UnionType))   # False
-print(get_origin(literal_union) is Union)           # True
+if sys.version_info < (3, 14):
+    print(isinstance(literal_union, types.UnionType))  # False
+    print(get_origin(literal_union) is Union)          # True
+else:
+    # Python 3.14+: all unions are types.UnionType
+    print(isinstance(literal_union, types.UnionType))  # True
 ```
 
 Python 3.14 fixes this by unifying both forms. In Python 3.14, `types.UnionType` becomes an alias for `typing.Union`, and all union expressions produce the same runtime type. typing-graph brings this consistency to all Python versions through its default `normalize_unions=True` behavior, so code you write today will work identically on Python 3.14+ without changes.

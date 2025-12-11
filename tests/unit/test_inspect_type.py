@@ -1668,6 +1668,10 @@ class TestNormalizeUnions:
         assert int in member_classes
         assert type(None) in member_classes
 
+    @pytest.mark.skipif(
+        sys.version_info >= (3, 14),
+        reason="Python 3.14+ unifies all unions to types.UnionType at runtime",
+    )
     def test_typing_union_with_normalize_false_gives_subscripted_generic(self) -> None:
         config = InspectConfig(normalize_unions=False)
         result = inspect_type(Union[int, str], config=config)  # noqa: UP007
@@ -1677,6 +1681,10 @@ class TestNormalizeUnions:
         assert result.origin.cls is Union
         assert len(result.args) == 2
 
+    @pytest.mark.skipif(
+        sys.version_info >= (3, 14),
+        reason="Python 3.14+ unifies all unions to types.UnionType at runtime",
+    )
     def test_optional_with_normalize_false_gives_subscripted_generic(self) -> None:
         config = InspectConfig(normalize_unions=False)
         result = inspect_type(Optional[int], config=config)  # noqa: UP045
@@ -1719,6 +1727,10 @@ class TestNormalizeUnions:
 
         assert is_union_type_node(result)
 
+    @pytest.mark.skipif(
+        sys.version_info >= (3, 14),
+        reason="Python 3.14+ unifies all unions to types.UnionType at runtime",
+    )
     def test_literal_union_with_normalize_false_gives_subscripted_generic(self) -> None:
         lit_union = Literal["a"] | Literal["b"]  # noqa: PYI030
         config = InspectConfig(normalize_unions=False)
@@ -1728,6 +1740,10 @@ class TestNormalizeUnions:
         assert is_generic_node(result.origin)
         assert result.origin.cls is Union
 
+    @pytest.mark.skipif(
+        sys.version_info >= (3, 14),
+        reason="Python 3.14+ unifies all unions to types.UnionType at runtime",
+    )
     def test_cache_isolation_between_normalize_configs(self) -> None:
         # Same type inspected with different normalize_unions settings
         # must return different node types (cache bypass for custom configs)

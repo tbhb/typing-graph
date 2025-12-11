@@ -115,6 +115,10 @@ class TestOptionalNormalization:
 
 
 class TestNativePreservation:
+    @pytest.mark.skipif(
+        sys.version_info >= (3, 14),
+        reason="Python 3.14+ unifies all unions to types.UnionType at runtime",
+    )
     def test_typing_union_with_normalize_false_gives_subscripted_generic(self) -> None:
         config = InspectConfig(normalize_unions=False)
         result = inspect_type(Union[int, str], config=config)
@@ -124,6 +128,10 @@ class TestNativePreservation:
         assert result.origin.cls is Union
         assert len(result.args) == 2
 
+    @pytest.mark.skipif(
+        sys.version_info >= (3, 14),
+        reason="Python 3.14+ unifies all unions to types.UnionType at runtime",
+    )
     def test_optional_with_normalize_false_gives_subscripted_generic(self) -> None:
         config = InspectConfig(normalize_unions=False)
         result = inspect_type(Optional[int], config=config)
@@ -133,6 +141,10 @@ class TestNativePreservation:
         assert result.origin.cls is Union
         assert len(result.args) == 2
 
+    @pytest.mark.skipif(
+        sys.version_info >= (3, 14),
+        reason="Python 3.14+ unifies all unions to types.UnionType at runtime",
+    )
     def test_literal_union_with_normalize_false_gives_subscripted_generic(self) -> None:
         lit_union = Literal["a"] | Literal["b"]
         config = InspectConfig(normalize_unions=False)
@@ -250,6 +262,10 @@ class TestQualifierPreservation:
 
 
 class TestCacheIsolation:
+    @pytest.mark.skipif(
+        sys.version_info >= (3, 14),
+        reason="Python 3.14+ unifies all unions to types.UnionType at runtime",
+    )
     def test_cache_isolation_between_normalize_configs(self) -> None:
         # Same type inspected with different normalize_unions settings
         # must return different node types (cache bypass for custom configs)
@@ -263,6 +279,10 @@ class TestCacheIsolation:
         assert is_union_type_node(norm_node)
         assert is_subscripted_generic_node(native_node)
 
+    @pytest.mark.skipif(
+        sys.version_info >= (3, 14),
+        reason="Python 3.14+ unifies all unions to types.UnionType at runtime",
+    )
     def test_custom_config_result_not_cached(self) -> None:
         # Verify the custom config result wasn't cached
         norm_config = InspectConfig(normalize_unions=True)
