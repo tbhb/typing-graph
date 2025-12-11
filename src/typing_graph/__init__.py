@@ -40,6 +40,14 @@ from ._metadata import (
     ProtocolNotRuntimeCheckableError,
     SupportsLessThan,
 )
+from ._namespace import (
+    NamespacePair,
+    NamespaceSource,
+    extract_class_namespace,
+    extract_function_namespace,
+    extract_module_namespace,
+    extract_namespace,
+)
 from ._node import (
     AnnotatedNode,
     AnyNode,
@@ -92,7 +100,6 @@ from ._node import (
     UnionNode,
     UnpackNode,
     Variance,
-    # Type guards
     is_annotated_node,
     is_any_node,
     is_callable_node,
@@ -165,6 +172,8 @@ __all__ = [
     "MethodSig",
     "ModuleTypes",
     "NamedTupleNode",
+    "NamespacePair",
+    "NamespaceSource",
     "NeverNode",
     "NewTypeNode",
     "ParamSpecNode",
@@ -202,6 +211,10 @@ __all__ = [
     "__version__",
     "cache_clear",
     "cache_info",
+    "extract_class_namespace",
+    "extract_function_namespace",
+    "extract_module_namespace",
+    "extract_namespace",
     "get_union_members",
     "inspect_class",
     "inspect_dataclass",
