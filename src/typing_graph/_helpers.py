@@ -20,6 +20,11 @@ def is_union_node(node: TypeNode) -> bool:
     - ``SubscriptedGeneric`` with ``origin.cls=typing.Union``
       (e.g., ``Literal['a'] | Literal['b']``)
 
+    This function works consistently regardless of the ``normalize_unions``
+    configuration setting. When normalization is enabled (the default),
+    unions become ``UnionNode``; when disabled, ``typing.Union`` becomes
+    ``SubscriptedGenericNode``. This function detects both.
+
     Args:
         node: A TypeNode to check.
 
@@ -65,6 +70,10 @@ def get_union_members(node: TypeNode) -> tuple[TypeNode, ...] | None:
       ``SubscriptedGeneric`` with ``origin.cls=typing.Union``
 
     This function handles both, returning the member types as a tuple.
+
+    This function works consistently regardless of the ``normalize_unions``
+    configuration setting, providing uniform access to union members whether
+    the union is represented as ``UnionNode`` or ``SubscriptedGenericNode``.
 
     Args:
         node: A TypeNode to extract union members from.
@@ -115,6 +124,9 @@ def is_optional_node(node: TypeNode) -> bool:
     - ``Union[int, None]`` (typing.Union)
     - ``Optional[int]`` (equivalent to Union[int, None])
 
+    This function works consistently regardless of the ``normalize_unions``
+    configuration setting.
+
     Args:
         node: A TypeNode to check.
 
@@ -151,6 +163,9 @@ def unwrap_optional(node: TypeNode) -> tuple[TypeNode, ...] | None:
     Given an optional type (a union containing ``None``), returns a tuple of
     the non-None member types. Returns ``None`` if the node is not an optional.
 
+    This function works consistently regardless of the ``normalize_unions``
+    configuration setting.
+
     Args:
         node: A TypeNode to unwrap.
 
@@ -160,7 +175,7 @@ def unwrap_optional(node: TypeNode) -> tuple[TypeNode, ...] | None:
 
     Examples:
         >>> from typing import Optional
-        >>> from typing_graph import inspect_type, unwrap_optional, is_concrete_type
+        >>> from typing_graph import inspect_type, unwrap_optional, is_concrete_node
         >>>
         >>> node = inspect_type(int | None)
         >>> unwrapped = unwrap_optional(node)

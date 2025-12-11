@@ -186,6 +186,7 @@ nav:
   - Guides:
       - guides/index.md
       - Common helper functions: guides/common-helpers.md
+      - Working with unions: guides/working-with-unions.md
       - Querying metadata: guides/metadata-queries.md
       - Filtering metadata: guides/metadata-filtering.md
       - Transforming metadata: guides/metadata-transformations.md

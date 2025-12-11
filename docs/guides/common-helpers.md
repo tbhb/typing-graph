@@ -220,6 +220,7 @@ For the complete list of type guards, see the [API reference](../reference/api.m
 
 ## Next steps
 
+- [Working with unions](working-with-unions.md) - Comprehensive guide to union handling patterns
 - [Understanding union types](../explanation/union-types.md) - Why Python has two union representations
 - [Filtering with walk()](filtering-with-walk.md) - Use type guards with the walk iterator
 - [API reference](../reference/api.md) - Complete function signatures and node types

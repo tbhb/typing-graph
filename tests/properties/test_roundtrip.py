@@ -1,8 +1,8 @@
-# pyright: reportAny=false, reportExplicitAny=false
+# pyright: reportAny=false, reportExplicitAny=false, reportDeprecated=false
 
 from collections.abc import Callable
 from types import UnionType
-from typing import Annotated, Any, Literal, get_args, get_origin
+from typing import Annotated, Any, Literal, Union, get_args, get_origin
 from typing_extensions import Never, Self
 
 from hypothesis import HealthCheck, example, given, settings
@@ -53,8 +53,10 @@ def _types_equivalent(  # noqa: PLR0911, PLR0912 - Inherently complex type dispa
     if o1 is Literal and o2 is Literal:
         return set(get_args(t1)) == set(get_args(t2))
 
-    # Handle Union types (types.UnionType from X | Y syntax only)
-    if isinstance(t1, UnionType) and isinstance(t2, UnionType):
+    # Handle Union types (both types.UnionType from X | Y syntax and typing.Union)
+    is_union_type = isinstance(t1, UnionType) and isinstance(t2, UnionType)
+    is_typing_union = o1 is Union and o2 is Union
+    if is_union_type or is_typing_union:
         args1, args2 = get_args(t1), get_args(t2)
         if len(args1) != len(args2):
             return False

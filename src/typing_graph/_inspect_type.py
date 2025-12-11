@@ -462,6 +462,20 @@ def _dispatch_union(
     return _inspect_union(args, ctx)
 
 
+def _dispatch_typing_union(
+    _annotation: Any, ctx: InspectContext, _origin: Any, args: tuple[Any, ...]
+) -> TypeNode | None:
+    """Dispatch handler for typing.Union types.
+
+    When normalize_unions=True, converts typing.Union to UnionNode.
+    When normalize_unions=False, returns None to fall through to
+    subscripted generic handling, preserving the native representation.
+    """
+    if ctx.config.normalize_unions:
+        return _inspect_union(args, ctx)
+    return None  # Fall through to subscripted generic
+
+
 def _dispatch_literal(
     _annotation: Any, _ctx: InspectContext, _origin: Any, args: tuple[Any, ...]
 ) -> TypeNode:
@@ -578,6 +592,8 @@ def _register_dispatch_tables() -> None:
     # Predicate dispatch: version-variable origins + Callable (in order)
     _PREDICATE_DISPATCHERS.extend(
         [
+            # typing.Union normalization (must be before subscripted generic fallback)
+            (typing_objects.is_union, _dispatch_typing_union),
             (typing_objects.is_typeguard, _dispatch_typeguard),
             (typing_objects.is_typeis, _dispatch_typeis),
             (typing_objects.is_concatenate, _dispatch_concatenate),
@@ -908,6 +924,32 @@ def _inspect_tuple(
     return TupleNode(elements=elements, homogeneous=False)
 
 
+def _extract_type_param_default(
+    type_param: TypeVar | ParamSpec | TypeVarTuple, ctx: InspectContext
+) -> TypeNode | None:
+    """Extract the default value from a type parameter (PEP 696).
+
+    PEP 696 (Python 3.13+) allows type parameters to have default values via
+    the `__default__` attribute. This function checks for the attribute and
+    inspects it if present, returning None if no valid default exists.
+
+    Args:
+        type_param: A type parameter (TypeVar, ParamSpec, or TypeVarTuple).
+        ctx: The inspection context for recursive inspection.
+
+    Returns:
+        The inspected default type node, or None if no default is set.
+    """
+    default_attr = getattr(type_param, "__default__", MISSING)
+    if (
+        default_attr is not MISSING
+        and default_attr is not None
+        and not typing_objects.is_nodefault(default_attr)
+    ):
+        return _inspect_type(default_attr, ctx.child())
+    return None
+
+
 def _inspect_typevar(tv: TypeVar, ctx: InspectContext) -> TypeVarNode:
     """Handle TypeVar."""
     # Determine variance
@@ -927,14 +969,7 @@ def _inspect_typevar(tv: TypeVar, ctx: InspectContext) -> TypeVarNode:
     constraints = tuple(_inspect_type(c, ctx.child()) for c in tv.__constraints__)
 
     # Get default (PEP 696, Python 3.13+)
-    default = None
-    default_attr = getattr(tv, "__default__", MISSING)
-    if (
-        default_attr is not MISSING
-        and default_attr is not None
-        and not typing_objects.is_nodefault(default_attr)
-    ):
-        default = _inspect_type(default_attr, ctx.child())
+    default = _extract_type_param_default(tv, ctx)
 
     # Check for infer_variance (PEP 695)
     infer_variance = getattr(tv, "__infer_variance__", False)
@@ -951,29 +986,13 @@ def _inspect_typevar(tv: TypeVar, ctx: InspectContext) -> TypeVarNode:
 
 def _inspect_paramspec(ps: ParamSpec, ctx: InspectContext) -> ParamSpecNode:
     """Handle ParamSpec."""
-    default = None
-    default_attr = getattr(ps, "__default__", MISSING)
-    if (
-        default_attr is not MISSING
-        and default_attr is not None
-        and not typing_objects.is_nodefault(default_attr)
-    ):
-        default = _inspect_type(default_attr, ctx.child())
-
+    default = _extract_type_param_default(ps, ctx)
     return ParamSpecNode(name=ps.__name__, default=default)
 
 
 def _inspect_typevartuple(tvt: TypeVarTuple, ctx: InspectContext) -> TypeVarTupleNode:
     """Handle TypeVarTuple."""
-    default = None
-    default_attr = getattr(tvt, "__default__", MISSING)
-    if (
-        default_attr is not MISSING
-        and default_attr is not None
-        and not typing_objects.is_nodefault(default_attr)
-    ):
-        default = _inspect_type(default_attr, ctx.child())
-
+    default = _extract_type_param_default(tvt, ctx)
     return TypeVarTupleNode(name=tvt.__name__, default=default)
 
 

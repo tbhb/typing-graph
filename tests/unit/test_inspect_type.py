@@ -1,6 +1,7 @@
 # Type inspection tests return dynamic Any types by design when inspecting
 # unannotated or unresolvable types
 # pyright: reportAny=false
+# pyright: reportDeprecated=false
 
 import sys
 from collections.abc import Callable, Callable as ABCCallable
@@ -16,9 +17,11 @@ from typing import (
     Literal,
     NewType,
     NoReturn,
+    Optional,
     ParamSpec,
     TypeGuard,
     TypeVar,
+    Union,
     get_args,
     get_origin,
 )
@@ -1637,3 +1640,107 @@ class TestTypeParamFiltering:
         # Should work - since non-TypeVars are filtered out, type_params is empty
         # and it returns a ConcreteType instead of GenericTypeNode
         assert is_concrete_node(result) or is_generic_node(result)
+
+
+class TestNormalizeUnions:
+    def test_typing_union_normalizes_to_union_node_by_default(self) -> None:
+        result = inspect_type(Union[int, str])  # noqa: UP007
+
+        assert is_union_type_node(result)
+        assert len(result.members) == 2
+        member_classes = {m.cls for m in result.members if is_concrete_node(m)}
+        assert member_classes == {int, str}
+
+    def test_typing_union_with_three_types_normalizes(self) -> None:
+        result = inspect_type(Union[int, str, float])  # noqa: UP007
+
+        assert is_union_type_node(result)
+        assert len(result.members) == 3
+        member_classes = {m.cls for m in result.members if is_concrete_node(m)}
+        assert member_classes == {int, str, float}
+
+    def test_optional_normalizes_to_union_node_by_default(self) -> None:
+        result = inspect_type(Optional[int])  # noqa: UP045
+
+        assert is_union_type_node(result)
+        assert len(result.members) == 2
+        member_classes = {m.cls for m in result.members if is_concrete_node(m)}
+        assert int in member_classes
+        assert type(None) in member_classes
+
+    def test_typing_union_with_normalize_false_gives_subscripted_generic(self) -> None:
+        config = InspectConfig(normalize_unions=False)
+        result = inspect_type(Union[int, str], config=config)  # noqa: UP007
+
+        assert is_subscripted_generic_node(result)
+        assert is_generic_node(result.origin)
+        assert result.origin.cls is Union
+        assert len(result.args) == 2
+
+    def test_optional_with_normalize_false_gives_subscripted_generic(self) -> None:
+        config = InspectConfig(normalize_unions=False)
+        result = inspect_type(Optional[int], config=config)  # noqa: UP045
+
+        assert is_subscripted_generic_node(result)
+        assert is_generic_node(result.origin)
+        assert result.origin.cls is Union
+        assert len(result.args) == 2
+
+    def test_native_union_unaffected_by_normalize_flag(self) -> None:
+        # types.UnionType (int | str) always produces UnionNode regardless of config
+        result_default = inspect_type(int | str)
+        config_false = InspectConfig(normalize_unions=False)
+        result_false = inspect_type(int | str, config=config_false)
+
+        assert is_union_type_node(result_default)
+        assert is_union_type_node(result_false)
+
+    def test_nested_typing_union_normalizes_members(self) -> None:
+        # Python flattens unions at runtime, but test the recursion works
+        result = inspect_type(Union[Union[int, str], None])  # noqa: UP007
+
+        # Python runtime flattens to Union[int, str, None]
+        assert is_union_type_node(result)
+        member_classes = {m.cls for m in result.members if is_concrete_node(m)}
+        assert int in member_classes
+        assert str in member_classes
+        assert type(None) in member_classes
+
+    def test_typing_union_with_forward_ref_normalizes(self) -> None:
+        result = inspect_type(Union[int, "str"])
+
+        assert is_union_type_node(result)
+        assert len(result.members) == 2
+
+    def test_literal_union_produced_by_pipe_normalizes(self) -> None:
+        # Literal["a"] | Literal["b"] at runtime is Union[Literal["a"], Literal["b"]]
+        lit_union = Literal["a"] | Literal["b"]  # noqa: PYI030
+        result = inspect_type(lit_union)
+
+        assert is_union_type_node(result)
+
+    def test_literal_union_with_normalize_false_gives_subscripted_generic(self) -> None:
+        lit_union = Literal["a"] | Literal["b"]  # noqa: PYI030
+        config = InspectConfig(normalize_unions=False)
+        result = inspect_type(lit_union, config=config)
+
+        assert is_subscripted_generic_node(result)
+        assert is_generic_node(result.origin)
+        assert result.origin.cls is Union
+
+    def test_cache_isolation_between_normalize_configs(self) -> None:
+        # Same type inspected with different normalize_unions settings
+        # must return different node types (cache bypass for custom configs)
+        norm_config = InspectConfig(normalize_unions=True)
+        norm_node = inspect_type(Union[int, str], config=norm_config)  # noqa: UP007
+
+        native_config = InspectConfig(normalize_unions=False)
+        native_node = inspect_type(Union[int, str], config=native_config)  # noqa: UP007
+
+        # Results must differ in type
+        assert is_union_type_node(norm_node)
+        assert is_subscripted_generic_node(native_node)
+
+        # Verify the custom config result wasn't cached
+        norm_node_again = inspect_type(Union[int, str], config=norm_config)  # noqa: UP007
+        assert is_union_type_node(norm_node_again)

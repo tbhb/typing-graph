@@ -8,6 +8,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+#### Union normalization with `normalize_unions`
+
+A new `InspectConfig.normalize_unions` option that normalizes all union types to `UnionNode` regardless of their runtime representation.
+
+**Key features:**
+
+- `normalize_unions=True` (default): Both `types.UnionType` (PEP 604 `|` syntax) and `typing.Union` produce `UnionNode`
+- `normalize_unions=False`: Preserves native runtime representation (`typing.Union` produces `SubscriptedGenericNode`)
+- Matches Python 3.14 behavior where all union expressions produce the same type
+- Helper functions (`is_union_node()`, `get_union_members()`, `is_optional_node()`, `unwrap_optional()`) work uniformly regardless of normalization setting
+
+**Rationale:** Eliminates the union representation inconsistency between `types.UnionType` and `typing.Union`, providing a consistent API surface that matches Python 3.14's native behavior.
+
+**Documentation:**
+
+- [Union types explanation](https://tbhb.github.io/typing-graph/explanation/union-types/) - Understanding union normalization
+- [Working with unions guide](https://tbhb.github.io/typing-graph/guides/working-with-unions/) - Practical union handling patterns
+
+#### Other additions
+
 - New "Common helper functions" how-to guide for `is_optional_node()`, `unwrap_optional()`, `get_union_members()`, and class type checks
 - Quick start section in forward references explanation for common self-referential patterns
 - Union check order warning in union types explanation

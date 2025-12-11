@@ -25,9 +25,10 @@ These guides cover [`MetadataCollection`][typing_graph.MetadataCollection] opera
 
 ### Helper functions
 
-| Task                        | Guide                                        |
-|-----------------------------|----------------------------------------------|
-| Work with optionals, unions | [Common helper functions](common-helpers.md) |
+| Task                        | Guide                                         |
+|-----------------------------|-----------------------------------------------|
+| Work with optionals, unions | [Common helper functions](common-helpers.md)  |
+| Handle union types in depth | [Working with unions](working-with-unions.md) |
 
 ## All guides
 
@@ -54,6 +55,9 @@ These guides cover [`MetadataCollection`][typing_graph.MetadataCollection] opera
 
 [Common helper functions](common-helpers.md)
 :   Use built-in helpers for optional types, union extraction, and class detection.
+
+[Working with unions](working-with-unions.md)
+:   Detect unions, extract members, handle optionals, build dispatch logic, and control normalization.
 
 ## Related resources
 

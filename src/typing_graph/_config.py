@@ -44,8 +44,22 @@ class InspectConfig:
         include_class_vars: Include ClassVar annotations.
         include_instance_vars: Include instance variable annotations.
         hoist_metadata: Move Annotated metadata to node.metadata.
+        normalize_unions: Represent all union types as UnionNode regardless
+            of runtime form. When True (default), both types.UnionType and
+            typing.Union produce UnionNode, matching Python 3.14 behavior.
+            Set to False to preserve native runtime representation. Use
+            :func:`~typing_graph.is_union_node` to check if a node represents
+            a union regardless of the normalization setting.
         include_source_locations: Track source file and line numbers
             (disabled by default as inspect.getsourcelines is expensive).
+
+    Note:
+        **Cache behavior:** Only the default ``InspectConfig()`` singleton uses
+        the global inspection cache. Creating a custom config instance (even with
+        identical values) bypasses the cache entirely. This ensures configuration
+        isolation but may impact performance for repeated inspections with custom
+        configs. If you need caching with custom settings, consider reusing the
+        same config instance across calls.
     """
 
     # Annotation evaluation strategy
@@ -67,6 +81,9 @@ class InspectConfig:
 
     # Annotated handling
     hoist_metadata: bool = True  # Move Annotated metadata to node.metadata
+
+    # Union normalization
+    normalize_unions: bool = True  # All unions → UnionNode (matches Python 3.14)
 
     # Source tracking (disabled by default - inspect.getsourcelines is expensive)
     include_source_locations: bool = False
