@@ -9,7 +9,6 @@ from typing_graph._node import (
     ConcreteNode,
     DataclassFieldDef,
     DataclassNode,
-    DiscriminatedUnionNode,
     EllipsisNode,
     EnumNode,
     FieldDef,
@@ -304,25 +303,6 @@ class TestUnionNodeChildren:
 
     def test_children_cached(self, int_node: ConcreteNode, str_node: ConcreteNode):
         node = UnionNode(members=(int_node, str_node))
-        assert node.children() is node.children()
-
-
-class TestDiscriminatedUnionNodeChildren:
-    def test_children_returns_variants(
-        self, int_node: ConcreteNode, str_node: ConcreteNode
-    ):
-        node = DiscriminatedUnionNode(
-            discriminant="kind", variants={"dog": int_node, "cat": str_node}
-        )
-        children = node.children()
-        assert len(children) == 2
-        assert int_node in children
-        assert str_node in children
-
-    def test_children_cached(self, int_node: ConcreteNode, str_node: ConcreteNode):
-        node = DiscriminatedUnionNode(
-            discriminant="kind", variants={"a": int_node, "b": str_node}
-        )
         assert node.children() is node.children()
 
 
@@ -836,9 +816,6 @@ class TestChildrenEdgesInvariant:
             TypeAliasNode(name="Alias", value=int_node),
             GenericAliasNode(name="GenAlias", type_params=(typevar_t,), value=int_node),
             UnionNode(members=(int_node, str_node)),
-            DiscriminatedUnionNode(
-                discriminant="kind", variants={"a": int_node, "b": str_node}
-            ),
             IntersectionNode(members=(int_node, str_node)),
             TupleNode(elements=(int_node, str_node)),
             TupleNode(elements=()),

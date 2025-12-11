@@ -115,7 +115,6 @@ Nodes representing type unions and intersections.
       members:
         - UnionNode
         - IntersectionNode
-        - DiscriminatedUnionNode
 
 ### Type variables
 
@@ -304,7 +303,6 @@ Type guard functions for type narrowing on node types.
         - is_generic_node
         - is_union_type_node
         - is_intersection_node
-        - is_discriminated_union_node
         - is_type_var_node
         - is_param_spec_node
         - is_type_var_tuple_node

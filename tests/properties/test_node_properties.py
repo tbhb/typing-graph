@@ -16,7 +16,6 @@ from typing_graph._node import (
     ConcreteNode,
     DataclassFieldDef,
     DataclassNode,
-    DiscriminatedUnionNode,
     EllipsisNode,
     EnumNode,
     FieldDef,
@@ -208,15 +207,6 @@ def union_nodes(draw: DrawFn) -> UnionNode:
     member_count = draw(st.integers(2, 4))
     members = tuple(ConcreteNode(cls=int) for _ in range(member_count))
     return UnionNode(members=members)
-
-
-@composite
-def discriminated_union_nodes(draw: DrawFn) -> DiscriminatedUnionNode:
-    variant_count = draw(st.integers(2, 4))
-    variants: dict[object, TypeNode] = {
-        f"variant{i}": ConcreteNode(cls=int) for i in range(variant_count)
-    }
-    return DiscriminatedUnionNode(discriminant="kind", variants=variants)
 
 
 @composite
@@ -1065,33 +1055,6 @@ class TestUnionNodeProperties:
     @given(union_nodes())
     @settings(deadline=None, suppress_health_check=[HealthCheck.too_slow])
     def test_children_cached_identity(self, node: UnionNode) -> None:
-        verify_children_cached_identity(node)
-
-
-class TestDiscriminatedUnionNodeProperties:
-    @given(discriminated_union_nodes())
-    @settings(deadline=None, suppress_health_check=[HealthCheck.too_slow])
-    def test_edges_children_consistency(self, node: DiscriminatedUnionNode) -> None:
-        verify_edges_children_consistency(node)
-
-    @given(discriminated_union_nodes())
-    @settings(deadline=None, suppress_health_check=[HealthCheck.too_slow])
-    def test_edges_returns_sequence(self, node: DiscriminatedUnionNode) -> None:
-        verify_edges_returns_sequence(node)
-
-    @given(discriminated_union_nodes())
-    @settings(deadline=None, suppress_health_check=[HealthCheck.too_slow])
-    def test_children_returns_sequence(self, node: DiscriminatedUnionNode) -> None:
-        verify_children_returns_sequence(node)
-
-    @given(discriminated_union_nodes())
-    @settings(deadline=None, suppress_health_check=[HealthCheck.too_slow])
-    def test_edges_cached_identity(self, node: DiscriminatedUnionNode) -> None:
-        verify_edges_cached_identity(node)
-
-    @given(discriminated_union_nodes())
-    @settings(deadline=None, suppress_health_check=[HealthCheck.too_slow])
-    def test_children_cached_identity(self, node: DiscriminatedUnionNode) -> None:
         verify_children_cached_identity(node)
 
 

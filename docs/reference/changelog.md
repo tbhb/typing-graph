@@ -49,7 +49,6 @@ A new `edges()` method on `TypeNode` that returns semantic edge metadata describ
     | `UNION_MEMBER` | Union variant |
     | `ALIAS_TARGET` | Type alias target definition |
     | `INTERSECTION_MEMBER` | Intersection member |
-    | `VARIANT` | Discriminated union variant |
 
 === "Named/attribute"
 

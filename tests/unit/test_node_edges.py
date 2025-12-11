@@ -9,7 +9,6 @@ from typing_graph._node import (
     ConcreteNode,
     DataclassFieldDef,
     DataclassNode,
-    DiscriminatedUnionNode,
     EllipsisNode,
     EnumNode,
     FieldDef,
@@ -401,44 +400,6 @@ class TestUnionNodeEdges:
 
     def test_edges_cached(self, int_node: ConcreteNode, str_node: ConcreteNode):
         node = UnionNode(members=(int_node, str_node))
-        assert node.edges() is node.edges()
-
-
-class TestDiscriminatedUnionNodeEdges:
-    def test_edges_returns_variants_with_name(
-        self, int_node: ConcreteNode, str_node: ConcreteNode
-    ):
-        node = DiscriminatedUnionNode(
-            discriminant="kind", variants={"dog": int_node, "cat": str_node}
-        )
-        edges = node.edges()
-        assert len(edges) == 2
-        assert all(e.edge.kind == TypeEdgeKind.VARIANT for e in edges)
-        edge_names = {e.edge.name for e in edges}
-        assert edge_names == {"dog", "cat"}
-
-    def test_edges_metadata_has_variant_name(
-        self, int_node: ConcreteNode, str_node: ConcreteNode
-    ):
-        node = DiscriminatedUnionNode(
-            discriminant="type", variants={"a": int_node, "b": str_node}
-        )
-        for edge in node.edges():
-            assert edge.edge.name is not None
-            assert edge.edge.name in {"a", "b"}
-
-    def test_edges_matches_children(
-        self, int_node: ConcreteNode, str_node: ConcreteNode
-    ):
-        node = DiscriminatedUnionNode(
-            discriminant="kind", variants={"x": int_node, "y": str_node}
-        )
-        assert [c.target for c in node.edges()] == list(node.children())
-
-    def test_edges_cached(self, int_node: ConcreteNode, str_node: ConcreteNode):
-        node = DiscriminatedUnionNode(
-            discriminant="kind", variants={"a": int_node, "b": str_node}
-        )
         assert node.edges() is node.edges()
 
 
@@ -1225,9 +1186,6 @@ class TestEdgesChildrenInvariant:
             TypeAliasNode(name="Alias", value=int_node),
             GenericAliasNode(name="GenAlias", type_params=(typevar_t,), value=int_node),
             UnionNode(members=(int_node, str_node)),
-            DiscriminatedUnionNode(
-                discriminant="kind", variants={"a": int_node, "b": str_node}
-            ),
             IntersectionNode(members=(int_node, str_node)),
             TupleNode(elements=(int_node, str_node)),
             TupleNode(elements=()),

@@ -90,7 +90,6 @@ class TypeEdgeKind(str, Enum):
     UNION_MEMBER = auto()  # union variant
     ALIAS_TARGET = auto()  # type alias target definition (type X = T -> T)
     INTERSECTION_MEMBER = auto()  # intersection member (Intersection[A, B] -> A, B)
-    VARIANT = auto()  # discriminated union variant
 
     # Named/attribute edges
     FIELD = auto()  # class/typeddict field
@@ -789,7 +788,7 @@ def is_type_alias_node(obj: object) -> TypeIs[TypeAliasNode]:
 
 @dataclass(slots=True, frozen=True)
 class UnionNode(TypeNode):
-    """A | B (non-discriminated)."""
+    """A | B union type."""
 
     members: tuple[TypeNode, ...]
     _edges: tuple["TypeEdgeConnection", ...] = field(
@@ -819,47 +818,6 @@ class UnionNode(TypeNode):
 def is_union_type_node(obj: object) -> TypeIs[UnionNode]:
     """Return whether the argument is a UnionNode instance."""
     return isinstance(obj, UnionNode)
-
-
-@dataclass(slots=True, frozen=True)
-class DiscriminatedUnionNode(TypeNode):
-    """A union discriminated by a literal field value.
-
-    Example:
-        Dog = TypedDict('Dog', {'kind': Literal['dog'], 'bark': int})
-        Cat = TypedDict('Cat', {'kind': Literal['cat'], 'meow': int})
-        Pet = Dog | Cat  # discriminated on 'kind'
-    """
-
-    discriminant: str  # The field name used to discriminate
-    variants: dict[object, TypeNode]  # Literal value -> variant type
-    _children: tuple[TypeNode, ...] = field(
-        init=False, repr=False, compare=False, hash=False
-    )
-    _edges: tuple["TypeEdgeConnection", ...] = field(
-        init=False, repr=False, compare=False, hash=False
-    )
-
-    def __post_init__(self) -> None:
-        object.__setattr__(self, "_children", tuple(self.variants.values()))
-        edges = tuple(
-            TypeEdgeConnection(TypeEdge(TypeEdgeKind.VARIANT, name=str(key)), node)
-            for key, node in self.variants.items()
-        )
-        object.__setattr__(self, "_edges", edges)
-
-    @override
-    def edges(self) -> "Sequence[TypeEdgeConnection]":
-        return self._edges
-
-    @override
-    def children(self) -> "Sequence[TypeNode]":
-        return self._children
-
-
-def is_discriminated_union_node(obj: object) -> TypeIs[DiscriminatedUnionNode]:
-    """Return whether the argument is a DiscriminatedUnionNode instance."""
-    return isinstance(obj, DiscriminatedUnionNode)
 
 
 @dataclass(slots=True, frozen=True)

@@ -12,7 +12,6 @@ from typing_graph import (
     ConcreteNode,
     DataclassFieldDef,
     DataclassNode,
-    DiscriminatedUnionNode,
     EllipsisNode,
     EnumNode,
     FieldDef,
@@ -54,7 +53,6 @@ from typing_graph import (
     is_concatenate_node,
     is_concrete_node,
     is_dataclass_node,
-    is_discriminated_union_node,
     is_ellipsis_node,
     is_enum_node,
     is_forward_ref_node,
@@ -254,15 +252,6 @@ class TestTypeGuards:
                 TypeAliasNode(name="MyInt", value=ConcreteNode(cls=int)),
                 ConcreteNode(cls=int),
                 id="is_type_alias_node",
-            ),
-            pytest.param(
-                is_discriminated_union_node,
-                DiscriminatedUnionNode(
-                    discriminant="kind",
-                    variants={"a": ConcreteNode(cls=dict), "b": ConcreteNode(cls=list)},
-                ),
-                UnionNode(members=()),
-                id="is_discriminated_union_node",
             ),
             pytest.param(
                 is_intersection_node,
