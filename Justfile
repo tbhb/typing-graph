@@ -348,6 +348,42 @@ release-create-prerelease version:
     --title "v{{version}}" \
     --notes "See [CHANGELOG.md](https://github.com/tbhb/typing-graph/blob/main/CHANGELOG.md) for details."
 
+# Create GitHub release with generated release notes from changelog
+release-create-with-notes version:
+  @echo "Generating release notes for v{{version}}..."
+  ./scripts/release_notes.py {{version}} --output /tmp/release-notes-{{version}}.md
+  @echo ""
+  @echo "Creating GitHub release v{{version}}..."
+  gh release create v{{version}} \
+    --title "v{{version}}" \
+    --notes-file /tmp/release-notes-{{version}}.md
+  @rm -f /tmp/release-notes-{{version}}.md
+  @echo ""
+  @echo "Release created: https://github.com/tbhb/typing-graph/releases/tag/v{{version}}"
+
+# Create draft GitHub release with generated release notes
+release-create-draft version:
+  @echo "Generating release notes for v{{version}}..."
+  ./scripts/release_notes.py {{version}} --draft --output /tmp/release-notes-{{version}}.md
+  @echo ""
+  @echo "Creating draft GitHub release v{{version}}..."
+  gh release create v{{version}} \
+    --title "v{{version}}" \
+    --draft \
+    --notes-file /tmp/release-notes-{{version}}.md
+  @rm -f /tmp/release-notes-{{version}}.md
+  @echo ""
+  @echo "Draft release created: https://github.com/tbhb/typing-graph/releases/tag/v{{version}}"
+  @echo "Edit and publish at: https://github.com/tbhb/typing-graph/releases"
+
+# Generate release notes from changelog (preview only, no release)
+release-notes version:
+  ./scripts/release_notes.py {{version}}
+
+# Generate release notes and save to file
+release-notes-save version output="release-notes.md":
+  ./scripts/release_notes.py {{version}} --output {{output}}
+
 # Show release status
 release-status:
   @echo "Release Status: typing-graph"
