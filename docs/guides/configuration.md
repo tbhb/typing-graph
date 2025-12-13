@@ -71,6 +71,31 @@ config = InspectConfig(eval_mode=EvalMode.STRINGIFIED)
 
 Choose this mode when working with code that uses `from __future__ import annotations` or when you want full control over resolution timing.
 
+## Controlling automatic namespace detection
+
+The `auto_namespace` option controls whether typing-graph automatically extracts namespaces from the objects you inspect. When enabled (the default), the library extracts module globals and adds class names for self-references.
+
+```python
+from typing_graph import InspectConfig
+
+# Auto-detection enabled (default)
+config = InspectConfig(auto_namespace=True)
+
+# Auto-detection disabled - only explicit namespaces are used
+config = InspectConfig(auto_namespace=False)
+```
+
+When `auto_namespace=False`, you must provide all namespace context explicitly through `globalns` and `localns`:
+
+```python
+config = InspectConfig(
+    auto_namespace=False,
+    globalns={"MyType": MyType},
+)
+```
+
+For detailed guidance on namespace configuration, see [How to configure namespaces](namespace-configuration.md).
+
 ## Limiting recursion depth
 
 When you need to prevent issues with deeply nested or recursive types, use the `max_depth` option:

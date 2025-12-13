@@ -91,3 +91,5 @@ ty
 typeguard
 [wW]alkthrough(s)?
 [oO]ptionals?
+TypeGuard
+TypeIs

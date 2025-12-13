@@ -52,9 +52,9 @@ Forward reference resolution depends on namespace context. Different evaluation 
 
 ## Graph traversal API
 
-The `walk()` function provides depth-first pre-order traversal with predicate filtering and depth limits. This section covers planned enhancements beyond the shipped functionality.
+The `walk()` function provides depth-first pre-order traversal with predicate filtering and depth limits. This section covers planned enhancements beyond the current feature set.
 
-### Additional traversal strategies
+### More traversal strategies
 
 **Goals:**
 

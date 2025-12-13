@@ -6,7 +6,7 @@ For comprehensive traversal patterns including manual recursion and `children()`
 
 ## Using built-in type guards
 
-The library provides type guard functions that narrow the return type of `walk()` automatically. When you pass a type guard as a predicate, the yielded nodes are typed as the specific node type.
+The library provides type guard functions that narrow what `walk()` returns. When you pass a type guard as a predicate, the yielded nodes have the specific node type.
 
 ### Available type guards
 
