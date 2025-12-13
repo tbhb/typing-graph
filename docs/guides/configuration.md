@@ -88,6 +88,7 @@ config = InspectConfig(auto_namespace=False)
 When `auto_namespace=False`, you must provide all namespace context explicitly through `globalns` and `localns`:
 
 ```python
+# snippet - conceptual example
 config = InspectConfig(
     auto_namespace=False,
     globalns={"MyType": MyType},
