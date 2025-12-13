@@ -14,6 +14,7 @@ from ._context import (
     get_source_location,
 )
 from ._inspect_type import _inspect_type  # pyright: ignore[reportPrivateUsage]
+from ._namespace import apply_function_namespace
 from ._node import (
     AnyNode,
     FunctionNode,
@@ -36,6 +37,11 @@ def inspect_function(
 ) -> FunctionNode:
     """Inspect a function and return a FunctionNode.
 
+    When ``config.auto_namespace`` is True (the default), namespaces are
+    automatically extracted from the function for forward reference resolution.
+    User-provided namespaces in the config take precedence over auto-detected
+    values.
+
     Args:
         func: The function to inspect.
         config: Introspection configuration. Uses defaults if None.
@@ -44,6 +50,7 @@ def inspect_function(
         A FunctionNode representing the function's structure.
     """
     config = config if config is not None else DEFAULT_CONFIG
+    config = apply_function_namespace(func, config)
     ctx = InspectContext(config=config)
 
     sig = _inspect_signature(func, ctx)
@@ -79,6 +86,11 @@ def inspect_signature(
 ) -> SignatureNode:
     """Inspect a callable's signature.
 
+    When ``config.auto_namespace`` is True (the default), namespaces are
+    automatically extracted from the callable for forward reference resolution.
+    User-provided namespaces in the config take precedence over auto-detected
+    values.
+
     Args:
         callable_obj: The callable to inspect.
         config: Introspection configuration. Uses defaults if None.
@@ -88,6 +100,7 @@ def inspect_signature(
         A SignatureNode representing the callable's signature.
     """
     config = config if config is not None else DEFAULT_CONFIG
+    config = apply_function_namespace(callable_obj, config)
     ctx = InspectContext(config=config)
     return _inspect_signature(callable_obj, ctx, follow_wrapped=follow_wrapped)
 

@@ -9,6 +9,7 @@ Complete reference for all public classes and functions in the typing-graph libr
 - [Core inspection functions](#core-inspection-functions) - Entry points for type inspection
 - [Traversal](#traversal) - Graph traversal function
 - [Configuration](#configuration) - Classes for controlling inspection behavior
+- [Namespace extraction](#namespace-extraction) - Functions for extracting namespaces from objects
 - [Type nodes](#type-nodes) - Base classes and node types for representing types
 - [Structured type nodes](#structured-type-nodes) - Classes, dataclasses, TypedDicts, and similar
 - [Function and callable nodes](#function-and-callable-nodes) - Functions and signatures
@@ -69,6 +70,36 @@ Classes for controlling inspection behavior.
       members:
         - InspectConfig
         - EvalMode
+
+## Namespace extraction
+
+Functions for extracting global and local namespaces from Python objects. These functions support forward reference resolution by providing namespace context from classes, functions, and modules.
+
+For practical usage guidance, see [How to configure namespaces](../guides/namespace-configuration.md). For background on why namespace extraction matters, see [Forward references](../explanation/forward-references.md).
+
+### Type aliases
+
+::: typing_graph
+    options:
+      show_root_heading: false
+      show_docstring_description: false
+      heading_level: 4
+      members:
+        - NamespacePair
+        - NamespaceSource
+
+### Extraction functions
+
+::: typing_graph
+    options:
+      show_root_heading: false
+      show_docstring_description: false
+      heading_level: 4
+      members:
+        - extract_namespace
+        - extract_class_namespace
+        - extract_function_namespace
+        - extract_module_namespace
 
 ## Type nodes
 

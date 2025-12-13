@@ -33,6 +33,7 @@ from ._inspect_type import (
     _get_type_params,  # pyright: ignore[reportPrivateUsage]
     _inspect_type,  # pyright: ignore[reportPrivateUsage]
 )
+from ._namespace import apply_class_namespace
 from ._node import (
     ClassNode,
     DataclassFieldDef,
@@ -138,11 +139,15 @@ def inspect_class(
     Args:
         cls: The class to inspect.
         config: Introspection configuration. Uses defaults if None.
+            When config.auto_namespace is True (default), namespaces are
+            automatically extracted from the class for forward reference
+            resolution. User-provided globalns/localns take precedence.
 
     Returns:
         A specialized TypeNode based on the class type.
     """
     config = config if config is not None else DEFAULT_CONFIG
+    config = apply_class_namespace(cls, config)
     ctx = InspectContext(config=config)
 
     # Detect class type and dispatch using TypeIs wrappers for type narrowing
@@ -172,6 +177,9 @@ def inspect_dataclass(
     Args:
         cls: The dataclass to inspect.
         config: Introspection configuration. Uses defaults if None.
+            When config.auto_namespace is True (default), namespaces are
+            automatically extracted from the dataclass for forward reference
+            resolution. User-provided globalns/localns take precedence.
 
     Returns:
         A DataclassNode node representing the dataclass.
@@ -184,6 +192,8 @@ def inspect_dataclass(
         raise TypeError(msg)
 
     config = config if config is not None else DEFAULT_CONFIG
+    config = apply_class_namespace(cls, config)
+
     ctx = InspectContext(config=config)
     return _inspect_dataclass(cls, ctx)
 
@@ -198,6 +208,9 @@ def inspect_typed_dict(
     Args:
         cls: The TypedDict to inspect.
         config: Introspection configuration. Uses defaults if None.
+            When config.auto_namespace is True (default), namespaces are
+            automatically extracted from the TypedDict for forward reference
+            resolution. User-provided globalns/localns take precedence.
 
     Returns:
         A TypedDictNode node representing the TypedDict.
@@ -210,6 +223,8 @@ def inspect_typed_dict(
         raise TypeError(msg)
 
     config = config if config is not None else DEFAULT_CONFIG
+    config = apply_class_namespace(cls, config)
+
     ctx = InspectContext(config=config)
     return _inspect_typed_dict(cls, ctx)
 
@@ -224,6 +239,9 @@ def inspect_named_tuple(
     Args:
         cls: The NamedTuple to inspect.
         config: Introspection configuration. Uses defaults if None.
+            When config.auto_namespace is True (default), namespaces are
+            automatically extracted from the NamedTuple for forward reference
+            resolution. User-provided globalns/localns take precedence.
 
     Returns:
         A NamedTupleNode node representing the NamedTuple.
@@ -236,6 +254,8 @@ def inspect_named_tuple(
         raise TypeError(msg)
 
     config = config if config is not None else DEFAULT_CONFIG
+    config = apply_class_namespace(cls, config)
+
     ctx = InspectContext(config=config)
     return _inspect_named_tuple(cls, ctx)
 
@@ -250,6 +270,9 @@ def inspect_protocol(
     Args:
         cls: The Protocol to inspect.
         config: Introspection configuration. Uses defaults if None.
+            When config.auto_namespace is True (default), namespaces are
+            automatically extracted from the Protocol for forward reference
+            resolution. User-provided globalns/localns take precedence.
 
     Returns:
         A ProtocolNode node representing the Protocol.
@@ -262,6 +285,8 @@ def inspect_protocol(
         raise TypeError(msg)
 
     config = config if config is not None else DEFAULT_CONFIG
+    config = apply_class_namespace(cls, config)
+
     ctx = InspectContext(config=config)
     return _inspect_protocol(cls, ctx)
 
@@ -276,6 +301,9 @@ def inspect_enum(
     Args:
         cls: The Enum to inspect.
         config: Introspection configuration. Uses defaults if None.
+            When config.auto_namespace is True (default), namespaces are
+            automatically extracted from the Enum for forward reference
+            resolution. User-provided globalns/localns take precedence.
 
     Returns:
         An EnumNode node representing the Enum.
@@ -288,6 +316,8 @@ def inspect_enum(
         raise TypeError(msg)
 
     config = config if config is not None else DEFAULT_CONFIG
+    config = apply_class_namespace(cls, config)
+
     ctx = InspectContext(config=config)
     return _inspect_enum(cls, ctx)
 

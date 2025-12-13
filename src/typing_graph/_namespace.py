@@ -5,12 +5,15 @@
 # access - this is the correct type for namespaces, not a workaround.
 # pyright: reportAny=false, reportExplicitAny=false, reportUnknownArgumentType=false
 
+import dataclasses
 import sys
 from types import ModuleType
 from typing import TYPE_CHECKING, Any, TypeAlias
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+    from ._config import InspectConfig
 
 NamespacePair: TypeAlias = tuple[dict[str, Any], dict[str, Any]]
 """Type alias for the (globalns, localns) tuple returned by extraction functions."""
@@ -30,7 +33,10 @@ def _add_type_params_to_namespace(obj: object, localns: dict[str, Any]) -> None:
         localns: The local namespace dict to add type parameters to.
     """
     type_params = getattr(obj, "__type_params__", ())
-    for param in type_params:
+    # Guard against non-iterable descriptors (e.g., in typing module classes)
+    if not isinstance(type_params, tuple):
+        return
+    for param in type_params:  # pyright: ignore[reportUnknownVariableType]
         param_name = getattr(param, "__name__", None)
         if param_name is not None:
             localns[param_name] = param
@@ -253,3 +259,83 @@ def merge_namespaces(
     merged_globalns = {**auto_globalns, **(user_globalns or {})}
     merged_localns = {**auto_localns, **(user_localns or {})}
     return merged_globalns, merged_localns
+
+
+def _apply_namespace(
+    auto_globalns: dict[str, Any],
+    auto_localns: dict[str, Any],
+    config: "InspectConfig",
+) -> "InspectConfig":
+    """Apply extracted namespaces to an InspectConfig.
+
+    This is an internal helper that handles the common logic of merging
+    auto-detected namespaces with user-provided namespaces and creating
+    a new config.
+
+    Args:
+        auto_globalns: Auto-detected global namespace.
+        auto_localns: Auto-detected local namespace.
+        config: The InspectConfig to update with merged namespaces.
+
+    Returns:
+        A new config with merged globalns and localns.
+    """
+    merged_globalns, merged_localns = merge_namespaces(
+        auto_globalns,
+        auto_localns,
+        config.globalns,
+        config.localns,
+    )
+    return dataclasses.replace(
+        config,
+        globalns=merged_globalns,
+        localns=merged_localns,
+    )
+
+
+def apply_class_namespace(cls: type[Any], config: "InspectConfig") -> "InspectConfig":
+    """Apply auto-namespace extraction from a class to an InspectConfig.
+
+    This is a convenience function that combines namespace extraction, merging,
+    and config replacement into a single call. It extracts namespaces from the
+    class and merges them with user-provided namespaces in the config, where
+    user values take precedence.
+
+    Args:
+        cls: The class to extract namespaces from.
+        config: The InspectConfig to update with merged namespaces.
+
+    Returns:
+        A new config with merged globalns and localns. If config.auto_namespace
+        is False, returns the config unchanged.
+    """
+    if not config.auto_namespace:
+        return config
+
+    auto_globalns, auto_localns = extract_class_namespace(cls)
+    return _apply_namespace(auto_globalns, auto_localns, config)
+
+
+def apply_function_namespace(
+    func: "Callable[..., Any]", config: "InspectConfig"
+) -> "InspectConfig":
+    """Apply auto-namespace extraction from a function to an InspectConfig.
+
+    This is a convenience function that combines namespace extraction, merging,
+    and config replacement into a single call. It extracts namespaces from the
+    function and merges them with user-provided namespaces in the config, where
+    user values take precedence.
+
+    Args:
+        func: The function to extract namespaces from.
+        config: The InspectConfig to update with merged namespaces.
+
+    Returns:
+        A new config with merged globalns and localns. If config.auto_namespace
+        is False, returns the config unchanged.
+    """
+    if not config.auto_namespace:
+        return config
+
+    auto_globalns, auto_localns = extract_function_namespace(func)
+    return _apply_namespace(auto_globalns, auto_localns, config)

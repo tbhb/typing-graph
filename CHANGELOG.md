@@ -23,8 +23,33 @@ A new `InspectConfig.normalize_unions` option that normalizes all union types to
 
 **Documentation:**
 
-- [Union types explanation](https://tbhb.github.io/typing-graph/explanation/union-types/) - Understanding union normalization
-- [Working with unions guide](https://tbhb.github.io/typing-graph/guides/working-with-unions/) - Practical union handling patterns
+- [Union types explanation](https://typing-graph.tbhb.dev/explanation/union-types/) - Understanding union normalization
+- [Working with unions guide](https://typing-graph.tbhb.dev/guides/working-with-unions/) - Practical union handling patterns
+
+#### Auto-namespace detection for forward reference resolution
+
+Zero-configuration forward reference resolution for PEP 563 (`from __future__ import annotations`). The feature automatically extracts namespace context from source locations, eliminating manual `globalns` and `localns` parameters in most cases.
+
+**Key features:**
+
+- `auto_namespace` option on `InspectConfig` (default `True`): Enables automatic namespace extraction from source locations when resolving forward references
+- `source` parameter on `inspect_type()` and related functions: Accepts a module, class, or function to extract namespace context from
+- Namespace extraction utilities in `_namespace.py`: `extract_namespace()` for unified extraction, plus specialized `extract_class_namespace()`, `extract_function_namespace()`, and `extract_module_namespace()` for granular control
+
+**How it works:**
+
+1. When `auto_namespace=True` and a `source` is provided, typing-graph extracts `globalns` and `localns` from the source object
+2. For modules, extracts the module's `__dict__` as the global namespace
+3. For classes, extracts the class's module globals and the class `__dict__` as the local namespace
+4. For functions, extracts the function's `__globals__` and closure variables
+
+**Rationale:** PEP 563 defers annotation evaluation, requiring explicit namespace context to resolve forward references at runtime. Previously, users had to manually extract and pass namespaces. Auto-namespace detection handles this automatically, making PEP 563 support seamless.
+
+**Documentation:**
+
+- [Forward references explanation](https://typing-graph.tbhb.dev/explanation/forward-references/) - Understanding forward reference resolution and PEP 563
+- [Namespace configuration guide](https://typing-graph.tbhb.dev/guides/namespace-configuration/) - Configuring namespace extraction for forward references
+- [API reference: Namespace extraction](https://typing-graph.tbhb.dev/reference/api/#namespace-extraction) - Namespace utility functions
 
 #### Other additions
 
@@ -123,15 +148,15 @@ A new `TraversalError` exception raised when `walk()` encounters invalid paramet
 
 **Tutorials:**
 
-- [Traversing type graphs](https://tbhb.github.io/typing-graph/tutorials/traversing-type-graphs/) - Introduction to graph traversal with `walk()`
+- [Traversing type graphs](https://typing-graph.tbhb.dev/tutorials/traversing-type-graphs/) - Introduction to graph traversal with `walk()`
 
 **How-to guides:**
 
-- [Filtering with walk()](https://tbhb.github.io/typing-graph/guides/filtering-with-walk/) - Using predicates and depth limits to filter traversal
+- [Filtering with walk()](https://typing-graph.tbhb.dev/guides/filtering-with-walk/) - Using predicates and depth limits to filter traversal
 
 **Explanations:**
 
-- [Graph edges](https://tbhb.github.io/typing-graph/explanation/graph-edges/) - Understanding semantic edge metadata and relationships
+- [Graph edges](https://typing-graph.tbhb.dev/explanation/graph-edges/) - Understanding semantic edge metadata and relationships
 
 **Updates to existing docs:**
 

@@ -16,7 +16,14 @@ from typing_graph import (
 
 # merge_namespaces is not yet used by public API, so needs direct testing
 # _traverse_to_class edge cases cannot be exercised via public API
-from typing_graph._namespace import _traverse_to_class, merge_namespaces
+# apply_*_namespace functions need direct testing for coverage
+from typing_graph._config import InspectConfig
+from typing_graph._namespace import (
+    _traverse_to_class,
+    apply_class_namespace,
+    apply_function_namespace,
+    merge_namespaces,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -50,41 +57,72 @@ def top_level_function() -> None:
 
 
 class TestOwningClassResolution:
-    """Test owning class resolution via extract_function_namespace."""
-
-    def test_resolves_method_owner(self) -> None:
-        _globalns, localns = extract_function_namespace(ClassWithMethod.method)
-        assert "ClassWithMethod" in localns
-        assert localns["ClassWithMethod"] is ClassWithMethod
-
-    def test_resolves_static_method_owner(self) -> None:
-        _globalns, localns = extract_function_namespace(ClassWithMethod.static_method)
-        assert "ClassWithMethod" in localns
-        assert localns["ClassWithMethod"] is ClassWithMethod
-
-    def test_resolves_nested_class_method_owner(self) -> None:
-        _globalns, localns = extract_function_namespace(
-            OuterClass.InnerClass.inner_method
-        )
-        assert "InnerClass" in localns
-        assert localns["InnerClass"] is OuterClass.InnerClass
+    @pytest.mark.parametrize(
+        ("func", "expected_class_name", "expected_class"),
+        [
+            pytest.param(
+                ClassWithMethod.method,
+                "ClassWithMethod",
+                ClassWithMethod,
+                id="instance_method",
+            ),
+            pytest.param(
+                ClassWithMethod.static_method,
+                "ClassWithMethod",
+                ClassWithMethod,
+                id="static_method",
+            ),
+            pytest.param(
+                ClassWithMethod.class_method,
+                "ClassWithMethod",
+                ClassWithMethod,
+                id="class_method",
+            ),
+            pytest.param(
+                OuterClass.InnerClass.inner_method,
+                "InnerClass",
+                OuterClass.InnerClass,
+                id="nested_class_method",
+            ),
+        ],
+    )
+    def test_resolves_owner_for_method(
+        self,
+        func: "Callable[..., Any]",
+        expected_class_name: str,
+        expected_class: type,
+    ) -> None:
+        _globalns, localns = extract_function_namespace(func)
+        assert expected_class_name in localns
+        assert localns[expected_class_name] is expected_class
 
     def test_no_owner_for_top_level_function(self) -> None:
-        _globalns, localns = extract_function_namespace(top_level_function)
-        # No owning class for top-level functions
-        assert not any(isinstance(v, type) for v in localns.values())
+        globalns, localns = extract_function_namespace(top_level_function)
+        # Top-level function has no owning class
+        has_type_in_localns = any(isinstance(v, type) for v in localns.values())
+        assert not has_type_in_localns
+        # But should have module globals
+        assert len(globalns) > 0
 
-    def test_no_owner_for_lambda(self) -> None:
-        fn: Callable[[Any], Any] = lambda x: x  # noqa: E731
-        _globalns, localns = extract_function_namespace(fn)
-        # Lambdas don't have owning classes
-        assert not any(isinstance(v, type) for v in localns.values())
+    def test_nested_class_includes_outer_class(self) -> None:
+        inner_method = OuterClass.InnerClass.inner_method
+        _globalns, localns = extract_function_namespace(inner_method)
+        # Inner class is resolved, outer class should also be accessible via globals
+        assert "InnerClass" in localns
 
     def test_no_owner_for_builtin_function(self) -> None:
         # Built-in functions don't have __globals__ or owning classes
         globalns, localns = extract_function_namespace(len)
         assert globalns == {}
         assert localns == {}
+
+    def test_method_from_instance(self) -> None:
+        instance = ClassWithMethod()
+        bound_method = instance.method
+
+        # Bound methods should still resolve to the class
+        _globalns, localns = extract_function_namespace(bound_method)
+        assert "ClassWithMethod" in localns
 
 
 class TestExtractClassNamespace:
@@ -122,6 +160,38 @@ class TestExtractClassNamespace:
         assert "int" in localns
         assert localns["int"] is int
 
+    def test_handles_module_with_non_dict_attribute(self) -> None:
+        # Test partial branch: module_dict not a dict (line 125->129)
+        import sys
+
+        class FakeModule:
+            __dict__ = "not a dict"  # pyright: ignore[reportAssignmentType]
+
+        fake_mod_name = "__fake_module_test__"
+        sys.modules[fake_mod_name] = FakeModule()  # pyright: ignore[reportArgumentType]
+        try:
+            cls = type("TestClass", (), {"__module__": fake_mod_name})
+            globalns, localns = extract_class_namespace(cls)
+            assert globalns == {}
+            assert "TestClass" in localns
+        finally:
+            del sys.modules[fake_mod_name]
+
+    def test_class_name_none_not_added_to_localns(self) -> None:
+        # Test partial branch: class_name is None (line 130->134)
+        cls = type("NoneNameClass", (), {"__name__": None})  # type: ignore[dict-item]
+        _globalns, localns = extract_class_namespace(cls)
+        assert None not in localns
+
+    def test_dynamically_created_class(self) -> None:
+        # Dynamically created class might have unusual module
+        dynamic_class = type("DynamicClass", (), {"__module__": __name__})
+        _globalns, localns = extract_class_namespace(dynamic_class)
+
+        # Should extract from current module
+        assert "DynamicClass" in localns
+        assert localns["DynamicClass"] is dynamic_class
+
 
 class TestExtractFunctionNamespace:
     def test_extracts_global_namespace_from_function(self) -> None:
@@ -156,6 +226,16 @@ class TestExtractFunctionNamespace:
         assert "InnerClass" in localns
         assert localns["InnerClass"] is OuterClass.InnerClass
 
+    def test_lambda_function(self) -> None:
+        # Lambdas are callables with unusual qualnames
+        fn: Callable[[Any], Any] = lambda x: x  # noqa: E731
+        globalns, localns = extract_function_namespace(fn)
+
+        # Should have module globals but no owning class
+        assert isinstance(globalns, dict)
+        # Lambdas don't have owning classes
+        assert not any(isinstance(v, type) for v in localns.values())
+
 
 class TestExtractModuleNamespace:
     def test_extracts_module_dict_as_global_namespace(self) -> None:
@@ -180,6 +260,17 @@ class TestExtractModuleNamespace:
         assert isinstance(globalns, dict)
         assert localns == {}
 
+    def test_module_with_non_dict_attribute(self) -> None:
+        # Test partial branch: module_dict not a dict (line 197->200)
+        class FakeModuleNonDict:
+            __dict__ = "not a dict"  # pyright: ignore[reportAssignmentType]
+
+        globalns, localns = extract_module_namespace(
+            FakeModuleNonDict()  # pyright: ignore[reportArgumentType]
+        )
+        assert globalns == {}
+        assert localns == {}
+
 
 class TestExtractNamespace:
     def test_dispatches_to_class_extractor(self) -> None:
@@ -199,17 +290,21 @@ class TestExtractNamespace:
         expected = extract_module_namespace(typing_graph)
         assert result == expected
 
-    def test_raises_type_error_for_invalid_source(self) -> None:
-        with pytest.raises(TypeError, match="source must be a class, callable"):
-            _ = extract_namespace("not a valid source")  # pyright: ignore[reportArgumentType]
-
-    def test_raises_type_error_for_none(self) -> None:
-        with pytest.raises(TypeError, match="source must be a class, callable"):
-            _ = extract_namespace(None)  # pyright: ignore[reportArgumentType]
-
-    def test_raises_type_error_for_int(self) -> None:
-        with pytest.raises(TypeError, match="got 'int'"):
-            _ = extract_namespace(42)  # pyright: ignore[reportArgumentType]
+    @pytest.mark.parametrize(
+        ("source", "match"),
+        [
+            pytest.param(
+                "not a valid source", "source must be a class, callable", id="string"
+            ),
+            pytest.param(None, "source must be a class, callable", id="none"),
+            pytest.param(42, "got 'int'", id="int"),
+        ],
+    )
+    def test_raises_type_error_for_invalid_source(
+        self, source: Any, match: str
+    ) -> None:
+        with pytest.raises(TypeError, match=match):
+            _ = extract_namespace(source)
 
     def test_handles_callable_class_instance(self) -> None:
         class CallableClass:
@@ -304,45 +399,6 @@ class TestMergeNamespaces:
         assert merged_local is not auto_local
 
 
-class TestEdgeCases:
-    def test_class_with_none_name_attribute(self) -> None:
-        # We can't delete __name__ from type() classes, but we can test
-        # that the code handles None gracefully via the getattr default
-        # by creating a class with __name__ = None
-        cls = type("NoneNameClass", (), {"__name__": None})  # type: ignore[dict-item]
-        _globalns, localns = extract_class_namespace(cls)
-        # Should still work, class name None means it won't be added to localns
-        # with a None key (the function checks for None)
-        assert None not in localns
-
-    def test_dynamically_created_class(self) -> None:
-        # Dynamically created class might have unusual module
-        dynamic_class = type("DynamicClass", (), {"__module__": __name__})
-        _globalns, localns = extract_class_namespace(dynamic_class)
-
-        # Should extract from current module
-        assert "DynamicClass" in localns
-        assert localns["DynamicClass"] is dynamic_class
-
-    def test_lambda_function(self) -> None:
-        # Lambdas are callables with unusual qualnames
-        fn: Callable[[Any], Any] = lambda x: x  # noqa: E731
-        globalns, localns = extract_function_namespace(fn)
-
-        # Should have module globals but no owning class
-        assert isinstance(globalns, dict)
-        # Lambdas don't have owning classes
-        assert not any(isinstance(v, type) for v in localns.values())
-
-    def test_method_from_instance(self) -> None:
-        instance = ClassWithMethod()
-        bound_method = instance.method
-
-        # Bound methods should still resolve to the class
-        _globalns, localns = extract_function_namespace(bound_method)
-        assert "ClassWithMethod" in localns
-
-
 class TestTypeParameters:
     def test_class_type_params_extracted_when_present(self) -> None:
         # Manually add __type_params__ to simulate PEP 695
@@ -380,17 +436,21 @@ class TestTypeParameters:
 
 
 class TestTraverseToClass:
-    def test_empty_parts_returns_none(self) -> None:
-        result = _traverse_to_class({"foo": int}, [])
-        assert result is None
-
-    def test_intermediate_none_returns_none(self) -> None:
-        # When root is found but nested attribute doesn't exist
-        result = _traverse_to_class({"foo": None}, ["foo", "bar"])
-        assert result is None
-
-    def test_non_type_result_returns_none(self) -> None:
-        result = _traverse_to_class({"foo": "not a type"}, ["foo"])
+    @pytest.mark.parametrize(
+        ("globals_dict", "parts"),
+        [
+            pytest.param({}, [], id="empty_parts"),
+            pytest.param({"foo": None}, ["foo", "bar"], id="intermediate_none"),
+            pytest.param({"foo": "not a type"}, ["foo"], id="non_type_result"),
+            pytest.param({"foo": int}, ["nonexistent"], id="missing_key"),
+        ],
+    )
+    def test_returns_none_for_invalid_paths(
+        self,
+        globals_dict: dict[str, Any],
+        parts: list[str],
+    ) -> None:
+        result = _traverse_to_class(globals_dict, parts)
         assert result is None
 
     def test_attribute_error_returns_none(self) -> None:
@@ -401,3 +461,99 @@ class TestTraverseToClass:
 
         result = _traverse_to_class({"bad": BadGetattr()}, ["bad", "something"])
         assert result is None
+
+    def test_type_error_returns_none(self) -> None:
+        # Test exception handling - dict that raises TypeError on get
+        class TypeErrorDict(dict[str, Any]):
+            def get(self, key: str, default: Any = None) -> Any:  # pyright: ignore[reportImplicitOverride]
+                msg = "custom error"
+                raise TypeError(msg)
+
+        result = _traverse_to_class(TypeErrorDict(), ["foo"])
+        assert result is None
+
+
+class TestApplyClassNamespace:
+    def test_applies_namespace_when_auto_namespace_true(
+        self, auto_namespace_config: InspectConfig
+    ) -> None:
+        class TestClass:
+            pass
+
+        new_config = apply_class_namespace(TestClass, auto_namespace_config)
+
+        assert new_config.globalns is not None
+        assert new_config.localns is not None
+        assert "TestClass" in new_config.localns
+
+    def test_returns_unchanged_config_when_auto_namespace_false(
+        self, no_auto_namespace_config: InspectConfig
+    ) -> None:
+        class TestClass:
+            pass
+
+        new_config = apply_class_namespace(TestClass, no_auto_namespace_config)
+
+        assert new_config is no_auto_namespace_config
+
+    def test_user_namespace_takes_precedence(self) -> None:
+        class TestClass:
+            pass
+
+        user_value = "user override"
+        config = InspectConfig(
+            auto_namespace=True,
+            localns={"TestClass": user_value},
+        )
+        new_config = apply_class_namespace(TestClass, config)
+
+        assert new_config.localns is not None
+        assert new_config.localns["TestClass"] == user_value
+
+
+class TestApplyFunctionNamespace:
+    def test_applies_namespace_when_auto_namespace_true(
+        self, auto_namespace_config: InspectConfig
+    ) -> None:
+        def test_func() -> None:
+            pass
+
+        new_config = apply_function_namespace(test_func, auto_namespace_config)
+
+        assert new_config.globalns is not None
+
+    def test_returns_unchanged_config_when_auto_namespace_false(
+        self, no_auto_namespace_config: InspectConfig
+    ) -> None:
+        def test_func() -> None:
+            pass
+
+        new_config = apply_function_namespace(test_func, no_auto_namespace_config)
+
+        assert new_config is no_auto_namespace_config
+
+    def test_method_includes_owning_class(
+        self, auto_namespace_config: InspectConfig
+    ) -> None:
+        # Use module-level class ClassWithMethod since locally-defined classes
+        # won't be in __globals__ and thus won't be resolved
+        method = ClassWithMethod.method
+        new_config = apply_function_namespace(method, auto_namespace_config)
+
+        assert new_config.localns is not None
+        assert "ClassWithMethod" in new_config.localns
+        assert new_config.localns["ClassWithMethod"] is ClassWithMethod
+
+    def test_user_namespace_takes_precedence(self) -> None:
+        def test_func() -> None:
+            pass
+
+        user_global = {"custom": "value"}
+        config = InspectConfig(
+            auto_namespace=True,
+            globalns=user_global,
+        )
+        new_config = apply_function_namespace(test_func, config)
+
+        assert new_config.globalns is not None
+        assert new_config.globalns["custom"] == "value"

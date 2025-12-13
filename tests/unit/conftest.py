@@ -1,7 +1,12 @@
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
+if TYPE_CHECKING:
+    from collections.abc import Callable, Generator
+
+from typing_graph._config import InspectConfig
 from typing_graph._node import (
     AnyNode,
     ConcreteNode,
@@ -64,3 +69,33 @@ def paramspec_p() -> ParamSpecNode:
 @pytest.fixture
 def typevartuple_ts() -> TypeVarTupleNode:
     return TypeVarTupleNode(name="Ts")
+
+
+@pytest.fixture
+def auto_namespace_config() -> InspectConfig:
+    """InspectConfig with auto_namespace=True."""
+    return InspectConfig(auto_namespace=True)
+
+
+@pytest.fixture
+def no_auto_namespace_config() -> InspectConfig:
+    """InspectConfig with auto_namespace=False."""
+    return InspectConfig(auto_namespace=False)
+
+
+@pytest.fixture
+def fake_module_manager() -> "Generator[Callable[[str, object], str], None, None]":
+    """Provide a function to register fake modules with automatic cleanup."""
+    import sys
+
+    registered: list[str] = []
+
+    def register(name: str, module_obj: object) -> str:
+        sys.modules[name] = module_obj  # pyright: ignore[reportArgumentType]
+        registered.append(name)
+        return name
+
+    yield register
+
+    for name in registered:
+        _ = sys.modules.pop(name, None)

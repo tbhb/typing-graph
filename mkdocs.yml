@@ -194,6 +194,7 @@ nav:
       - Walking the type graph: guides/walking-type-graph.md
       - Filtering with walk(): guides/filtering-with-walk.md
       - Configuration options: guides/configuration.md
+      - Namespace configuration: guides/namespace-configuration.md
   - Explanation:
       - explanation/index.md
       - Architecture overview: explanation/architecture.md

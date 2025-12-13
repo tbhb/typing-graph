@@ -27,6 +27,7 @@ is_empty
 is_instance
 markdownlint
 matches_protocol
+[mM]etaclass(es)?
 [mM]kdocstrings
 msgspec
 [nN]amespaces?

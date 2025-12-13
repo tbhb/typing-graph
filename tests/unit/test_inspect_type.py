@@ -5,7 +5,7 @@
 
 import sys
 from collections.abc import Callable, Callable as ABCCallable
-from types import UnionType
+from types import ModuleType, UnionType
 from typing import (
     Annotated,
     Any,
@@ -59,6 +59,8 @@ from typing_graph._inspect_type import (
     _inspect_tuple,
     _inspect_type_alias_type,
     _register_type_inspectors,
+    cache_clear,
+    cache_info,
     inspect_type_param,
     reset_type_inspectors,
     resolve_forward_ref,
@@ -1760,3 +1762,380 @@ class TestNormalizeUnions:
         # Verify the custom config result wasn't cached
         norm_node_again = inspect_type(Union[int, str], config=norm_config)  # noqa: UP007
         assert is_union_type_node(norm_node_again)
+
+
+class TestInspectTypeSourceParameter:
+    def test_source_class_extracts_namespace_for_forward_ref(self) -> None:
+        class MyModel:
+            pass
+
+        result = inspect_type("MyModel", source=MyModel)
+
+        assert is_forward_ref_node(result)
+        assert is_ref_state_resolved(result.state)
+        assert is_concrete_node(result.state.node)
+        assert result.state.node.cls is MyModel
+
+    def test_source_function_extracts_namespace_for_forward_ref(self) -> None:
+        # Functions have __globals__ containing module-level symbols
+        # Test using a module-level type that's in the function's globals
+        import typing_graph
+
+        def some_function() -> "InspectConfig":
+            return typing_graph.InspectConfig()
+
+        result = inspect_type("InspectConfig", source=some_function)
+
+        assert is_forward_ref_node(result)
+        assert is_ref_state_resolved(result.state)
+        assert is_concrete_node(result.state.node)
+        assert result.state.node.cls is InspectConfig
+
+    def test_source_module_extracts_namespace_for_forward_ref(self) -> None:
+        import typing_graph
+
+        # typing_graph module should have InspectConfig in its namespace
+        result = inspect_type("InspectConfig", source=typing_graph)
+
+        assert is_forward_ref_node(result)
+        assert is_ref_state_resolved(result.state)
+        assert is_concrete_node(result.state.node)
+        assert result.state.node.cls is InspectConfig
+
+    def test_source_none_unchanged_behavior(self) -> None:
+        # Without source, behavior should be unchanged
+        result = inspect_type("UnknownClass", source=None)
+
+        assert is_forward_ref_node(result)
+        # Should fail to resolve since no namespace provided
+        is_failed = is_ref_state_failed(result.state)
+        is_unresolved = is_ref_state_unresolved(result.state)
+        assert is_failed or is_unresolved
+
+    def test_source_bypasses_cache(self) -> None:
+        class LocalClass:
+            pass
+
+        # Clear cache
+        cache_clear()
+        initial_hits = cache_info().hits
+
+        # Call with source - should not hit cache
+        _ = inspect_type("LocalClass", source=LocalClass)
+
+        # Cache should not have been hit (source bypasses cache)
+        assert cache_info().hits == initial_hits
+
+    def test_source_with_auto_namespace_false_ignores_source(self) -> None:
+        class MyClass:
+            pass
+
+        # With auto_namespace=False, source should be ignored
+        config = InspectConfig(auto_namespace=False)
+        result = inspect_type("MyClass", config=config, source=MyClass)
+
+        assert is_forward_ref_node(result)
+        # MyClass is not in scope without auto_namespace
+        assert is_ref_state_failed(result.state)
+
+    def test_source_invalid_type_raises_typeerror(self) -> None:
+        expected_msg = "source must be a class, callable, or module"
+        with pytest.raises(TypeError, match=expected_msg):
+            _ = inspect_type(int, source=42)  # pyright: ignore[reportArgumentType]
+
+    def test_source_builtin_type_returns_builtins_namespace(self) -> None:
+        # Built-in types work but provide builtins module namespace
+        # The builtins module has 'int', 'str', etc.
+        result = inspect_type("str", source=int)
+
+        assert is_forward_ref_node(result)
+        assert is_ref_state_resolved(result.state)
+        assert is_concrete_node(result.state.node)
+        assert result.state.node.cls is str
+
+    def test_source_with_user_globalns_merges_correctly(self) -> None:
+        # For classes, the class is added to localns, so we test globalns
+        # merging using a different symbol that would be in globals
+        import typing_graph
+
+        # Override a module-level symbol via globalns
+        class CustomConfig:
+            pass
+
+        config = InspectConfig(globalns={"InspectConfig": CustomConfig})
+        result = inspect_type("InspectConfig", config=config, source=typing_graph)
+
+        assert is_forward_ref_node(result)
+        assert is_ref_state_resolved(result.state)
+        assert is_concrete_node(result.state.node)
+        # User-provided globalns takes precedence over auto-extracted
+        assert result.state.node.cls is CustomConfig
+
+    def test_source_with_user_localns_merges_correctly(self) -> None:
+        class MyClass:
+            pass
+
+        # User localns takes precedence over extracted
+        class OtherClass:
+            pass
+
+        config = InspectConfig(localns={"MyClass": OtherClass})
+        result = inspect_type("MyClass", config=config, source=MyClass)
+
+        assert is_forward_ref_node(result)
+        assert is_ref_state_resolved(result.state)
+        assert is_concrete_node(result.state.node)
+        # User-provided localns takes precedence
+        assert result.state.node.cls is OtherClass
+
+    def test_source_lambda_extracts_namespace(self) -> None:
+        # Lambdas have __globals__ containing module-level symbols
+        # Test using a module-level type that's in the lambda's globals
+        make_config = lambda: InspectConfig()  # noqa: E731
+
+        result = inspect_type("InspectConfig", source=make_config)
+
+        assert is_forward_ref_node(result)
+        assert is_ref_state_resolved(result.state)
+        assert is_concrete_node(result.state.node)
+        assert result.state.node.cls is InspectConfig
+
+    def test_source_self_referential_class_resolves(self) -> None:
+        class TreeNode:
+            # Using ClassVar to test self-reference without initialization error
+            children: "ClassVar[type[TreeNode]]"
+
+        # Class with self-reference should resolve via extracted namespace
+        result = inspect_type("TreeNode", source=TreeNode)
+
+        assert is_forward_ref_node(result)
+        assert is_ref_state_resolved(result.state)
+        assert is_concrete_node(result.state.node)
+        assert result.state.node.cls is TreeNode
+
+    def test_source_with_use_cache_false_still_bypasses(self) -> None:
+        class CacheTestClass:
+            pass
+
+        # Clear cache
+        cache_clear()
+        initial_misses = cache_info().misses
+
+        # Even with use_cache=False, source bypasses cache entirely
+        _ = inspect_type("CacheTestClass", use_cache=False, source=CacheTestClass)
+
+        # Misses should not increase (we bypassed cache path entirely)
+        # Actually, with source, we never go through the cache at all
+        assert cache_info().misses == initial_misses
+
+    def test_source_string_annotation_raises_typeerror(self) -> None:
+        expected_msg = "source must be a class, callable, or module"
+        with pytest.raises(TypeError, match=expected_msg):
+            _ = inspect_type(int, source="not_valid")  # pyright: ignore[reportArgumentType]
+
+    def test_source_list_instance_raises_typeerror(self) -> None:
+        expected_msg = "source must be a class, callable, or module"
+        with pytest.raises(TypeError, match=expected_msg):
+            _ = inspect_type(int, source=[1, 2, 3])  # pyright: ignore[reportArgumentType]
+
+    def test_source_module_type_verification(self) -> None:
+        import typing_graph
+
+        # Verify that modules are correctly identified as ModuleType
+        assert isinstance(typing_graph, ModuleType)
+
+        # And the source parameter accepts them
+        result = inspect_type("TypeNode", source=typing_graph)
+
+        assert is_forward_ref_node(result)
+        assert is_ref_state_resolved(result.state)
+
+
+# PEP 563 Integration Tests for inspect_type() source parameter
+#
+# These tests verify that the source parameter works correctly when types
+# are defined in modules with `from __future__ import annotations`.
+
+
+class TestPEP563InspectTypeSourceParameter:
+    def test_source_class_resolves_self_ref_pep563(self) -> None:
+        from tests.unit.pep563_fixtures import SelfRefConfig
+
+        # String annotation "SelfRefConfig | None" from PEP 563 module
+        result = inspect_type("SelfRefConfig", source=SelfRefConfig)
+
+        assert is_forward_ref_node(result)
+        assert is_ref_state_resolved(result.state)
+        assert is_concrete_node(result.state.node)
+        assert result.state.node.cls is SelfRefConfig
+
+    def test_source_class_resolves_sibling_ref_pep563(self) -> None:
+        from tests.unit.pep563_fixtures import SourceChildRef, SourceParentRef
+
+        # Resolve SourceChildRef from SourceParentRef's namespace
+        result = inspect_type("SourceChildRef", source=SourceParentRef)
+
+        assert is_forward_ref_node(result)
+        assert is_ref_state_resolved(result.state)
+        assert is_concrete_node(result.state.node)
+        assert result.state.node.cls is SourceChildRef
+
+    def test_source_class_resolves_union_with_self_pep563(self) -> None:
+        from tests.unit.pep563_fixtures import LinkedListNode
+
+        # Resolve "LinkedListNode | None" which is the actual annotation form
+        result = inspect_type("LinkedListNode | None", source=LinkedListNode)
+
+        assert is_forward_ref_node(result)
+        assert is_ref_state_resolved(result.state)
+        assert is_union_type_node(result.state.node)
+
+    def test_source_function_resolves_pep563_annotations(self) -> None:
+        from tests.unit.pep563_fixtures import TreeNodeDC, source_param_func
+
+        result = inspect_type("TreeNodeDC", source=source_param_func)
+
+        assert is_forward_ref_node(result)
+        assert is_ref_state_resolved(result.state)
+        assert is_concrete_node(result.state.node)
+        assert result.state.node.cls is TreeNodeDC
+
+    def test_source_function_resolves_sibling_union_pep563(self) -> None:
+        from tests.unit.pep563_fixtures import source_param_func
+
+        result = inspect_type("ParentDC | ChildDC", source=source_param_func)
+
+        assert is_forward_ref_node(result)
+        assert is_ref_state_resolved(result.state)
+        assert is_union_type_node(result.state.node)
+        assert len(result.state.node.members) == 2
+
+    def test_source_module_resolves_pep563_types(self) -> None:
+        from tests.unit import pep563_fixtures
+        from tests.unit.pep563_fixtures import TreeNodeDC
+
+        result = inspect_type("TreeNodeDC", source=pep563_fixtures)
+
+        assert is_forward_ref_node(result)
+        assert is_ref_state_resolved(result.state)
+        assert is_concrete_node(result.state.node)
+        assert result.state.node.cls is TreeNodeDC
+
+    def test_source_module_resolves_generic_pep563(self) -> None:
+        from tests.unit import pep563_fixtures
+        from tests.unit.pep563_fixtures import GenericNode
+
+        result = inspect_type("GenericNode", source=pep563_fixtures)
+
+        assert is_forward_ref_node(result)
+        assert is_ref_state_resolved(result.state)
+        assert is_generic_node(result.state.node)
+        assert result.state.node.cls is GenericNode
+
+    def test_source_with_auto_namespace_disabled_fails_pep563(self) -> None:
+        from tests.unit.pep563_fixtures import TreeNodeDC
+
+        config = InspectConfig(auto_namespace=False)
+        result = inspect_type("TreeNodeDC", config=config, source=TreeNodeDC)
+
+        assert is_forward_ref_node(result)
+        # Without auto_namespace, should fail to resolve
+        assert is_ref_state_failed(result.state)
+
+    def test_source_user_namespace_overrides_auto_pep563(self) -> None:
+        from tests.unit.pep563_fixtures import ChildDC
+
+        class OverrideClass:
+            pass
+
+        # User-provided namespace should take precedence
+        config = InspectConfig(localns={"ParentDC": OverrideClass})
+        result = inspect_type("ParentDC", config=config, source=ChildDC)
+
+        assert is_forward_ref_node(result)
+        assert is_ref_state_resolved(result.state)
+        assert is_concrete_node(result.state.node)
+        assert result.state.node.cls is OverrideClass
+
+    def test_source_cache_bypassed_for_pep563(self) -> None:
+        from tests.unit.pep563_fixtures import TreeNodeDC
+
+        cache_clear()
+        initial_hits = cache_info().hits
+
+        # Repeated calls with source should bypass cache
+        _ = inspect_type("TreeNodeDC", source=TreeNodeDC)
+        _ = inspect_type("TreeNodeDC", source=TreeNodeDC)
+
+        # Cache should not have been hit
+        assert cache_info().hits == initial_hits
+
+    def test_source_complex_nested_pep563(self) -> None:
+        from tests.unit.pep563_fixtures import source_param_func_complex
+
+        result = inspect_type("dict[str, TreeNodeDC]", source=source_param_func_complex)
+
+        assert is_forward_ref_node(result)
+        assert is_ref_state_resolved(result.state)
+        assert is_subscripted_generic_node(result.state.node)
+        assert is_generic_node(result.state.node.origin)
+        assert result.state.node.origin.cls is dict
+
+    def test_source_list_of_forward_ref_pep563(self) -> None:
+        from tests.unit.pep563_fixtures import source_param_func_complex
+
+        result = inspect_type("list[TreeNodeDC]", source=source_param_func_complex)
+
+        assert is_forward_ref_node(result)
+        assert is_ref_state_resolved(result.state)
+        assert is_subscripted_generic_node(result.state.node)
+        assert is_generic_node(result.state.node.origin)
+        assert result.state.node.origin.cls is list
+
+    def test_source_nested_class_outer_pep563(self) -> None:
+        from tests.unit.pep563_fixtures import Outer
+
+        result = inspect_type("Outer", source=Outer)
+
+        assert is_forward_ref_node(result)
+        assert is_ref_state_resolved(result.state)
+        assert is_concrete_node(result.state.node)
+        assert result.state.node.cls is Outer
+
+    def test_source_nested_class_inner_method_pep563(self) -> None:
+        from tests.unit.pep563_fixtures import Outer
+
+        result = inspect_type("Outer.Inner", source=Outer.Inner.get_inner)
+
+        assert is_forward_ref_node(result)
+        assert is_ref_state_resolved(result.state)
+
+    def test_source_method_resolves_class_types_pep563(self) -> None:
+        from tests.unit.pep563_fixtures import NodeService, TreeNodeDC
+
+        result = inspect_type("TreeNodeDC", source=NodeService.get_node)
+
+        assert is_forward_ref_node(result)
+        assert is_ref_state_resolved(result.state)
+        assert is_concrete_node(result.state.node)
+        assert result.state.node.cls is TreeNodeDC
+
+    def test_source_staticmethod_resolves_pep563(self) -> None:
+        from tests.unit.pep563_fixtures import NodeService, TreeNodeDC
+
+        result = inspect_type("TreeNodeDC", source=NodeService.helper)
+
+        assert is_forward_ref_node(result)
+        assert is_ref_state_resolved(result.state)
+        assert is_concrete_node(result.state.node)
+        assert result.state.node.cls is TreeNodeDC
+
+    def test_source_callable_class_resolves_pep563(self) -> None:
+        from tests.unit.pep563_fixtures import NodeCreator, TreeNodeDC
+
+        result = inspect_type("TreeNodeDC", source=NodeCreator.__call__)
+
+        assert is_forward_ref_node(result)
+        assert is_ref_state_resolved(result.state)
+        assert is_concrete_node(result.state.node)
+        assert result.state.node.cls is TreeNodeDC

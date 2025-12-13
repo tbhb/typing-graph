@@ -6,8 +6,8 @@ import dataclasses
 import functools
 import operator
 import sys
-import types
 from collections.abc import Callable
+from types import ModuleType, UnionType
 from typing import (
     Annotated,
     Any,
@@ -36,6 +36,10 @@ from ._config import (
 )
 from ._context import InspectContext, get_source_location
 from ._metadata import MetadataCollection
+from ._namespace import (
+    extract_namespace,
+    merge_namespaces,
+)
 from ._node import (
     AnyNode,
     CallableNode,
@@ -582,7 +586,7 @@ def _register_dispatch_tables() -> None:
     # O(1) dispatch: stable origins with no ordering conflicts
     _ORIGIN_DISPATCH.update(
         {
-            id(types.UnionType): _dispatch_union,
+            id(UnionType): _dispatch_union,
             id(Literal): _dispatch_literal,
             id(type): _dispatch_meta_type,  # MUST be here, not in predicates
             id(tuple): _dispatch_tuple,
@@ -657,6 +661,7 @@ def inspect_type(
     *,
     config: InspectConfig | None = None,
     use_cache: bool = True,
+    source: type | Callable[..., Any] | ModuleType | None = None,
 ) -> TypeNode:
     """Inspect any type annotation and return the corresponding TypeNode.
 
@@ -674,13 +679,53 @@ def inspect_type(
         config: Introspection configuration. Uses defaults if None.
         use_cache: Whether to use the global cache (default True).
             Note: Cache is only used when config is None or DEFAULT_CONFIG.
+        source: Optional context object for namespace auto-detection.
+            Can be a class, function, or module. When provided and
+            config.auto_namespace is True, namespaces will be extracted
+            from this object for forward reference resolution. When source
+            is provided, the global cache is bypassed regardless of
+            use_cache setting.
 
     Returns:
         A TypeNode representing the annotation's structure.
+
+    Raises:
+        TypeError: If source is not None and is not a class, callable,
+            or module.
     """
     _register_type_inspectors()
 
     config = config if config is not None else DEFAULT_CONFIG
+
+    # Handle source parameter for namespace extraction
+    if source is not None:
+        # Validate source type - pyright correctly identifies this as unreachable
+        # based on the type signature, but we keep this guard for runtime safety
+        # when called from untyped code
+        if not (isinstance(source, type | ModuleType) or callable(source)):
+            source_type = type(source).__name__  # pyright: ignore[reportUnreachable]
+            msg = f"source must be a class, callable, or module, got {source_type!r}"
+            raise TypeError(msg)
+
+        # Extract and merge namespaces if auto_namespace is enabled
+        if config.auto_namespace:
+            auto_globalns, auto_localns = extract_namespace(source)
+            merged_globalns, merged_localns = merge_namespaces(
+                auto_globalns,
+                auto_localns,
+                config.globalns,
+                config.localns,
+            )
+            # Create modified config with merged namespaces
+            config = dataclasses.replace(
+                config,
+                globalns=merged_globalns,
+                localns=merged_localns,
+            )
+
+        # Always bypass cache when source is provided
+        ctx = InspectContext(config=config)
+        return _inspect_type(annotation, ctx)
 
     # Use lru_cache only with default config (custom configs may need
     # different forward ref resolution via globalns/localns)

@@ -37,6 +37,12 @@ class InspectConfig:
         eval_mode: How to evaluate annotations (default: DEFERRED).
         globalns: Global namespace for forward reference resolution.
         localns: Local namespace for forward reference resolution.
+        auto_namespace: Automatically extract namespaces from source objects
+            (classes, functions, modules) for forward reference resolution.
+            When True, namespaces are extracted from the inspected object and
+            merged with user-provided globalns/localns (user values take
+            precedence). Disable by setting to False for explicit namespace
+            control only. Default: True.
         max_depth: Maximum recursion depth (None = unlimited).
         include_private: Include private members starting with underscore.
         include_inherited: Include inherited members from base classes.
@@ -68,6 +74,7 @@ class InspectConfig:
     # Namespaces for resolution
     globalns: dict[str, Any] | None = None
     localns: dict[str, Any] | None = None
+    auto_namespace: bool = True  # Auto-extract namespaces from source objects
 
     # Recursion control
     max_depth: int | None = None  # None = unlimited

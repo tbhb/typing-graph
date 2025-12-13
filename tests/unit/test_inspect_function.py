@@ -11,7 +11,10 @@ from typing_graph import (
     inspect_signature,
 )
 from typing_graph._node import (
+    ForwardRefNode,
+    RefResolved,
     is_any_node,
+    is_forward_ref_node,
     is_function_node,
     is_signature_node,
 )
@@ -527,3 +530,449 @@ class TestBrokenAnnotationsPropertyHandling:
         assert result.parameters[0].name == "x"
         assert is_any_node(result.parameters[0].type)
         assert is_any_node(result.returns)
+
+
+# Module-level classes for auto-namespace testing with forward references
+class ForwardRefTarget:
+    pass
+
+
+class ContainerWithMethod:
+    def method(self, x: "ContainerWithMethod") -> "ContainerWithMethod":
+        return x
+
+
+def _assert_resolved_forward_ref(node: ForwardRefNode, expected_cls: type) -> None:
+    """Assert that a forward ref node is resolved to the expected class."""
+    node_type = type(node).__name__
+    assert isinstance(node, ForwardRefNode), f"Expected ForwardRefNode, got {node_type}"
+    state_type = type(node.state).__name__
+    msg = f"Expected RefResolved, got {state_type}"
+    assert isinstance(node.state, RefResolved), msg
+    _ = assert_concrete_type(node.state.node, expected_cls)
+
+
+class TestAutoNamespaceIntegration:
+    def test_inspect_function_resolves_forward_ref_with_auto_namespace(self) -> None:
+        def func_with_forward_ref(x: "ForwardRefTarget") -> "ForwardRefTarget":
+            return x
+
+        result = inspect_function(func_with_forward_ref)
+
+        assert is_function_node(result)
+        param_type = result.signature.parameters[0].type
+        return_type = result.signature.returns
+        assert isinstance(param_type, ForwardRefNode)
+        assert isinstance(return_type, ForwardRefNode)
+        _assert_resolved_forward_ref(param_type, ForwardRefTarget)
+        _assert_resolved_forward_ref(return_type, ForwardRefTarget)
+
+    def test_inspect_signature_resolves_forward_ref_with_auto_namespace(self) -> None:
+        def func_with_forward_ref(x: "ForwardRefTarget") -> "ForwardRefTarget":
+            return x
+
+        result = inspect_signature(func_with_forward_ref)
+
+        assert is_signature_node(result)
+        param_type = result.parameters[0].type
+        return_type = result.returns
+        assert isinstance(param_type, ForwardRefNode)
+        assert isinstance(return_type, ForwardRefNode)
+        _assert_resolved_forward_ref(param_type, ForwardRefTarget)
+        _assert_resolved_forward_ref(return_type, ForwardRefTarget)
+
+    def test_inspect_function_with_auto_namespace_disabled_leaves_forward_refs(
+        self,
+    ) -> None:
+        def func_with_forward_ref(x: "ForwardRefTarget") -> "ForwardRefTarget":
+            return x
+
+        config = InspectConfig(auto_namespace=False)
+        result = inspect_function(func_with_forward_ref, config=config)
+
+        assert is_function_node(result)
+        param_type = result.signature.parameters[0].type
+        assert is_forward_ref_node(param_type)
+
+    def test_inspect_signature_with_auto_namespace_disabled_leaves_forward_refs(
+        self,
+    ) -> None:
+        def func_with_forward_ref(x: "ForwardRefTarget") -> "ForwardRefTarget":
+            return x
+
+        config = InspectConfig(auto_namespace=False)
+        result = inspect_signature(func_with_forward_ref, config=config)
+
+        assert is_signature_node(result)
+        param_type = result.parameters[0].type
+        assert is_forward_ref_node(param_type)
+
+    def test_user_provided_namespace_takes_precedence(self) -> None:
+        class CustomTarget:
+            pass
+
+        def func_with_forward_ref(x: "ForwardRefTarget") -> "ForwardRefTarget":
+            return x  # type: ignore[return-value]
+
+        config = InspectConfig(localns={"ForwardRefTarget": CustomTarget})
+        result = inspect_signature(func_with_forward_ref, config=config)
+
+        assert is_signature_node(result)
+        param_type = result.parameters[0].type
+        assert isinstance(param_type, ForwardRefNode)
+        _assert_resolved_forward_ref(param_type, CustomTarget)
+
+    def test_builtin_function_with_auto_namespace_no_error(self) -> None:
+        # Built-in functions have no __globals__
+        result = inspect_signature(len)
+
+        assert is_signature_node(result)
+        # Should not raise, even though len has no __globals__
+
+    def test_lambda_with_auto_namespace_resolves_forward_refs(self) -> None:
+        func = lambda x: x  # noqa: E731 # pyright: ignore[reportUnknownLambdaType,reportUnknownVariableType]
+        func.__annotations__ = {"x": "ForwardRefTarget", "return": "ForwardRefTarget"}
+
+        result = inspect_signature(func)  # pyright: ignore[reportUnknownArgumentType]
+
+        assert is_signature_node(result)
+        param_type = result.parameters[0].type
+        assert isinstance(param_type, ForwardRefNode)
+        _assert_resolved_forward_ref(param_type, ForwardRefTarget)
+
+    def test_method_with_auto_namespace_resolves_owning_class(self) -> None:
+        result = inspect_signature(ContainerWithMethod.method)
+
+        assert is_signature_node(result)
+        # x parameter is the second one (after self)
+        x_param_type = result.parameters[1].type
+        return_type = result.returns
+        assert isinstance(x_param_type, ForwardRefNode)
+        assert isinstance(return_type, ForwardRefNode)
+        _assert_resolved_forward_ref(x_param_type, ContainerWithMethod)
+        _assert_resolved_forward_ref(return_type, ContainerWithMethod)
+
+
+# PEP 563 function inspection tests
+
+
+class TestPEP563FunctionScenarios:
+    def test_function_with_self_referential_return_resolved(self) -> None:
+        from tests.unit.pep563_fixtures import TreeNodeDC, create_tree_node
+
+        result = inspect_function(create_tree_node)
+
+        assert is_function_node(result)
+        return_type = result.signature.returns
+        assert isinstance(return_type, ForwardRefNode)
+        _assert_resolved_forward_ref(return_type, TreeNodeDC)
+
+    def test_function_with_self_referential_param_resolved(self) -> None:
+        from tests.unit.pep563_fixtures import TreeNodeDC, process_tree
+
+        result = inspect_function(process_tree)
+
+        assert is_function_node(result)
+        param_type = result.signature.parameters[0].type
+        assert isinstance(param_type, ForwardRefNode)
+        _assert_resolved_forward_ref(param_type, TreeNodeDC)
+
+    def test_function_with_union_return_type_contains_forward_ref(self) -> None:
+        from typing_graph._node import ConcreteNode, UnionNode, is_concrete_node
+
+        from tests.unit.pep563_fixtures import TreeNodeDC, process_tree
+
+        result = inspect_function(process_tree)
+
+        assert is_function_node(result)
+        # Return type is ForwardRefNode wrapping "TreeNodeDC | None"
+        return_type = result.signature.returns
+        assert isinstance(return_type, ForwardRefNode)
+        assert isinstance(return_type.state, RefResolved)
+        # The resolved node is a UnionNode containing TreeNodeDC and None
+        resolved_union = return_type.state.node
+        assert isinstance(resolved_union, UnionNode)
+        assert len(resolved_union.members) == 2
+        # One member should be ConcreteNode for TreeNodeDC (already resolved)
+        tree_member = next(
+            (
+                m
+                for m in resolved_union.members
+                if is_concrete_node(m) and m.cls is TreeNodeDC
+            ),
+            None,
+        )
+        assert tree_member is not None
+        # Other member should be ConcreteNode for NoneType
+        none_member = next(
+            (
+                m
+                for m in resolved_union.members
+                if is_concrete_node(m) and m.cls is type(None)
+            ),
+            None,
+        )
+        assert none_member is not None
+        assert isinstance(none_member, ConcreteNode)
+        assert none_member.cls is type(None)
+
+    def test_function_with_sibling_reference_param_resolved(self) -> None:
+        from typing_graph._node import (
+            SubscriptedGenericNode,
+            is_concrete_node,
+            is_generic_node,
+        )
+
+        from tests.unit.pep563_fixtures import ChildDC, create_parent
+
+        result = inspect_function(create_parent)
+
+        assert is_function_node(result)
+        # Second parameter (children) is list[ChildDC] wrapped in ForwardRefNode
+        children_param = result.signature.parameters[1]
+        assert children_param.name == "children"
+        # The param type is a ForwardRefNode wrapping list[ChildDC]
+        assert isinstance(children_param.type, ForwardRefNode)
+        assert isinstance(children_param.type.state, RefResolved)
+        # The resolved node should be SubscriptedGenericNode for list[ChildDC]
+        resolved_list = children_param.type.state.node
+        assert isinstance(resolved_list, SubscriptedGenericNode)
+        assert is_generic_node(resolved_list.origin)
+        assert resolved_list.origin.cls is list
+        # The type arg should be ConcreteNode for ChildDC (already resolved)
+        assert len(resolved_list.args) == 1
+        child_arg = resolved_list.args[0]
+        assert is_concrete_node(child_arg)
+        assert child_arg.cls is ChildDC
+
+    def test_function_with_sibling_reference_return_resolved(self) -> None:
+        from tests.unit.pep563_fixtures import ParentDC, create_parent
+
+        result = inspect_function(create_parent)
+
+        assert is_function_node(result)
+        return_type = result.signature.returns
+        assert isinstance(return_type, ForwardRefNode)
+        _assert_resolved_forward_ref(return_type, ParentDC)
+
+    def test_function_with_optional_sibling_param_resolved(self) -> None:
+        from tests.unit.pep563_fixtures import create_child
+
+        result = inspect_function(create_child)
+
+        assert is_function_node(result)
+        # Second parameter (parent) is ParentDC | None
+        parent_param = result.signature.parameters[1]
+        assert parent_param.name == "parent"
+        assert parent_param.has_default is True
+        assert parent_param.default is None
+
+    def test_generic_function_with_forward_ref_resolved(self) -> None:
+        from typing_graph._node import GenericTypeNode, SubscriptedGenericNode
+
+        from tests.unit.pep563_fixtures import GenericNode, create_generic_node
+
+        result = inspect_function(create_generic_node)
+
+        assert is_function_node(result)
+        return_type = result.signature.returns
+        # GenericNode[T] is ForwardRefNode with resolved SubscriptedGenericNode
+        assert isinstance(return_type, ForwardRefNode)
+        assert isinstance(return_type.state, RefResolved)
+        resolved_node = return_type.state.node
+        assert isinstance(resolved_node, SubscriptedGenericNode)
+        assert isinstance(resolved_node.origin, GenericTypeNode)
+        assert resolved_node.origin.cls is GenericNode
+
+
+class TestPEP563MethodScenarios:
+    def test_instance_method_returns_forward_ref_resolved(self) -> None:
+        from tests.unit.pep563_fixtures import NodeService, TreeNodeDC
+
+        result = inspect_function(NodeService.get_node)
+
+        assert is_function_node(result)
+        return_type = result.signature.returns
+        assert isinstance(return_type, ForwardRefNode)
+        _assert_resolved_forward_ref(return_type, TreeNodeDC)
+
+    def test_instance_method_param_forward_ref_resolved(self) -> None:
+        from tests.unit.pep563_fixtures import NodeService, TreeNodeDC
+
+        result = inspect_function(NodeService.process)
+
+        assert is_function_node(result)
+        # node is the second parameter (after self)
+        node_param = result.signature.parameters[1]
+        assert node_param.name == "node"
+        assert isinstance(node_param.type, ForwardRefNode)
+        _assert_resolved_forward_ref(node_param.type, TreeNodeDC)
+
+    def test_instance_method_self_referential_return_resolved(self) -> None:
+        from tests.unit.pep563_fixtures import NodeService
+
+        result = inspect_function(NodeService.create_self)
+
+        assert is_function_node(result)
+        return_type = result.signature.returns
+        assert isinstance(return_type, ForwardRefNode)
+        _assert_resolved_forward_ref(return_type, NodeService)
+
+    def test_classmethod_self_referential_return_resolved(self) -> None:
+        from tests.unit.pep563_fixtures import NodeService
+
+        result = inspect_function(NodeService.from_value.__func__)
+
+        assert is_function_node(result)
+        return_type = result.signature.returns
+        assert isinstance(return_type, ForwardRefNode)
+        _assert_resolved_forward_ref(return_type, NodeService)
+
+    def test_staticmethod_forward_ref_param_resolved(self) -> None:
+        from tests.unit.pep563_fixtures import NodeService, TreeNodeDC
+
+        result = inspect_function(NodeService.helper)
+
+        assert is_function_node(result)
+        # node is the first parameter (no self for staticmethod)
+        node_param = result.signature.parameters[0]
+        assert node_param.name == "node"
+        assert isinstance(node_param.type, ForwardRefNode)
+        _assert_resolved_forward_ref(node_param.type, TreeNodeDC)
+
+
+class TestPEP563CallableScenarios:
+    def test_callable_class_call_method_forward_ref_return_resolved(self) -> None:
+        from tests.unit.pep563_fixtures import NodeCreator, TreeNodeDC
+
+        # Test __call__ method via class, not instance
+        result = inspect_function(NodeCreator.__call__)
+
+        assert is_function_node(result)
+        return_type = result.signature.returns
+        assert isinstance(return_type, ForwardRefNode)
+        _assert_resolved_forward_ref(return_type, TreeNodeDC)
+
+    def test_callable_class_call_method_multiple_forward_ref_params_resolved(
+        self,
+    ) -> None:
+        from tests.unit.pep563_fixtures import ChildDC, ParentDC, TreeProcessor
+
+        # Test __call__ method via class, not instance
+        result = inspect_function(TreeProcessor.__call__)
+
+        assert is_function_node(result)
+        # First param after self is parent (index 1)
+        parent_param = result.signature.parameters[1]
+        assert parent_param.name == "parent"
+        assert isinstance(parent_param.type, ForwardRefNode)
+        _assert_resolved_forward_ref(parent_param.type, ParentDC)
+
+        # Second param is child (index 2)
+        child_param = result.signature.parameters[2]
+        assert child_param.name == "child"
+        assert isinstance(child_param.type, ForwardRefNode)
+        _assert_resolved_forward_ref(child_param.type, ChildDC)
+
+    def test_callable_class_call_method_complex_return_type(self) -> None:
+        from typing_graph._node import (
+            SubscriptedGenericNode,
+            TupleNode,
+            is_concrete_node,
+            is_generic_node,
+        )
+
+        from tests.unit.pep563_fixtures import ChildDC, ParentDC, TreeProcessor
+
+        # Test __call__ method via class, not instance
+        result = inspect_function(TreeProcessor.__call__)
+
+        assert is_function_node(result)
+        # Return is ForwardRefNode wrapping "tuple[ParentDC, list[ChildDC]]"
+        return_type = result.signature.returns
+        assert isinstance(return_type, ForwardRefNode)
+        assert isinstance(return_type.state, RefResolved)
+        # The resolved node is a TupleNode for tuple[ParentDC, list[ChildDC]]
+        resolved_tuple = return_type.state.node
+        assert isinstance(resolved_tuple, TupleNode)
+        assert resolved_tuple.homogeneous is False
+        assert len(resolved_tuple.elements) == 2
+        # First element should be ConcreteNode for ParentDC (already resolved)
+        first_elem = resolved_tuple.elements[0]
+        assert is_concrete_node(first_elem)
+        assert first_elem.cls is ParentDC
+        # Second element should be SubscriptedGenericNode for list[ChildDC]
+        second_elem = resolved_tuple.elements[1]
+        assert isinstance(second_elem, SubscriptedGenericNode)
+        assert is_generic_node(second_elem.origin)
+        assert second_elem.origin.cls is list
+        assert len(second_elem.args) == 1
+        child_arg = second_elem.args[0]
+        assert is_concrete_node(child_arg)
+        assert child_arg.cls is ChildDC
+
+    def test_nested_class_inner_self_referential_method(self) -> None:
+        from tests.unit.pep563_fixtures import Outer
+
+        result = inspect_function(Outer.Inner.get_inner)
+
+        assert is_function_node(result)
+        return_type = result.signature.returns
+        assert isinstance(return_type, ForwardRefNode)
+        _assert_resolved_forward_ref(return_type, Outer.Inner)
+
+    def test_nested_class_inner_to_outer_reference(self) -> None:
+        from tests.unit.pep563_fixtures import Outer
+
+        result = inspect_function(Outer.Inner.get_outer)
+
+        assert is_function_node(result)
+        return_type = result.signature.returns
+        assert isinstance(return_type, ForwardRefNode)
+        _assert_resolved_forward_ref(return_type, Outer)
+
+
+class TestPEP563FunctionAutoNamespaceDisabled:
+    def test_function_forward_ref_unresolved_when_auto_namespace_disabled(self) -> None:
+        from tests.unit.pep563_fixtures import process_tree
+
+        config = InspectConfig(auto_namespace=False)
+        result = inspect_function(process_tree, config=config)
+
+        assert is_function_node(result)
+        param_type = result.signature.parameters[0].type
+        assert is_forward_ref_node(param_type)
+        # Without auto_namespace, it should still be a forward ref but may not resolve
+
+    def test_method_forward_ref_unresolved_when_auto_namespace_disabled(self) -> None:
+        from tests.unit.pep563_fixtures import NodeService
+
+        config = InspectConfig(auto_namespace=False)
+        result = inspect_function(NodeService.get_node, config=config)
+
+        assert is_function_node(result)
+        return_type = result.signature.returns
+        assert is_forward_ref_node(return_type)
+
+    def test_callable_forward_ref_unresolved_when_auto_namespace_disabled(self) -> None:
+        from tests.unit.pep563_fixtures import NodeCreator
+
+        # Test __call__ method via class, not instance
+        config = InspectConfig(auto_namespace=False)
+        result = inspect_function(NodeCreator.__call__, config=config)
+
+        assert is_function_node(result)
+        return_type = result.signature.returns
+        assert is_forward_ref_node(return_type)
+
+    def test_explicit_namespace_overrides_auto_namespace(self) -> None:
+        from tests.unit.pep563_fixtures import TreeNodeDC, process_tree
+
+        # Provide explicit namespace
+        config = InspectConfig(localns={"TreeNodeDC": TreeNodeDC})
+        result = inspect_function(process_tree, config=config)
+
+        assert is_function_node(result)
+        param_type = result.signature.parameters[0].type
+        assert isinstance(param_type, ForwardRefNode)
+        _assert_resolved_forward_ref(param_type, TreeNodeDC)

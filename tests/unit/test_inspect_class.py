@@ -31,11 +31,14 @@ from typing_graph._inspect_class import (
     is_enum_class,
 )
 from typing_graph._node import (
+    TypeNode,
     is_class_node,
     is_dataclass_node,
     is_enum_node,
+    is_forward_ref_node,
     is_named_tuple_node,
     is_protocol_node,
+    is_ref_state_resolved,
     is_typed_dict_node,
     is_union_type_node,
 )
@@ -1022,3 +1025,864 @@ class TestMethodIterationExceptions:
         method_names = {m.name for m in result.methods}
         assert "good_method" in method_names
         # builtin_func is inspected but returns minimal signature
+
+
+class TestDataclassAutoNamespace:
+    def test_auto_namespace_enabled_resolves_forward_refs(self) -> None:
+        # Forward reference to class defined in same scope
+        @dataclass
+        class Node:
+            value: int
+            child: "Node | None"  # Forward reference
+
+        # With auto_namespace=True (default), forward refs should resolve
+        result = inspect_dataclass(Node)
+
+        assert is_dataclass_node(result)
+        assert len(result.fields) == 2
+        child_field = next(f for f in result.fields if f.name == "child")
+        # The type should be resolved (union containing Node reference)
+        assert child_field.type is not None
+
+    def test_auto_namespace_disabled_uses_only_user_namespaces(self) -> None:
+        @dataclass
+        class Item:
+            name: str
+            related: "Item | None"
+
+        # With auto_namespace=False, no automatic namespace extraction
+        config = InspectConfig(auto_namespace=False)
+        result = inspect_dataclass(Item, config=config)
+
+        assert is_dataclass_node(result)
+        # Without namespace, forward ref resolution depends on eval_mode
+        # The field should still be captured
+        assert len(result.fields) == 2
+
+    def test_user_namespace_takes_precedence_over_auto(self) -> None:
+        @dataclass
+        class Container:
+            item: "CustomItem"
+
+        # Define a different CustomItem that should override auto-detection
+        class CustomItem:
+            pass
+
+        user_globalns = {"CustomItem": CustomItem}
+        config = InspectConfig(globalns=user_globalns, auto_namespace=True)
+        result = inspect_dataclass(Container, config=config)
+
+        assert is_dataclass_node(result)
+        item_field = next(f for f in result.fields if f.name == "item")
+        # User-provided namespace should take precedence
+        assert item_field.type is not None
+
+    def test_self_referential_dataclass_resolved(self) -> None:
+        @dataclass
+        class TreeNode:
+            value: int
+            left: "TreeNode | None"
+            right: "TreeNode | None"
+
+        result = inspect_dataclass(TreeNode)
+
+        assert is_dataclass_node(result)
+        assert len(result.fields) == 3
+        # All fields should be captured
+        field_names = {f.name for f in result.fields}
+        assert field_names == {"value", "left", "right"}
+
+    def test_dataclass_from_different_module_uses_module_namespace(self) -> None:
+        # Test with a dataclass from this module - it should use the module's
+        # namespace for resolution
+        result = inspect_dataclass(SimpleDataclass)
+
+        assert is_dataclass_node(result)
+        # The dataclass should be inspected using its defining module's namespace
+        assert result.cls is SimpleDataclass
+
+    def test_dataclass_with_forward_ref_to_sibling_class(self) -> None:
+        # Both classes defined together, referencing each other
+        @dataclass
+        class Parent:
+            children: "list[Child]"
+
+        @dataclass
+        class Child:
+            parent: "Parent | None"
+
+        result_parent = inspect_dataclass(Parent)
+        result_child = inspect_dataclass(Child)
+
+        assert is_dataclass_node(result_parent)
+        assert is_dataclass_node(result_child)
+        assert len(result_parent.fields) == 1
+        assert len(result_child.fields) == 1
+
+
+class TestTypedDictAutoNamespace:
+    def test_auto_namespace_enabled_resolves_forward_refs(self) -> None:
+        # Forward reference to class defined in same scope
+        class Node(TypedDict):
+            value: int
+            child: "Node | None"  # Forward reference
+
+        # With auto_namespace=True (default), forward refs should resolve
+        result = inspect_typed_dict(Node)
+
+        assert is_typed_dict_node(result)
+        assert len(result.fields) == 2
+        child_field = next(f for f in result.fields if f.name == "child")
+        # The type should be resolved (union containing Node reference)
+        assert child_field.type is not None
+
+    def test_auto_namespace_disabled_uses_only_user_namespaces(self) -> None:
+        class Item(TypedDict):
+            name: str
+            related: "Item | None"
+
+        # With auto_namespace=False, no automatic namespace extraction
+        config = InspectConfig(auto_namespace=False)
+        result = inspect_typed_dict(Item, config=config)
+
+        assert is_typed_dict_node(result)
+        # Without namespace, forward ref resolution depends on eval_mode
+        # The field should still be captured
+        assert len(result.fields) == 2
+
+    def test_user_namespace_takes_precedence_over_auto(self) -> None:
+        class Container(TypedDict):
+            item: "CustomItem"
+
+        # Define a different CustomItem that should override auto-detection
+        class CustomItem:
+            pass
+
+        user_globalns = {"CustomItem": CustomItem}
+        config = InspectConfig(globalns=user_globalns, auto_namespace=True)
+        result = inspect_typed_dict(Container, config=config)
+
+        assert is_typed_dict_node(result)
+        item_field = next(f for f in result.fields if f.name == "item")
+        # User-provided namespace should take precedence
+        assert item_field.type is not None
+
+    def test_self_referential_typed_dict_resolved(self) -> None:
+        class TreeNode(TypedDict):
+            value: int
+            left: "TreeNode | None"
+            right: "TreeNode | None"
+
+        result = inspect_typed_dict(TreeNode)
+
+        assert is_typed_dict_node(result)
+        assert len(result.fields) == 3
+        # All fields should be captured
+        field_names = {f.name for f in result.fields}
+        assert field_names == {"value", "left", "right"}
+
+    def test_typed_dict_from_different_module_uses_module_namespace(self) -> None:
+        # Test with a TypedDict from this module - it should use the module's
+        # namespace for resolution
+        result = inspect_typed_dict(SimpleTypedDict)
+
+        assert is_typed_dict_node(result)
+        # The TypedDict should be inspected using its defining module's namespace
+        assert result.name == "SimpleTypedDict"
+
+
+class TestNamedTupleAutoNamespace:
+    def test_auto_namespace_enabled_resolves_forward_refs(self) -> None:
+        # Forward reference to class defined in same scope
+        class Node(NamedTuple):
+            value: int
+            child: "Node | None"  # Forward reference
+
+        # With auto_namespace=True (default), forward refs should resolve
+        result = inspect_named_tuple(Node)
+
+        assert is_named_tuple_node(result)
+        assert len(result.fields) == 2
+        child_field = next(f for f in result.fields if f.name == "child")
+        # The type should be resolved (union containing Node reference)
+        assert child_field.type is not None
+
+    def test_auto_namespace_disabled_uses_only_user_namespaces(self) -> None:
+        class Item(NamedTuple):
+            name: str
+            related: "Item | None"
+
+        # With auto_namespace=False, no automatic namespace extraction
+        config = InspectConfig(auto_namespace=False)
+        result = inspect_named_tuple(Item, config=config)
+
+        assert is_named_tuple_node(result)
+        # Without namespace, forward ref resolution depends on eval_mode
+        # The field should still be captured
+        assert len(result.fields) == 2
+
+    def test_user_namespace_takes_precedence_over_auto(self) -> None:
+        class Container(NamedTuple):
+            item: "CustomItem"
+
+        # Define a different CustomItem that should override auto-detection
+        class CustomItem:
+            pass
+
+        user_globalns = {"CustomItem": CustomItem}
+        config = InspectConfig(globalns=user_globalns, auto_namespace=True)
+        result = inspect_named_tuple(Container, config=config)
+
+        assert is_named_tuple_node(result)
+        item_field = next(f for f in result.fields if f.name == "item")
+        # User-provided namespace should take precedence
+        assert item_field.type is not None
+
+    def test_self_referential_named_tuple_resolved(self) -> None:
+        class TreeNode(NamedTuple):
+            value: int
+            left: "TreeNode | None"
+            right: "TreeNode | None"
+
+        result = inspect_named_tuple(TreeNode)
+
+        assert is_named_tuple_node(result)
+        assert len(result.fields) == 3
+        # All fields should be captured
+        field_names = {f.name for f in result.fields}
+        assert field_names == {"value", "left", "right"}
+
+    def test_named_tuple_from_different_module_uses_module_namespace(self) -> None:
+        # Test with a NamedTuple from this module - it should use the module's
+        # namespace for resolution
+        result = inspect_named_tuple(SimpleNamedTuple)
+
+        assert is_named_tuple_node(result)
+        # The NamedTuple should be inspected using its defining module's namespace
+        assert result.name == "SimpleNamedTuple"
+
+    def test_named_tuple_with_forward_ref_to_sibling_class(self) -> None:
+        # Both classes defined together, referencing each other
+        class Parent(NamedTuple):
+            children: "list[Child]"
+
+        class Child(NamedTuple):
+            parent: "Parent | None"
+
+        result_parent = inspect_named_tuple(Parent)
+        result_child = inspect_named_tuple(Child)
+
+        assert is_named_tuple_node(result_parent)
+        assert is_named_tuple_node(result_child)
+        assert len(result_parent.fields) == 1
+        assert len(result_child.fields) == 1
+
+
+class TestProtocolAutoNamespace:
+    def test_auto_namespace_enabled_resolves_forward_refs(self) -> None:
+        # Forward reference to class defined in same scope
+        class Node(Protocol):
+            value: int
+            child: "Node | None"  # Forward reference
+
+        # With auto_namespace=True (default), forward refs should resolve
+        result = inspect_protocol(Node)
+
+        assert is_protocol_node(result)
+        assert len(result.attributes) == 2
+        child_attr = next(a for a in result.attributes if a.name == "child")
+        # The type should be resolved (union containing Node reference)
+        assert child_attr.type is not None
+
+    def test_auto_namespace_disabled_uses_only_user_namespaces(self) -> None:
+        class Item(Protocol):
+            name: str
+            related: "Item | None"
+
+        # With auto_namespace=False, no automatic namespace extraction
+        config = InspectConfig(auto_namespace=False)
+        result = inspect_protocol(Item, config=config)
+
+        assert is_protocol_node(result)
+        # Without namespace, forward ref resolution depends on eval_mode
+        # The attributes should still be captured
+        assert len(result.attributes) == 2
+
+    def test_user_namespace_takes_precedence_over_auto(self) -> None:
+        class Container(Protocol):
+            item: "CustomItem"
+
+        # Define a different CustomItem that should override auto-detection
+        class CustomItem:
+            pass
+
+        user_globalns = {"CustomItem": CustomItem}
+        config = InspectConfig(globalns=user_globalns, auto_namespace=True)
+        result = inspect_protocol(Container, config=config)
+
+        assert is_protocol_node(result)
+        item_attr = next(a for a in result.attributes if a.name == "item")
+        # User-provided namespace should take precedence
+        assert item_attr.type is not None
+
+    def test_self_referential_protocol_resolved(self) -> None:
+        class TreeNode(Protocol):
+            value: int
+            left: "TreeNode | None"
+            right: "TreeNode | None"
+
+        result = inspect_protocol(TreeNode)
+
+        assert is_protocol_node(result)
+        assert len(result.attributes) == 3
+        # All attributes should be captured
+        attr_names = {a.name for a in result.attributes}
+        assert attr_names == {"value", "left", "right"}
+
+    def test_protocol_from_different_module_uses_module_namespace(self) -> None:
+        # Test with a Protocol from this module - it should use the module's
+        # namespace for resolution
+        result = inspect_protocol(SimpleProtocol)
+
+        assert is_protocol_node(result)
+        # The Protocol should be inspected using its defining module's namespace
+        assert result.name == "SimpleProtocol"
+
+    def test_protocol_with_forward_ref_attributes(self) -> None:
+        # Protocol with both methods and forward-ref attributes
+        class Container(Protocol):
+            items: "list[Item]"
+            count: int
+
+            def get_item(self, index: int) -> "Item": ...
+
+        class Item(Protocol):
+            name: str
+
+        result = inspect_protocol(Container)
+
+        assert is_protocol_node(result)
+        # Attributes with forward refs should be captured
+        attr_names = {a.name for a in result.attributes}
+        assert "items" in attr_names
+        assert "count" in attr_names
+        # Methods should also be captured
+        method_names = {m.name for m in result.methods}
+        assert "get_item" in method_names
+
+
+class TestEnumAutoNamespace:
+    def test_auto_namespace_enabled_resolves_forward_refs(self) -> None:
+        # Enum with members that could have forward reference type annotations
+        # Note: Enum values don't have type annotations, but auto-namespace
+        # is applied for consistency with other class inspection functions
+        class Status(Enum):
+            ACTIVE = 1
+            INACTIVE = 2
+
+        # With auto_namespace=True (default), the enum should be inspected normally
+        result = inspect_enum(Status)
+
+        assert is_enum_node(result)
+        assert len(result.members) == 2
+        member_dict = dict(result.members)
+        assert member_dict == {"ACTIVE": 1, "INACTIVE": 2}
+
+    def test_auto_namespace_disabled_uses_only_user_namespaces(self) -> None:
+        class Priority(Enum):
+            LOW = 1
+            HIGH = 2
+
+        # With auto_namespace=False, no automatic namespace extraction
+        config = InspectConfig(auto_namespace=False)
+        result = inspect_enum(Priority, config=config)
+
+        assert is_enum_node(result)
+        # The enum should still be inspected correctly
+        assert len(result.members) == 2
+        member_dict = dict(result.members)
+        assert member_dict == {"LOW": 1, "HIGH": 2}
+
+    def test_user_namespace_takes_precedence_over_auto(self) -> None:
+        class Level(Enum):
+            DEBUG = 10
+            INFO = 20
+
+        # User-provided namespace should take precedence
+        user_globalns = {"Level": Level}
+        config = InspectConfig(globalns=user_globalns, auto_namespace=True)
+        result = inspect_enum(Level, config=config)
+
+        assert is_enum_node(result)
+        assert result.cls is Level
+        assert len(result.members) == 2
+
+    def test_enum_from_different_module_uses_module_namespace(self) -> None:
+        # Test with an Enum from this module - it should use the module's
+        # namespace for resolution
+        result = inspect_enum(SimpleEnum)
+
+        assert is_enum_node(result)
+        # The Enum should be inspected using its defining module's namespace
+        assert result.cls is SimpleEnum
+        assert len(result.members) == 3
+
+    def test_enum_with_mixed_value_types(self) -> None:
+        class MixedEnum(Enum):
+            INT_VALUE = 1
+            STR_VALUE = "text"
+            FLOAT_VALUE = 3.14
+
+        result = inspect_enum(MixedEnum)
+
+        assert is_enum_node(result)
+        assert len(result.members) == 3
+        # Mixed value types should produce a union type
+        assert is_union_type_node(result.value_type)
+
+
+class TestInspectClassDispatcherAutoNamespace:
+    def test_dispatcher_applies_auto_namespace_for_dataclass(self) -> None:
+        @dataclass
+        class Node:
+            value: int
+            child: "Node | None"
+
+        result = inspect_class(Node)
+
+        assert is_dataclass_node(result)
+        assert len(result.fields) == 2
+        child_field = next(f for f in result.fields if f.name == "child")
+        assert child_field.type is not None
+
+    def test_dispatcher_applies_auto_namespace_for_typed_dict(self) -> None:
+        class Node(TypedDict):
+            value: int
+            child: "Node | None"
+
+        result = inspect_class(Node)
+
+        assert is_typed_dict_node(result)
+        assert len(result.fields) == 2
+        child_field = next(f for f in result.fields if f.name == "child")
+        assert child_field.type is not None
+
+    def test_dispatcher_applies_auto_namespace_for_named_tuple(self) -> None:
+        class Node(NamedTuple):
+            value: int
+            child: "Node | None"
+
+        result = inspect_class(Node)
+
+        assert is_named_tuple_node(result)
+        assert len(result.fields) == 2
+        child_field = next(f for f in result.fields if f.name == "child")
+        assert child_field.type is not None
+
+    def test_dispatcher_applies_auto_namespace_for_protocol(self) -> None:
+        class Node(Protocol):
+            value: int
+            child: "Node | None"
+
+        result = inspect_class(Node)
+
+        assert is_protocol_node(result)
+        assert len(result.attributes) == 2
+        child_attr = next(a for a in result.attributes if a.name == "child")
+        assert child_attr.type is not None
+
+    def test_dispatcher_applies_auto_namespace_for_enum(self) -> None:
+        class Status(Enum):
+            ACTIVE = 1
+            INACTIVE = 2
+
+        result = inspect_class(Status)
+
+        assert is_enum_node(result)
+        assert result.cls is Status
+        assert len(result.members) == 2
+
+    def test_dispatcher_applies_auto_namespace_for_regular_class(self) -> None:
+        class Node:
+            value: int  # pyright: ignore[reportUninitializedInstanceVariable]
+            child: "Node | None"  # pyright: ignore[reportUninitializedInstanceVariable]
+
+        config = InspectConfig(include_instance_vars=True)
+        result = inspect_class(Node, config=config)
+
+        assert is_class_node(result)
+        assert len(result.instance_vars) == 2
+        child_var = next(v for v in result.instance_vars if v.name == "child")
+        assert child_var.type is not None
+
+    def test_dispatcher_auto_namespace_disabled_respects_setting(self) -> None:
+        @dataclass
+        class Item:
+            name: str
+            related: "Item | None"
+
+        config = InspectConfig(auto_namespace=False)
+        result = inspect_class(Item, config=config)
+
+        assert is_dataclass_node(result)
+        # The field should still be captured even without auto-namespace
+        assert len(result.fields) == 2
+
+    def test_dispatcher_user_namespace_takes_precedence(self) -> None:
+        @dataclass
+        class Container:
+            item: "CustomItem"
+
+        class CustomItem:
+            pass
+
+        user_globalns = {"CustomItem": CustomItem}
+        config = InspectConfig(globalns=user_globalns, auto_namespace=True)
+        result = inspect_class(Container, config=config)
+
+        assert is_dataclass_node(result)
+        item_field = next(f for f in result.fields if f.name == "item")
+        assert item_field.type is not None
+
+
+# PEP 563 Integration Tests
+#
+# PEP 563 (`from __future__ import annotations`) causes ALL annotations to
+# become strings at runtime. Fixtures are defined in pep563_fixtures.py which
+# has the future import, since it affects the entire module at compile time.
+#
+# With PEP 563, annotations are forward references that get resolved. The tests
+# verify that:
+# 1. The type may be a ForwardRefNode (due to string annotations)
+# 2. When wrapped in ForwardRefNode, the state is RefResolved
+# 3. The resolved node is the correct type (e.g., UnionNode)
+
+
+def _get_resolved_type(type_node: TypeNode) -> TypeNode:
+    """Unwrap ForwardRefNode if present and resolved, returning the inner type."""
+    if is_forward_ref_node(type_node):
+        assert is_ref_state_resolved(type_node.state), (
+            f"Expected resolved forward ref, got {type_node.state}"
+        )
+        return type_node.state.node
+    return type_node
+
+
+class TestPEP563DataclassScenarios:
+    def test_pep563_dataclass_self_reference_resolved(self) -> None:
+        from tests.unit.pep563_fixtures import TreeNodeDC
+
+        result = inspect_dataclass(TreeNodeDC)
+
+        assert is_dataclass_node(result)
+        assert len(result.fields) == 3
+
+        left_field = next(f for f in result.fields if f.name == "left")
+        assert left_field.type is not None
+        left_resolved = _get_resolved_type(left_field.type)
+        assert is_union_type_node(left_resolved)
+
+        right_field = next(f for f in result.fields if f.name == "right")
+        assert right_field.type is not None
+        right_resolved = _get_resolved_type(right_field.type)
+        assert is_union_type_node(right_resolved)
+
+    def test_pep563_dataclass_sibling_reference_parent_resolved(self) -> None:
+        from tests.unit.pep563_fixtures import ParentDC
+
+        result = inspect_dataclass(ParentDC)
+
+        assert is_dataclass_node(result)
+        assert len(result.fields) == 2
+
+        children_field = next(f for f in result.fields if f.name == "children")
+        assert children_field.type is not None
+
+    def test_pep563_dataclass_sibling_reference_child_resolved(self) -> None:
+        from tests.unit.pep563_fixtures import ChildDC
+
+        result = inspect_dataclass(ChildDC)
+
+        assert is_dataclass_node(result)
+        assert len(result.fields) == 2
+
+        parent_field = next(f for f in result.fields if f.name == "parent")
+        assert parent_field.type is not None
+        parent_resolved = _get_resolved_type(parent_field.type)
+        assert is_union_type_node(parent_resolved)
+
+    def test_pep563_generic_dataclass_self_reference_resolved(self) -> None:
+        from tests.unit.pep563_fixtures import GenericNode
+
+        result = inspect_dataclass(GenericNode)
+
+        assert is_dataclass_node(result)
+        assert len(result.fields) == 2
+
+        children_field = next(f for f in result.fields if f.name == "children")
+        assert children_field.type is not None
+
+    def test_pep563_dataclass_nested_references_resolved(self) -> None:
+        from tests.unit.pep563_fixtures import Container, Item
+
+        container_result = inspect_dataclass(Container)
+        item_result = inspect_dataclass(Item)
+
+        assert is_dataclass_node(container_result)
+        assert is_dataclass_node(item_result)
+        assert len(container_result.fields) == 2
+        assert len(item_result.fields) == 2
+
+
+class TestPEP563TypedDictScenarios:
+    def test_pep563_typed_dict_self_reference_resolved(self) -> None:
+        from tests.unit.pep563_fixtures import TreeNodeTD
+
+        result = inspect_typed_dict(TreeNodeTD)
+
+        assert is_typed_dict_node(result)
+        assert len(result.fields) == 3
+
+        left_field = next(f for f in result.fields if f.name == "left")
+        assert left_field.type is not None
+        left_resolved = _get_resolved_type(left_field.type)
+        assert is_union_type_node(left_resolved)
+
+        right_field = next(f for f in result.fields if f.name == "right")
+        assert right_field.type is not None
+        right_resolved = _get_resolved_type(right_field.type)
+        assert is_union_type_node(right_resolved)
+
+    def test_pep563_typed_dict_sibling_reference_parent_resolved(self) -> None:
+        from tests.unit.pep563_fixtures import ParentTD
+
+        result = inspect_typed_dict(ParentTD)
+
+        assert is_typed_dict_node(result)
+        assert len(result.fields) == 2
+
+        children_field = next(f for f in result.fields if f.name == "children")
+        assert children_field.type is not None
+
+    def test_pep563_typed_dict_sibling_reference_child_resolved(self) -> None:
+        from tests.unit.pep563_fixtures import ChildTD
+
+        result = inspect_typed_dict(ChildTD)
+
+        assert is_typed_dict_node(result)
+        assert len(result.fields) == 2
+
+        parent_field = next(f for f in result.fields if f.name == "parent")
+        assert parent_field.type is not None
+        parent_resolved = _get_resolved_type(parent_field.type)
+        assert is_union_type_node(parent_resolved)
+
+    def test_pep563_typed_dict_nested_references_resolved(self) -> None:
+        from tests.unit.pep563_fixtures import NestedTD
+
+        result = inspect_typed_dict(NestedTD)
+
+        assert is_typed_dict_node(result)
+        assert len(result.fields) == 2
+
+        items_field = next(f for f in result.fields if f.name == "items")
+        assert items_field.type is not None
+
+        mapping_field = next(f for f in result.fields if f.name == "mapping")
+        assert mapping_field.type is not None
+
+
+class TestPEP563NamedTupleScenarios:
+    def test_pep563_named_tuple_self_reference_resolved(self) -> None:
+        from tests.unit.pep563_fixtures import TreeNodeNT
+
+        result = inspect_named_tuple(TreeNodeNT)
+
+        assert is_named_tuple_node(result)
+        assert len(result.fields) == 3
+
+        left_field = next(f for f in result.fields if f.name == "left")
+        assert left_field.type is not None
+        left_resolved = _get_resolved_type(left_field.type)
+        assert is_union_type_node(left_resolved)
+
+        right_field = next(f for f in result.fields if f.name == "right")
+        assert right_field.type is not None
+        right_resolved = _get_resolved_type(right_field.type)
+        assert is_union_type_node(right_resolved)
+
+    def test_pep563_named_tuple_sibling_reference_parent_resolved(self) -> None:
+        from tests.unit.pep563_fixtures import ParentNT
+
+        result = inspect_named_tuple(ParentNT)
+
+        assert is_named_tuple_node(result)
+        assert len(result.fields) == 2
+
+        children_field = next(f for f in result.fields if f.name == "children")
+        assert children_field.type is not None
+
+    def test_pep563_named_tuple_sibling_reference_child_resolved(self) -> None:
+        from tests.unit.pep563_fixtures import ChildNT
+
+        result = inspect_named_tuple(ChildNT)
+
+        assert is_named_tuple_node(result)
+        assert len(result.fields) == 2
+
+        parent_field = next(f for f in result.fields if f.name == "parent")
+        assert parent_field.type is not None
+        parent_resolved = _get_resolved_type(parent_field.type)
+        assert is_union_type_node(parent_resolved)
+
+
+class TestPEP563ProtocolScenarios:
+    def test_pep563_protocol_self_reference_resolved(self) -> None:
+        from tests.unit.pep563_fixtures import TreeNodeProto
+
+        result = inspect_protocol(TreeNodeProto)
+
+        assert is_protocol_node(result)
+        assert len(result.attributes) == 3
+
+        left_attr = next(a for a in result.attributes if a.name == "left")
+        assert left_attr.type is not None
+        left_resolved = _get_resolved_type(left_attr.type)
+        assert is_union_type_node(left_resolved)
+
+        right_attr = next(a for a in result.attributes if a.name == "right")
+        assert right_attr.type is not None
+        right_resolved = _get_resolved_type(right_attr.type)
+        assert is_union_type_node(right_resolved)
+
+    def test_pep563_protocol_sibling_reference_parent_resolved(self) -> None:
+        from tests.unit.pep563_fixtures import ParentProto
+
+        result = inspect_protocol(ParentProto)
+
+        assert is_protocol_node(result)
+        assert len(result.attributes) == 2
+
+        children_attr = next(a for a in result.attributes if a.name == "children")
+        assert children_attr.type is not None
+
+    def test_pep563_protocol_sibling_reference_child_resolved(self) -> None:
+        from tests.unit.pep563_fixtures import ChildProto
+
+        result = inspect_protocol(ChildProto)
+
+        assert is_protocol_node(result)
+        assert len(result.attributes) == 2
+
+        parent_attr = next(a for a in result.attributes if a.name == "parent")
+        assert parent_attr.type is not None
+        parent_resolved = _get_resolved_type(parent_attr.type)
+        assert is_union_type_node(parent_resolved)
+
+    def test_pep563_protocol_with_methods_resolved(self) -> None:
+        from tests.unit.pep563_fixtures import NodeFactory
+
+        result = inspect_protocol(NodeFactory)
+
+        assert is_protocol_node(result)
+        assert len(result.methods) == 2
+
+        create_method = next(m for m in result.methods if m.name == "create")
+        assert create_method.signature is not None
+
+        clone_method = next(m for m in result.methods if m.name == "clone")
+        assert clone_method.signature is not None
+
+
+class TestPEP563EnumScenarios:
+    def test_pep563_enum_simple_resolved(self) -> None:
+        from tests.unit.pep563_fixtures import StatusEnum
+
+        result = inspect_enum(StatusEnum)
+
+        assert is_enum_node(result)
+        assert result.cls is StatusEnum
+        assert len(result.members) == 3
+        member_names = {m[0] for m in result.members}
+        assert member_names == {"ACTIVE", "INACTIVE", "PENDING"}
+
+    def test_pep563_enum_with_values_resolved(self) -> None:
+        from tests.unit.pep563_fixtures import PriorityEnum
+
+        result = inspect_enum(PriorityEnum)
+
+        assert is_enum_node(result)
+        assert result.cls is PriorityEnum
+        assert len(result.members) == 3
+        member_dict = dict(result.members)
+        assert member_dict == {"LOW": 1, "MEDIUM": 2, "HIGH": 3}
+
+
+class TestPEP563PlainClassScenarios:
+    def test_pep563_plain_class_self_reference_resolved(self) -> None:
+        from tests.unit.pep563_fixtures import PlainNode
+
+        config = InspectConfig(include_instance_vars=True)
+        result = inspect_class(PlainNode, config=config)
+
+        assert is_class_node(result)
+        assert len(result.instance_vars) == 3
+
+        parent_var = next(v for v in result.instance_vars if v.name == "parent")
+        assert parent_var.type is not None
+        parent_resolved = _get_resolved_type(parent_var.type)
+        assert is_union_type_node(parent_resolved)
+
+        children_var = next(v for v in result.instance_vars if v.name == "children")
+        assert children_var.type is not None
+
+
+class TestPEP563DispatcherScenarios:
+    def test_dispatcher_pep563_dataclass_resolved(self) -> None:
+        from tests.unit.pep563_fixtures import TreeNodeDC
+
+        result = inspect_class(TreeNodeDC)
+
+        assert is_dataclass_node(result)
+        assert len(result.fields) == 3
+
+    def test_dispatcher_pep563_typed_dict_resolved(self) -> None:
+        from tests.unit.pep563_fixtures import TreeNodeTD
+
+        result = inspect_class(TreeNodeTD)
+
+        assert is_typed_dict_node(result)
+        assert len(result.fields) == 3
+
+    def test_dispatcher_pep563_named_tuple_resolved(self) -> None:
+        from tests.unit.pep563_fixtures import TreeNodeNT
+
+        result = inspect_class(TreeNodeNT)
+
+        assert is_named_tuple_node(result)
+        assert len(result.fields) == 3
+
+    def test_dispatcher_pep563_protocol_resolved(self) -> None:
+        from tests.unit.pep563_fixtures import TreeNodeProto
+
+        result = inspect_class(TreeNodeProto)
+
+        assert is_protocol_node(result)
+        assert len(result.attributes) == 3
+
+    def test_dispatcher_pep563_enum_resolved(self) -> None:
+        from tests.unit.pep563_fixtures import StatusEnum
+
+        result = inspect_class(StatusEnum)
+
+        assert is_enum_node(result)
+        assert len(result.members) == 3
+
+    def test_dispatcher_pep563_plain_class_resolved(self) -> None:
+        from tests.unit.pep563_fixtures import PlainNode
+
+        config = InspectConfig(include_instance_vars=True)
+        result = inspect_class(PlainNode, config=config)
+
+        assert is_class_node(result)
+        assert len(result.instance_vars) == 3

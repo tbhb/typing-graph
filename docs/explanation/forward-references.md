@@ -1,36 +1,12 @@
 # Forward references
 
-Forward references are a notable aspect of Python's type system. This page explains what they are, why they exist, and how typing-graph handles forward reference evaluation across Python versions.
+Forward references are a fundamental aspect of Python's type system that has driven significant design evolution. This page explains what they are, why they exist, how Python's approach has evolved, and how typing-graph handles forward reference evaluation across Python versions.
 
 ## Why forward references matter
 
-Python evaluates type annotations at definition time by default. This creates a practical problem: type annotations often need to reference types that don't exist yet.
+Python evaluates type annotations at definition time by default. This creates a fundamental tension: type annotations often need to reference types that don't exist yet.
 
-This problem has driven design changes in Python's typing system, from PEP 484's string annotations through PEP 563's deferred evaluation to PEP 649's lazy evaluation. typing-graph works correctly across all these approaches.
-
-## Quick start: common self-referential pattern
-
-If you just need to handle a common self-referential type like a tree node:
-
-```python
-from dataclasses import dataclass
-from typing_graph import inspect_dataclass, InspectConfig
-
-@dataclass
-class TreeNode:
-    value: int
-    children: list["TreeNode"]
-
-# Provide the namespace containing the class
-config = InspectConfig(globalns={"TreeNode": TreeNode})
-node = inspect_dataclass(TreeNode, config=config)
-
-# Forward references are now resolved
-children_field = node.fields[1]
-print(children_field.type)  # SubscriptedGenericNode for list[TreeNode]
-```
-
-For more complex scenarios involving multiple modules or deferred evaluation modes, read on.
+This tension has driven major design changes in Python's typing system, from [PEP 484](https://peps.python.org/pep-0484/)'s string annotations through [PEP 563](https://peps.python.org/pep-0563/)'s deferred evaluation to [PEP 649](https://peps.python.org/pep-0649/) and [PEP 749](https://peps.python.org/pep-0749/)'s lazy evaluation. typing-graph works correctly across all these approaches, abstracting away the version-specific complexity.
 
 ## What are forward references?
 
@@ -55,7 +31,72 @@ class Parent:
     children: list[Node]
 ```
 
-Forward references also appear when using `from __future__ import annotations` (PEP 563), which makes all annotations strings by default.
+## The `from __future__ import annotations` approach
+
+PEP 563 introduced a more sweeping solution to forward references: make *all* annotations strings by default. With the future import, Python stores every annotation as its literal string form without evaluating it:
+
+```python
+from __future__ import annotations
+
+class Order:
+    customer: Customer  # Stored as the string "Customer", not evaluated
+    items: list[Item]   # Stored as "list[Item]"
+
+class Customer:
+    name: str
+    orders: list[Order]  # No quotes needed - it's already a string internally
+```
+
+This eliminates the forward reference problem entirely. You never need to think about definition order or add quotes around type names. The annotations exist as strings until something explicitly evaluates them.
+
+### Why this matters for runtime inspection
+
+The trade-off is that runtime type inspection becomes more complex. When you access `Order.__annotations__`, you get strings instead of type objects. Any tool that wants to work with the actual types must resolve those strings, which requires access to the right namespace.
+
+This is precisely where typing-graph's auto-namespace detection becomes valuable. When you call `inspect_dataclass(Order)`, typing-graph:
+
+1. Detects that annotations are stringified
+2. Extracts the module's global namespace from `Order.__module__`
+3. Adds `Order` itself to the local namespace for self-references
+4. Evaluates the string annotations in that namespace
+
+The result is that PEP 563 code works without configuration:
+
+```python
+from __future__ import annotations
+from dataclasses import dataclass
+from typing_graph import inspect_dataclass
+
+@dataclass
+class Order:
+    customer: Customer
+    total: float
+
+@dataclass
+class Customer:
+    name: str
+
+# Auto-namespace detection handles the stringified annotations
+node = inspect_dataclass(Order)
+customer_field = node.fields[0]
+print(customer_field.type)  # ConcreteNode for Customer
+```
+
+### The deprecation path
+
+PEP 563's future import will continue working with its current behavior until Python 3.13 reaches end-of-life (expected October 2029). After that point, the import will be deprecated and eventually removed.
+
+The reason for this phaseout is PEP 649 and PEP 749, which introduce a better solution in Python 3.14: lazy annotation evaluation. Rather than storing strings that must be explicitly resolved, Python 3.14 stores annotations as lazily evaluated code objects. They look and behave like regular type objects when accessed, but aren't evaluated until first use.
+
+This approach gives you the best of both worlds: forward references work naturally (no definition order issues), and runtime inspection gets real type objects (no string evaluation needed).
+
+### Recommendations
+
+For new code targeting Python 3.14+, the future import is unnecessary. Lazy evaluation handles forward references automatically, and your annotations remain as actual type expressions rather than strings.
+
+For code that must support Python 3.10-3.13, `from __future__ import annotations` remains a reasonable choice. typing-graph handles both approaches transparently through auto-namespace detection.
+
+For codebases transitioning from older Python versions, consider whether the future import is worth keeping. If your tooling (ORMs, serialization libraries, validation frameworks) works correctly with stringified annotations, there's no urgency to remove it. The import will continue working for years.
 
 !!! info "Historical context: the evolution of forward references"
 
@@ -64,9 +105,12 @@ Forward references also appear when using `from __future__ import annotations` (
     - **PEP 484 (2014)**: Introduced string annotations as the solution
     - **PEP 563 (2017)**: Proposed making all annotations strings via `__future__` import
     - **PEP 649 (2021)**: Proposed lazy evaluation as an alternative, avoiding string-related issues
-    - **Python 3.14**: PEP 649 becomes the default behavior
+    - **PEP 749 (2024)**: Supplements PEP 649 with implementation details and the `annotationlib` module
+    - **Python 3.14**: PEP 649/749 becomes the default behavior
 
     This evolution reflects the community's ongoing effort to balance three competing concerns: runtime introspectability, performance, and developer ergonomics. typing-graph is designed to work correctly regardless of which approach a codebase uses.
+
+    Note that `from __future__ import annotations` (PEP 563) will continue to work with its current behavior at least until Python 3.13 reaches end-of-life. After that, it will be deprecated and eventually removed in favor of PEP 649/749's lazy evaluation.
 
 ## How typing-graph handles forward references
 
@@ -161,11 +205,11 @@ class ForwardRefNode(TypeNode):
 
 The `state` attribute tracks the resolution status:
 
-| State | Meaning |
-| ----- | ------- |
-| `RefUnresolved` | Resolution not yet attempted |
-| `RefResolved` | Successfully resolved; contains the resolved node |
-| `RefFailed` | Resolution attempted but failed; contains error message |
+| State           | Meaning                                                 |
+|-----------------|---------------------------------------------------------|
+| `RefUnresolved` | Resolution not yet attempted                            |
+| `RefResolved`   | Successfully resolved; contains the resolved node       |
+| `RefFailed`     | Resolution attempted but failed; contains error message |
 
 ```python
 from typing_graph import inspect_type, ForwardRefNode, RefResolved, RefFailed
@@ -193,33 +237,59 @@ children = list(node.children())
 
 Unresolved or failed references return no children.
 
-## Providing namespaces for resolution
+## Why namespace context matters
 
-Forward reference resolution requires access to the namespace where the code defines the type. Use `globalns` and `localns` in [`InspectConfig`][typing_graph.InspectConfig]:
+Forward reference resolution requires access to the namespace where the type is defined. A string like `"Customer"` is meaningless without knowing which `Customer` class it refers to. This is why any runtime type inspection library must solve the namespace problem.
 
-```python
-from typing_graph import inspect_type, InspectConfig
+typing-graph addresses this through automatic namespace detection: when you inspect a class or function, the library extracts namespace context from the object itself. This design decision eliminates boilerplate for the common case while still allowing explicit control when needed.
 
-class MyClass:
-    pass
+For practical guidance on configuring namespaces, see [Namespace configuration](../guides/namespace-configuration.md).
 
-# Provide the namespace containing MyClass
-config = InspectConfig(
-    globalns={"MyClass": MyClass},
-)
+## Automatic namespace detection
 
-node = inspect_type("MyClass", config=config)
-# Successfully resolves to ConcreteNode for MyClass
-```
+The key design insight behind typing-graph's namespace handling is that objects in Python carry namespace information with them. A class knows its defining module via `__module__`. A function carries its globals via `__globals__`. This information is enough to resolve most forward references without manual configuration.
 
-For module-level types, you can pass the module's `__dict__`:
+### The design rationale
+
+Manual namespace configuration works, but it creates friction for the common case. Consider how often you write code like this:
 
 ```python
-# snippet - example with hypothetical mymodule
-import mymodule
+from __future__ import annotations
+from dataclasses import dataclass
 
-config = InspectConfig(globalns=vars(mymodule))
+@dataclass
+class Order:
+    customer: Customer  # Forward reference
+
+@dataclass
+class Customer:
+    name: str
 ```
+
+With PEP 563, both `Customer` in the `Order` class and `Order` in any self-referential patterns become strings. A runtime inspection library must resolve these strings, which requires access to the module's namespace.
+
+typing-graph's approach: extract this namespace automatically from the object being inspected. When you call `inspect_dataclass(Order)`, the library:
+
+1. Retrieves the module from `Order.__module__`
+2. Gets the module's namespace from `sys.modules`
+3. Adds `Order` itself to enable self-references
+4. Includes any PEP 695 type parameters from `__type_params__`
+
+This happens transparently. The common case requires zero configuration.
+
+### Design trade-offs
+
+Automatic detection introduces complexity:
+
+**Caching considerations.** When namespaces are auto-detected, the cache key must account for the source object. typing-graph handles this by bypassing the cache when namespace context varies, ensuring correctness at the cost of some repeated work.
+
+**Precedence rules.** When users provide explicit namespaces alongside auto-detection, the library must define clear precedence. typing-graph chose user-provided values taking precedence, allowing targeted overrides without turning off auto-detection entirely.
+
+**Limitations.** Auto-detection can only extract what Python makes available at runtime. `TYPE_CHECKING` imports, cross-module references without actual imports, and dynamically created types all fall outside what auto-detection can resolve.
+
+These trade-offs reflect a deliberate design choice: optimize for the common case (PEP 563 code with standard module structure) while providing escape hatches for edge cases.
+
+For practical guidance on configuring namespaces in various scenarios, see [Namespace configuration](../guides/namespace-configuration.md).
 
 ## Cycle detection
 
@@ -250,11 +320,11 @@ The `InspectContext` tracks which references the library currently resolves via 
 
 Forward reference evaluation has changed across Python versions:
 
-| Version | API |
-| ------- | --- |
-| 3.14+ | `typing.evaluate_forward_ref()` |
-| 3.13 | `ForwardRefNode._evaluate()` with `type_params` |
-| 3.12 | `ForwardRefNode._evaluate()` with `recursive_guard` keyword |
+| Version   | API                                                            |
+|-----------|----------------------------------------------------------------|
+| 3.14+     | `typing.evaluate_forward_ref()`                                |
+| 3.13      | `ForwardRefNode._evaluate()` with `type_params`                |
+| 3.12      | `ForwardRefNode._evaluate()` with `recursive_guard` keyword    |
 | 3.10-3.11 | `ForwardRefNode._evaluate()` with positional `recursive_guard` |
 
 typing-graph handles these differences internally, providing a consistent API regardless of Python version.
@@ -270,71 +340,19 @@ typing-graph handles these differences internally, providing a consistent API re
 
     This evolution shows Python's type system maturing from an optional annotation layer into a core language feature. Libraries like typing-graph absorb this complexity so your code doesn't have to.
 
-## Best practices
+## Working with forward references
 
-### Use deferred mode for flexibility
+Understanding forward references conceptually shapes how you approach them in practice:
 
-The default `DEFERRED` mode handles most scenarios gracefully. It resolves what it can while preserving information about unresolvable references.
+**Default to auto-detection.** typing-graph's design assumes auto-namespace detection handles most cases. The common pattern (PEP 563 code with standard module structure) requires zero configuration. Only reach for explicit namespaces when auto-detection falls short.
 
-### Provide complete namespaces
+**Embrace deferred evaluation.** The default `DEFERRED` mode reflects a pragmatic stance: resolve what you can, preserve what you can't. This approach suits most tools better than failing fast on unresolvable references.
 
-When resolution matters, provide comprehensive namespaces:
+**Think about resolution state.** Forward references aren't binary (resolved vs unresolved). They exist in three states: unresolved (not yet attempted), resolved (successfully evaluated), and failed (attempted but couldn't resolve). Code that handles forward references should account for all three.
 
-```python
-# snippet - example with hypothetical mymodule
-import typing
-import mymodule
+**Let traversal handle cycles.** Self-referential types create cycles in the type graph. Rather than implementing cycle detection yourself, use [`walk()`][typing_graph.walk], which handles cycles automatically.
 
-config = InspectConfig(
-    globalns={
-        **vars(typing),
-        **vars(mymodule),
-    }
-)
-```
-
-### Check resolution state before use
-
-When working with potentially unresolved references, check the state:
-
-```python
-from typing_graph import ForwardRefNode, RefResolved, RefFailed
-
-def process_type(node):
-    if isinstance(node, ForwardRefNode):
-        if isinstance(node.state, RefResolved):
-            # Use node.state.node
-            return process_type(node.state.node)
-        elif isinstance(node.state, RefFailed):
-            # Handle failure
-            print(f"Could not resolve: {node.state.error}")
-            return None
-        else:
-            # Unresolved - defer processing
-            return None
-    # Process other node types...
-```
-
-### Handle cycles in traversal
-
-When traversing type graphs that may contain forward references, prepare for cycles:
-
-```python
-def traverse(node, visited=None):
-    if visited is None:
-        visited = set()
-
-    node_id = id(node)
-    if node_id in visited:
-        return  # Cycle detected
-
-    visited.add(node_id)
-
-    # Process node...
-
-    for child in node.children():
-        traverse(child, visited)
-```
+For step-by-step guidance on namespace configuration, see [Namespace configuration](../guides/namespace-configuration.md). For traversal patterns, see [Walking the type graph](../guides/walking-type-graph.md).
 
 ## The broader context
 
@@ -342,19 +360,24 @@ Forward references connect to larger themes in Python's evolution. The tension b
 
 For library authors, this evolution means designing APIs that work regardless of how annotations are evaluated. typing-graph's `EvalMode` abstraction provides this flexibility: the same inspection code works whether annotations come from string evaluation, lazy evaluation, or direct expression evaluation.
 
-## Practical application
+## Applying this understanding
 
-Now that you understand forward references, apply this knowledge:
+The conceptual foundation covered here informs practical decisions:
 
-- **Configure evaluation modes** with [Configuration options](../guides/configuration.md)
-- **Handle forward refs during traversal** with [Walking the type graph](../guides/walking-type-graph.md)
-- **Inspect functions with forward refs** in [Inspecting functions](../tutorials/functions.md)
+- When choosing an evaluation mode, consider whether your use case needs immediate validation (eager), graceful degradation (deferred), or string preservation (stringified)
+- When encountering resolution failures, trace back to namespace context: is the type available at runtime? Is it in scope?
+- When designing APIs that consume type graphs, account for the three-state nature of forward references rather than assuming resolution always succeeds
 
 ## See also
 
+- [Namespace configuration](../guides/namespace-configuration.md) - How-to guide for namespace scenarios
 - [Configuration options](../guides/configuration.md) - Full details on `EvalMode` and namespaces
+- [`InspectConfig`][typing_graph.InspectConfig] - Configuration class with `auto_namespace` field
+- [`inspect_type()`][typing_graph.inspect_type] - Type inspection with `source` parameter
+- [`walk()`][typing_graph.walk] - Cycle-safe graph traversal
 - [Architecture overview](architecture.md) - How forward references fit into the inspection process
 - [Forward reference](../reference/glossary.md#forward-reference) - Glossary definition
 - [EvalMode](../reference/glossary.md#eval-mode) - Glossary definition
 - [PEP 563](https://peps.python.org/pep-0563/) - Postponed evaluation of annotations
 - [PEP 649](https://peps.python.org/pep-0649/) - Deferred evaluation of annotations using descriptors
+- [PEP 749](https://peps.python.org/pep-0749/) - Implementing PEP 649

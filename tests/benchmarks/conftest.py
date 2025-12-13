@@ -161,6 +161,79 @@ NestedGeneric = list[dict[str, set[frozenset[int]]]]
 CallableType = Callable[[int, str, list[float]], dict[str, bool] | None]
 
 
+# Benchmark fixtures for auto-namespace overhead testing
+@dataclass(slots=True, frozen=True)
+class BenchmarkSimpleClass:
+    """Simple dataclass with 3 fields for baseline benchmarking."""
+
+    name: str
+    value: int
+    active: bool = True
+
+
+@dataclass(slots=True, frozen=True)
+class BenchmarkComplexDataclass:
+    """Complex dataclass with 15+ fields for realistic benchmarking scenarios."""
+
+    field_01: int
+    field_02: str
+    field_03: float
+    field_04: bool
+    field_05: bytes
+    field_06: list[int]
+    field_07: dict[str, int]
+    field_08: set[str]
+    field_09: tuple[int, str]
+    field_10: int | None
+    field_11: Annotated[int, "description"]
+    field_12: list[dict[str, list[int]]]
+    field_13: Callable[[int, str], bool]
+    field_14: Literal["a", "b", "c"]
+    field_15: type[int]
+    field_16: str | None = None
+    field_17: int = 42
+
+
+def benchmark_simple_function(x: int, y: str) -> bool:  # noqa: ARG001
+    """Simple function with basic signature for baseline benchmarking."""
+    return True
+
+
+def benchmark_complex_function(
+    data: dict[str, list[int]],  # noqa: ARG001
+    callback: Callable[[int], str] | None = None,  # noqa: ARG001
+    *,
+    timeout: float = 30.0,  # noqa: ARG001
+    retries: int = 3,  # noqa: ARG001
+    metadata: Annotated[dict[str, str], "metadata"] | None = None,  # noqa: ARG001
+) -> list[tuple[str, int]] | None:
+    """Complex function with many type hints for realistic benchmarking."""
+    return None
+
+
+U = TypeVar("U")
+
+
+def benchmark_generic_function(
+    items: list[U],  # noqa: ARG001
+    predicate: Callable[[U], bool],  # noqa: ARG001
+    *,
+    default: U | None = None,  # noqa: ARG001
+) -> list[U]:
+    """Generic function with type parameters for benchmarking."""
+    return []
+
+
+@pytest.fixture
+def benchmark_simple_class_type() -> type[BenchmarkSimpleClass]:
+    return BenchmarkSimpleClass
+
+
+@pytest.fixture
+def benchmark_complex_dataclass_type() -> type[BenchmarkComplexDataclass]:
+    return BenchmarkComplexDataclass
+
+
 @pytest.fixture
 def simple_dataclass_type() -> type[SimpleDataclass]:
     return SimpleDataclass
