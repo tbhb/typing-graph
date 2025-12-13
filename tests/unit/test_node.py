@@ -523,3 +523,88 @@ class TestIsTypeParamNode:
         node = AnnotatedNode(base=ConcreteNode(cls=int), annotations=("meta",))
 
         assert is_type_param_node(node) is False
+
+
+class TestForwardRefNodeResolved:
+    def test_resolved_returns_target_for_single_ref(self) -> None:
+        target = ConcreteNode(cls=int)
+        ref = ForwardRefNode(ref="int", state=RefResolved(node=target))
+
+        assert ref.resolved() is target
+
+    def test_resolved_traverses_chain_of_refs(self) -> None:
+        target = ConcreteNode(cls=int)
+        inner = ForwardRefNode(ref="int", state=RefResolved(node=target))
+        outer = ForwardRefNode(ref="Inner", state=RefResolved(node=inner))
+
+        assert outer.resolved() is target
+
+    def test_resolved_returns_self_for_unresolved(self) -> None:
+        ref = ForwardRefNode(ref="X", state=RefUnresolved())
+
+        assert ref.resolved() is ref
+
+    def test_resolved_returns_self_for_failed(self) -> None:
+        ref = ForwardRefNode(ref="X", state=RefFailed(error="not found"))
+
+        assert ref.resolved() is ref
+
+    def test_resolved_detects_cycle_via_artificial_mutation(self) -> None:
+        # Create a cycle by artificially mutating the frozen dataclass
+        # This tests the defensive cycle detection code path
+        target = ConcreteNode(cls=int)
+        ref_a = ForwardRefNode(ref="A", state=RefResolved(node=target))
+
+        # Now artificially create a cycle: ref_a -> ref_a
+        # This can't happen in normal usage but tests the defensive code
+        cyclic_state = RefResolved(node=ref_a)
+        object.__setattr__(ref_a, "state", cyclic_state)
+
+        # When resolved() is called, it should detect the cycle and return ref_a
+        result = ref_a.resolved()
+        assert result is ref_a  # Cycle detected, returns the cycling node
+
+    def test_resolved_stops_at_unresolved_in_chain(self) -> None:
+        unresolved = ForwardRefNode(ref="Unknown", state=RefUnresolved())
+        middle = ForwardRefNode(ref="Middle", state=RefResolved(node=unresolved))
+        outer = ForwardRefNode(ref="Outer", state=RefResolved(node=middle))
+
+        result = outer.resolved()
+
+        assert result is unresolved
+        assert isinstance(result, ForwardRefNode)
+        assert isinstance(result.state, RefUnresolved)
+
+    def test_resolved_stops_at_failed_in_chain(self) -> None:
+        failed = ForwardRefNode(ref="Bad", state=RefFailed(error="not found"))
+        middle = ForwardRefNode(ref="Middle", state=RefResolved(node=failed))
+        outer = ForwardRefNode(ref="Outer", state=RefResolved(node=middle))
+
+        result = outer.resolved()
+
+        assert result is failed
+        assert isinstance(result, ForwardRefNode)
+        assert isinstance(result.state, RefFailed)
+
+    def test_resolved_handles_long_chain(self) -> None:
+        target = ConcreteNode(cls=str)
+        current: TypeNode = target
+        for i in range(10):
+            current = ForwardRefNode(ref=f"Ref{i}", state=RefResolved(node=current))
+
+        result = current.resolved()
+
+        assert result is target
+
+    def test_resolved_preserves_different_target_types(self) -> None:
+        # Test with various target types
+        targets = [
+            ConcreteNode(cls=int),
+            AnyNode(),
+            NeverNode(),
+            UnionNode(members=(ConcreteNode(cls=int), ConcreteNode(cls=str))),
+        ]
+
+        for target in targets:
+            ref = ForwardRefNode(ref="X", state=RefResolved(node=target))
+            assert ref.resolved() is target

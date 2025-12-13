@@ -70,6 +70,58 @@ class TypeNode(ABC):
         """
         ...
 
+    def resolved(self) -> "TypeNode":
+        """Return the terminal resolved type, traversing forward reference chains.
+
+        For non-ForwardRefNode types, returns self unchanged. For ForwardRefNode
+        with RefResolved state, traverses the chain to find the terminal
+        non-ForwardRefNode type. For unresolvable references (RefUnresolved,
+        RefFailed, or cycles), returns self (the unresolvable ForwardRefNode).
+
+        This method only traverses existing RefResolved chains - it does NOT
+        trigger resolution of RefUnresolved forward references. To resolve
+        forward references, use the graph construction APIs with appropriate
+        namespace configuration.
+
+        Returns:
+            The terminal resolved TypeNode, or self if this is already a
+            concrete (non-ForwardRefNode) type.
+
+        Note:
+            ForwardRefNode overrides this method to implement chain traversal.
+            To distinguish why self was returned from a ForwardRefNode, check
+            the node type and state:
+
+            ```python
+            result = node.resolved()
+            if result is node and isinstance(node, ForwardRefNode):
+                if isinstance(node.state, RefUnresolved):
+                    # Resolution was never attempted
+                    ...
+                elif isinstance(node.state, RefFailed):
+                    # Resolution failed: node.state.error has details
+                    ...
+                else:
+                    # Cycle detected (RefResolved but returned self)
+                    ...
+            ```
+
+            Prefer the method form for chaining: ``node.resolved().children()``.
+            Prefer the function form for map/filter:
+            ``map(resolve_forward_ref, nodes)``.
+
+        Example:
+            Chained usage for immediate attribute access:
+
+            >>> from typing_graph import ConcreteNode
+            >>> node = ConcreteNode(cls=int)
+            >>> node.resolved() is node
+            True
+            >>> node.resolved().children()
+            ()
+        """
+        return self
+
 
 def is_type_node(obj: object) -> TypeIs[TypeNode]:
     """Return whether the argument is an instance of TypeNode."""
@@ -642,6 +694,58 @@ class ForwardRefNode(TypeNode):
         if isinstance(self.state, RefFailed):
             return f"ForwardRef({self.ref!r}) [failed: {self.state.error}]"
         return f"ForwardRef({self.ref!r})"
+
+    @override
+    def resolved(self) -> "TypeNode":
+        """Return the terminal resolved type, traversing forward reference chains.
+
+        Traverses chains of resolved forward references until reaching either:
+        - A non-ForwardRefNode type (the terminal resolution)
+        - An unresolvable ForwardRefNode (RefUnresolved or RefFailed state)
+        - A cycle (detected via identity tracking)
+
+        This method only traverses existing RefResolved chains - it does NOT
+        trigger resolution of RefUnresolved forward references. To resolve
+        forward references, use the graph construction APIs with appropriate
+        namespace configuration.
+
+        Returns:
+            The terminal resolved TypeNode, or self if unresolvable.
+
+        Note:
+            When self is returned, the reason can be determined by checking:
+            - RefUnresolved state: resolution was never attempted
+            - RefFailed state: resolution failed (check state.error)
+            - RefResolved state: cycle detected in reference chain
+
+        Example:
+            Single resolution step:
+
+            >>> from typing_graph import ConcreteNode, ForwardRefNode, RefResolved
+            >>> target = ConcreteNode(cls=int)
+            >>> ref = ForwardRefNode(ref="int", state=RefResolved(node=target))
+            >>> ref.resolved() is target
+            True
+
+            Chain traversal:
+
+            >>> inner = ForwardRefNode(ref="int", state=RefResolved(node=target))
+            >>> outer = ForwardRefNode(ref="Inner", state=RefResolved(node=inner))
+            >>> outer.resolved() is target
+            True
+        """
+        seen: set[int] = set()
+        current: TypeNode = self
+        while isinstance(current, ForwardRefNode):
+            node_id = id(current)
+            if node_id in seen:
+                return current  # Cycle detected
+            seen.add(node_id)
+            if isinstance(current.state, RefResolved):
+                current = current.state.node
+            else:
+                return current  # Unresolvable (RefUnresolved or RefFailed)
+        return current
 
 
 def is_forward_ref_node(obj: object) -> TypeIs[ForwardRefNode]:

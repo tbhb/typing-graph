@@ -208,3 +208,40 @@ def unwrap_optional(node: TypeNode) -> tuple[TypeNode, ...] | None:
     return tuple(
         m for m in members if not (is_concrete_node(m) and m.cls is type(None))
     )
+
+
+def resolve_forward_ref(node: TypeNode) -> TypeNode:
+    """Return the terminal resolved type, traversing forward reference chains.
+
+    This function provides a functional interface to :meth:`TypeNode.resolved`,
+    enabling use in ``map()``, ``filter()``, and other functional patterns.
+
+    Args:
+        node: The type node to resolve. If this is a :class:`ForwardRefNode`
+            with a resolved state, returns the terminal resolved type.
+            For all other nodes, returns the node unchanged.
+
+    Returns:
+        The terminal resolved type. For forward references, this traverses
+        the resolution chain until reaching a non-forward-ref node or an
+        unresolvable state. For other nodes, returns the input unchanged.
+
+    Examples:
+        >>> from typing_graph import inspect_type, resolve_forward_ref
+        >>>
+        >>> # Non-forward-ref nodes return themselves
+        >>> node = inspect_type(int)
+        >>> resolve_forward_ref(node) is node
+        True
+
+    Note:
+        Use this function in functional contexts where a standalone function
+        is preferred over a method call::
+
+            resolved_nodes = list(map(resolve_forward_ref, nodes))
+
+    See Also:
+        :meth:`TypeNode.resolved`: The underlying method this function wraps.
+        :class:`ForwardRefNode`: The node type that benefits from resolution.
+    """
+    return node.resolved()
