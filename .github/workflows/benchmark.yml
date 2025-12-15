@@ -49,13 +49,13 @@ jobs:
         run: just benchmark-ci ${{ matrix.python-version }}
 
       - name: Upload benchmark results
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6.0.0
         with:
           name: benchmark-results-${{ matrix.python-version }}
           path: .benchmarks/${{ matrix.python-version }}.json
 
       - name: Upload baseline
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6.0.0
         with:
           name: benchmark-baseline-${{ matrix.python-version }}
           path: .benchmarks/${{ matrix.python-version }}.json
