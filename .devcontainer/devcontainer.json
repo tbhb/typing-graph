@@ -1,0 +1,85 @@
+// Development container configuration for typing-graph
+// See https://containers.dev/implementors/json_reference/ for schema reference
+{
+  "name": "typing-graph",
+
+  // ---------------------------------------------------------------------------
+  // Base image - tbhb Python + uv devcontainer
+  // ---------------------------------------------------------------------------
+  "image": "ghcr.io/tbhb/python:3.13",
+
+  // ---------------------------------------------------------------------------
+  // Container configuration
+  // All common features (node, pnpm, gh, just, shellcheck, starship,
+  // claude-code, hadolint, zsh plugins) are included in the base image.
+  // ---------------------------------------------------------------------------
+  "containerUser": "vscode",
+  "workspaceFolder": "/workspaces/typing-graph",
+
+  // Persist home directory across container rebuilds, with exceptions for
+  // directories that should be fresh with each container build
+  "mounts": [
+    "source=typing-graph-home-${devcontainerId},target=/home/vscode,type=volume",
+    // Separate node_modules for container (Linux binaries) vs host (macOS binaries)
+    "source=typing-graph-node-modules-${devcontainerId},target=/workspaces/typing-graph/node_modules,type=volume",
+    // Separate .venv for container (Linux binaries) vs host (macOS binaries)
+    "source=typing-graph-venv-${devcontainerId},target=/workspaces/typing-graph/.venv,type=volume",
+    // Bind mount host's Claude config for subscription auth
+    "source=${localEnv:HOME}/.claude,target=/home/vscode/.claude,type=bind"
+  ],
+
+  // Environment variables available in the container
+  "containerEnv": {
+    "UV_LINK_MODE": "copy"
+  },
+
+  // ---------------------------------------------------------------------------
+  // Lifecycle commands
+  // ---------------------------------------------------------------------------
+  // Set up shell configuration and install dependencies
+  "postCreateCommand": ".devcontainer/post-create.sh",
+
+  // ---------------------------------------------------------------------------
+  // Port forwarding
+  // ---------------------------------------------------------------------------
+  // Forward port 8000 for mkdocs development server (just dev-docs)
+  "forwardPorts": [8000],
+
+  // ---------------------------------------------------------------------------
+  // VS Code customizations
+  // ---------------------------------------------------------------------------
+  "customizations": {
+    "vscode": {
+      // Extensions to install in the container
+      "extensions": [
+        "ms-python.python",
+        "charliermarsh.ruff",
+        "detachhead.basedpyright",
+        "biomejs.biome"
+      ],
+
+      // VS Code settings for the container
+      "settings": {
+        // Python configuration
+        "python.defaultInterpreterPath": "/workspaces/typing-graph/.venv/bin/python",
+
+        // Ruff formatter configuration
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff",
+          "editor.formatOnSave": true
+        },
+
+        // Biome formatter for JSON
+        "[json]": {
+          "editor.defaultFormatter": "biomejs.biome"
+        },
+        "[jsonc]": {
+          "editor.defaultFormatter": "biomejs.biome"
+        },
+
+        // basedpyright type checking
+        "basedpyright.analysis.typeCheckingMode": "strict"
+      }
+    }
+  }
+}

@@ -61,12 +61,17 @@ fix-unsafe:
   {{uv}} ruff check --fix --unsafe-fixes .
 
 # Lint code
-lint:
+lint: lint-shell
   {{uv}} codespell
   {{uv}} yamllint --strict .
   {{uv}} ruff check .
   {{uv}} basedpyright
   {{pnpm}} markdownlint-cli2 "**/*.md"
+
+# Lint shell scripts
+lint-shell:
+  #!/usr/bin/env bash
+  shellcheck .devcontainer/*.sh
 
 lint-ci: install
   {{uv}} codespell
@@ -453,3 +458,57 @@ release-announce-social version:
 # Post release announcement to GitHub Discussions
 release-announce version:
   ./scripts/announce_post.py {{version}}
+
+# ------------------------------------------------------------------------------
+# Devcontainer management
+# ------------------------------------------------------------------------------
+
+# Build the devcontainer
+dc-build:
+  #!/usr/bin/env bash
+  devcontainer build --workspace-folder .
+
+# Start the devcontainer
+dc-up:
+  #!/usr/bin/env bash
+  devcontainer up --workspace-folder .
+
+# Open a shell in the devcontainer
+dc-shell:
+  #!/usr/bin/env bash
+  devcontainer exec --workspace-folder . zsh
+
+# Rebuild the devcontainer (no cache)
+dc-rebuild:
+  #!/usr/bin/env bash
+  devcontainer build --workspace-folder . --no-cache
+  devcontainer up --workspace-folder .
+
+# Stop the devcontainer
+dc-down:
+  #!/usr/bin/env bash
+  container_id=$(docker ps -q --filter "label=devcontainer.local_folder=$(pwd)")
+  if [ -n "$container_id" ]; then
+    docker stop "$container_id"
+  fi
+
+# Restart the devcontainer
+dc-restart:
+  #!/usr/bin/env bash
+  just dc-down
+  devcontainer up --workspace-folder .
+
+# Reset the devcontainer (delete volumes and rebuild)
+dc-reset:
+  #!/usr/bin/env bash
+  # Stop and remove container
+  container_id=$(docker ps -aq --filter "label=devcontainer.local_folder=$(pwd)")
+  if [ -n "$container_id" ]; then
+    docker stop "$container_id" 2>/dev/null || true
+    docker rm "$container_id" 2>/dev/null || true
+  fi
+  # Delete volumes
+  docker volume ls -q | grep typing-graph | xargs -r docker volume rm
+  # Rebuild
+  devcontainer build --workspace-folder . --no-cache
+  devcontainer up --workspace-folder .
